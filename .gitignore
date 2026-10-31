@@ -1,0 +1,17 @@
+bin/
+obj/
+out/
+node_modules/
+*.user
+.vs/
+
+# Built by src/editor-web (bun run build)
+src/Grabbit/EditorWeb/
+
+# Demo build output (docs/demo/*.mjs regenerate it; the README uses docs/screenshots)
+docs/demo/out/
+
+# Spikes: keep the test scripts, not their captures, videos or scratch projects
+spikes/*
+!spikes/*.mjs
+!spikes/*.ps1

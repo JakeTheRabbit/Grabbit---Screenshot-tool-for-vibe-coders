@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>Grabbit</AssemblyName>
+    <RootNamespace>Grabbit</RootNamespace>
+    <Product>Grabbit</Product>
+    <Version>0.1.0</Version>
+    <Company>JakeTheRabbit</Company>
+    <Description>Screenshots, recordings and video clips straight to the clipboard, sized for chat.</Description>
+    <!-- WPF0001: Fluent ThemeMode still experimental in .NET 10. WFO0003: WPF reads DPI awareness from app.manifest, not the WinForms API. -->
+    <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Imazen.WebP" Version="11.0.0" />
+    <PackageReference Include="Imazen.WebP.NativeRuntime.win-x64" Version="1.6.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Built by src/editor-web (bun run build); served offline as https://grabbit.app/ -->
+    <Content Include="EditorWeb\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
