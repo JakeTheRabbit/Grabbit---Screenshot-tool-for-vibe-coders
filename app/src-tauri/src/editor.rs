@@ -113,10 +113,21 @@ fn decode_data_url(u: &str) -> anyhow::Result<RgbaImage> {
 struct Recent { path: String, url: String, name: String, time: String, kind: &'static str }
 
 fn recent() -> Vec<Recent> {
-    history::all().into_iter().rev().filter(|e| Path::new(&e.path).exists()).take(40).map(|e| Recent {
-        name: Path::new(&e.path).file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default(),
-        path: e.path, url: String::new(), time: e.time, kind: "capture",
-    }).collect()
+    let name = |p: &Path| p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let mut out: Vec<Recent> = history::all().into_iter().rev().filter(|e| Path::new(&e.path).exists()).take(40).map(|e| Recent {
+        name: name(Path::new(&e.path)), path: e.path, url: String::new(), time: e.time, kind: "capture",
+    }).collect();
+    // Copied pictures: export::copy writes each one to the temp Grabbit folder, newest first.
+    let mut copied: Vec<_> = std::fs::read_dir(std::env::temp_dir().join("Grabbit")).into_iter().flatten().flatten()
+        .filter(|f| matches!(f.path().extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("png" | "jpg" | "jpeg" | "webp")))
+        .filter_map(|f| Some((f.metadata().ok()?.modified().ok()?, f.path())))
+        .collect();
+    copied.sort_by(|a, b| b.0.cmp(&a.0));
+    out.extend(copied.into_iter().take(40).map(|(t, p)| Recent {
+        name: name(&p), path: p.to_string_lossy().into_owned(), url: String::new(),
+        time: chrono::DateTime::<chrono::Local>::from(t).to_rfc3339(), kind: "copied",
+    }));
+    out
 }
 
 fn reply(w: &WebviewWindow, m: Value) { let _ = w.emit_to(w.label(), "host", m); }
@@ -154,7 +165,7 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
             let out = mark::apply(&s, &img, id);
             let size = match msg["size"].as_str() { Some("Reduced") => export::Size::Reduced, Some("Chat") => export::Size::Chat, _ => export::Size::Full };
             match msg["action"].as_str().unwrap_or("copy") {
-                "copy" | "copyClose" => { export::copy(&s, &out, size, &edited)?; if msg["action"] == "copyClose" { let _ = w.close(); } else { actions::notify(app, "Copied"); } }
+                "copy" | "copyClose" => { export::copy(&s, &out, size, &edited)?; if msg["action"] == "copyClose" { let _ = w.close(); } else { actions::notify(app, "Copied"); reply(w, json!({ "type": "recent", "recent": recent() })); } }
                 "saveQuick" | "closeSave" => { let p = export::save_full(&s, &out, &edited)?; history::add(app, Some(&p), &img, id); if msg["action"] == "saveQuick" { actions::notify(app, &format!("Saved {}", p.display())); } }
                 "copyPath" => { let p = export::save_full(&s, &out, &edited)?; history::add(app, Some(&p), &img, id); export::copy_text(&p.to_string_lossy())?; actions::notify(app, "Copied the file's path"); }
                 "save" => {

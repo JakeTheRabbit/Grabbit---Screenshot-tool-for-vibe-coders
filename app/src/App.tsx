@@ -418,13 +418,26 @@ export function App() {
     });
   }
 
+  /** Top-left for a new sticker `screen` px big at the current zoom: the viewport centre, stepped right past anything
+   *  already drawn there, so a new sticker never lands on the last one and swallows its clicks. (An emoji's text box
+   *  is about 1.4 × its font size wide.) */
+  function stickerSpot(screen: number) {
+    const size = screen / api!.getAppState().zoom.value, w = size * 1.4, c = viewportCenter();
+    let x = c.x - size / 2;
+    const y = c.y - size / 2;
+    const els = api!.getSceneElements().filter((e) => e.id !== BASE_ID);
+    while (els.some((e) => e.x < x + w && x < e.x + e.width && e.y < y + size && y < e.y + e.height)) x += size * 1.5;
+    return { x, y, size };
+  }
+
   function addEmoji(e: string) {
-    const c = viewportCenter();
-    addElements([{ type: "text", text: e, x: c.x - 32, y: c.y - 32, fontSize: 64 }]);
+    const { x, y, size } = stickerSpot(72);
+    addElements([{ type: "text", text: e, x, y, fontSize: size }]);
   }
 
   function addIcon(svg: string) {
-    addImage(iconDataURL(svg, api!.getAppState().currentItemStrokeColor), 96, 96);
+    const { x, y, size } = stickerSpot(96);
+    addImage(iconDataURL(svg, api!.getAppState().currentItemStrokeColor), size, size, { x: x + size / 2, y: y + size / 2 });
   }
 
   async function insertRecent(item: RecentItem) {
