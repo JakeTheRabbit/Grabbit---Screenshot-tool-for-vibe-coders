@@ -109,10 +109,11 @@ pub fn finish(app: &AppHandle) {
             return actions::notify(&app, "AI batch ended: no pictures were taken");
         }
         let a = app.clone();
-        if let Some(w) = a.get_webview_window("voice") { let _ = w.destroy(); }
-        if let Ok(w) = WebviewWindowBuilder::new(&a, "voice", WebviewUrl::App("voice.html?batch=1".into()))
+        if let Some(w) = a.get_webview_window("aibatch") { let _ = w.destroy(); }
+        match WebviewWindowBuilder::new(&a, "aibatch", WebviewUrl::App("voice.html?batch=1".into()))
             .title("AI batch").inner_size(1040.0, 760.0).min_inner_size(760.0, 520.0).focused(true).center().build() {
-            crate::editor::apply_material(&w);
+            Ok(w) => crate::editor::apply_material(&w),
+            Err(e) => log::warn!("AI batch window: {e}"),
         }
     });
 }

@@ -269,8 +269,8 @@ pub fn open_file(app: AppHandle, path: String) { editor::open_path(&app, std::pa
 #[tauri::command]
 pub async fn dev_window(app: AppHandle, page: String, x: f64, y: f64, w: f64, h: f64, monitor: Option<usize>) -> Result<(i32, i32, u32, u32), String> {
     if !cfg!(debug_assertions) { return Err("test builds only".into()); }
-    if let Some(old) = app.get_webview_window("devtest") { let _ = old.destroy(); }
-    let win = WebviewWindowBuilder::new(&app, "devtest", WebviewUrl::App(page.into()))
+    let label = format!("devtest-{}", chrono::Utc::now().timestamp_millis());
+    let win = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(page.into()))
         .title("Grabbit test page").position(x, y).inner_size(w, h).focused(true).always_on_top(true)
         .decorations(monitor.is_none()).build().map_err(|e| e.to_string())?;
     // With a monitor: cover it exactly, edge to edge (README shots of the demo page).

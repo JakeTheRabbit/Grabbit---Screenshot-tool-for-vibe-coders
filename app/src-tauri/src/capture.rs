@@ -28,7 +28,17 @@ pub struct WinInfo {
 }
 
 /// All monitors, grabbed in parallel so they're frozen at the same moment.
+/// GRABBIT_DEMO_FRAME=<picture>: every monitor shows that picture instead (README screenshots of a made-up page).
 pub fn freeze_all() -> Result<Vec<Frame>> {
+    if let Ok(demo) = std::env::var("GRABBIT_DEMO_FRAME") {
+        let pic = image::open(&demo).context("GRABBIT_DEMO_FRAME")?;
+        return Monitor::all()?.iter().map(|m| {
+            let (w, h) = (m.width()?, m.height()?);
+            let k = if cfg!(target_os = "macos") { m.scale_factor().unwrap_or(1.0) } else { 1.0 };
+            let (pw, ph) = ((w as f32 * k) as u32, (h as f32 * k) as u32);
+            Ok(Frame { x: m.x()?, y: m.y()?, scale: m.scale_factor().unwrap_or(1.0), image: pic.resize_to_fill(pw, ph, image::imageops::FilterType::Lanczos3).to_rgba8() })
+        }).collect();
+    }
     // xcap's Monitor can't cross threads, so each thread looks its monitor up again.
     let n = Monitor::all().context("listing monitors")?.len();
     std::thread::scope(|sc| {

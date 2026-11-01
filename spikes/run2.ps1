@@ -14,7 +14,7 @@ if ($Build) {
   "built"
 }
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9333"
-Remove-Item Env:GRABBIT_DEMO -ErrorAction SilentlyContinue
+Remove-Item Env:GRABBIT_DEMO, Env:GRABBIT_DEMO_FRAME -ErrorAction SilentlyContinue
 if ($Test) { $env:GRABBIT_CONFIG = Join-Path $env:TEMP "g2cfg" }
 elseif ($Demo) {
   # README shots: an empty config of its own, and Grabbit's overlays visible to screen capture.
@@ -23,6 +23,7 @@ elseif ($Demo) {
   New-Item -ItemType Directory -Force $shots, $vids | Out-Null
   @{ save_folder = $shots; video_folder = $vids; edit_after_recording = $false; copy_recording = $false; index_text = $false } | ConvertTo-Json | Set-Content "$d\settings.json"
   $env:GRABBIT_CONFIG = $d; $env:GRABBIT_DEMO = "1"
+  $env:GRABBIT_DEMO_FRAME = Join-Path $root "docs\demo\out\demo-4k.png"
 }
 else { Remove-Item Env:GRABBIT_CONFIG -ErrorAction SilentlyContinue }
 $p = Start-Process -FilePath $exe -PassThru -WindowStyle Hidden
