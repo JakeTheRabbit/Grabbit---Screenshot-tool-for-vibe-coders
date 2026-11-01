@@ -38,50 +38,51 @@ app/src-tauri/       Rust core
 ```
 
 ## Feature checklist
-Status: ☐ todo · ◐ partial · ☑ done (W/M/L = verified on Windows/macOS/Linux)
+Status: ☐ todo · ◐ partial · ☑ done. **W** = clicked through on Windows (`spikes/all.ps1`). **CI** = the core behind it runs in the `--self-test` on Windows, macOS and Linux every push. Status as of 2026-11-01.
 
 ### Capture
-- ☐ Tap key → freeze all screens → picker (region / window / screen), loupe with coordinates, size and colour
-- ☐ Multi-window (Ctrl/Cmd+click) · scrolling capture
-- ☐ Action bar: Copy · Smaller · Chat · Edit · Save · Record · More ▾
-- ☐ Copy text (OCR) · Read QR/barcode · Copy colour hex · Measure
-- ☐ Pin to screen · Repeat last area · Delay 3 s/5 s/10 s · Timed captures → timelapse
-- ☐ Social size presets (picker locks the aspect ratio; export resizes): Instagram 1:1 / 4:5 / 9:16, Facebook, Snapchat, YouTube 16:9, Shorts/Reels/TikTok 9:16, X, LinkedIn, Pinterest
+- ☑ W · CI: tap key → freeze all screens → picker (region / window / screen), loupe with coordinates, size and colour
+- ☑ W: multi-window (Ctrl/Cmd+click) · scrolling capture · up to 4 areas arranged into one picture (row / column / grid / as on screen)
+- ☑ W: action bar Copy · Smaller · Chat · Edit · Save · Record · More ▾; areas can be moved and resized after selection
+- ☑ W · CI (OCR): copy text (OCR) · read QR · copy colour hex · measure
+- ☑ W: pin to screen · repeat last area · delay 3/5/10 s · timed captures → timelapse
+- ☑ W: social size presets (picker locks the aspect; export resizes)
 ### Record
-- ☐ Hold key 2 s → record · red frame + Stop bar kept out of the video · pause/resume
-- ☐ System sound + mic on separate tracks · webcam bubble · click/key visualiser
-- ☐ Replay buffer (last 30/60/120 s, hotkey saves)
-- ☐ Social recording presets (area locked to aspect; render scales)
+- ☑ W · CI: hold key → record · red frame + Stop bar kept out of the video · pause/resume (area can be moved while paused)
+- ☑ W · CI: system sound + mic on separate tracks (macOS via ScreenCaptureKit) · webcam bubble · click/key visualiser
+- ☑ W: replay buffer (last 30/60/120 s, hotkey saves)
+- ☑ W: social recording presets
 ### Video editor
-- ☐ Filmstrip timeline, split/cut/trim/undo, sound picker, Excalidraw drawings per time span (port)
-- ☐ Speed up a part · cut silences automatically · zoom that follows the mouse
-- ☐ Captions: generate, edit, burn in or export .srt
-- ☐ Export presets: Full / Chat / GIF / social sizes
+- ☑ W · CI: timeline, split/cut/trim/undo, sound picker, drawings and blur boxes per time span
+- ☑ W · CI: speed up a part · cut silences · click-driven auto-zoom
+- ☑ W: captions (local whisper or OpenAI) — generate, edit, burn in, export .srt
+- ☑ W · CI: export Full / Chat / GIF / WebP / social sizes / Beautify
 ### Picture editor
-- ☐ Excalidraw editor with redact/step/stickers (port)
-- ☐ Auto-hide private details (OCR → emails, IPs, keys, phones, card numbers → blur)
-- ☐ AI (optional keys): remove background, remove object, edit object, edit text, ask about image
+- ☑ W: Excalidraw editor with redact/step/stickers
+- ☑ W: auto-hide private details (OCR → emails, IPs, keys, phones, card numbers → blur)
+- ☑ W: AI (optional keys: OpenAI, xAI, Google, or any OpenAI-compatible URL) — remove background, remove object, edit object, edit text, ask, auto description + tags
+- ☑ W: Talk to AI — voice note + marks + editable transcript, pasted into ChatGPT/Claude in one go; batch mode ties each picture to its own words
 ### Branding & protection
-- ☐ Logo/overlay on all photos and/or videos (position, size, opacity)
-- ☐ Invisible watermark (owner id + capture id) on save; **Check image** tool reads it back from a found copy
-- ☐ Metadata: strip on copy/share (default on), view/edit, custom fields (author, copyright, tags)
+- ☑ W · CI: logo/overlay on photos and videos
+- ☑ W · CI: invisible watermark (owner + capture id) and Check image
+- ☑ W · CI: metadata strip / custom fields
 ### Share & workflow
-- ☐ Share → OneDrive link · Immich link · MEGA link · OS share sheet
-- ☐ Send to Obsidian (vault folder + optional daily-note link)
-- ☐ Searchable history (OCR text index)
-- ☐ Step recorder → SOP (markdown + .docx)
+- ◐ W: share → Immich, MEGA, S3 (instant link), Obsidian. **OneDrive needs an Entra app registration** (client id is still `PENDING-REGISTRATION`). No OS share sheet yet: "Show in folder" stands in for it.
+- ☑ W: searchable history (OCR text + AI description)
+- ☑ W: step recorder → SOP (markdown + .docx)
+- ☑ W: settings backup / restore (secrets optional)
 ### Best-in-class additions (from docs/COMPETITORS.md)
-- ☐ Quick Access thumbnail after every capture/recording: drag out into any app, plus copy / save / edit / pin / share / close (CleanShot)
-- ☐ Studio layer: record cursor + click events as a separate track → click-driven auto-zoom, cursor smoothing, click effects, re-editable after recording (Screen Studio, Cap). Replaces "zoom follows mouse".
-- ☐ Beautify: padding, gradient/image background, shadow, rounded corners, auto-balance, presets (CleanShot, Shottr, Xnapper); the same compositor does video backgrounds/padding/aspect
-- ☐ Transcript editing: delete words to cut, remove filler words and pauses (from whisper word timestamps)
-- ☐ Crash-safe recording: fragmented MP4, disk-space guard, timer in the tray
-- ☐ CLI + `grabbit://` URL scheme (capture, record, open) · per-mode custom hotkeys in Settings
-- ☐ Clean desktop while capturing: hide desktop icons, Do Not Disturb where the OS allows
-- ☐ Instant link: copy the URL first, upload in the background; S3-compatible destination too
-- ☐ High-quality GIF / animated WebP · video privacy masks that follow a region on the timeline
+- ☑ W: Quick Access card after every capture (drag out, copy, save, edit, pin, share, AI)
+- ☑ W · CI: studio layer — cursor + clicks recorded beside the video, auto-zoom and click rings at export, re-editable
+- ☑ W · CI: Beautify for pictures and video
+- ◐ W: transcript editing — cut caption lines and filler-only lines. Single-word cuts are not done.
+- ☑ W: crash-safe recording (.mkv segments, joined at the end), disk-space guard, timer in the tray
+- ☑ W: CLI + `grabbit://` links · per-mode hotkeys
+- ◐ W: clean desktop while capturing — hides desktop icons. Do Not Disturb is not done.
+- ☑ W: instant link (S3: URL copied first, upload in the background)
+- ☑ W · CI: high-quality GIF / animated WebP · video blur boxes per time span (static, not tracking)
 - Perf rule (Cap left Tauri for native over CPU/RAM while recording): capture, encode and cursor tracking stay in the Rust core and ffmpeg; the webview never touches frames while recording.
 
 ### Shipping
-- ☐ CI: build + tests on windows-latest, macos-latest, ubuntu-latest; release artifacts
-- ☐ README, docs/, screenshots per OS, install steps (unsigned: SmartScreen "More info → Run anyway", Gatekeeper right-click → Open, AppImage chmod)
+- ◐ CI: build + unit tests + self-test on windows-latest, macos-latest, ubuntu-24.04; tagged pushes build draft installers
+- ☑ README, docs/, screenshots (made from the demo page), install steps for unsigned builds: SmartScreen "More info → Run anyway", Gatekeeper right-click → Open, AppImage chmod

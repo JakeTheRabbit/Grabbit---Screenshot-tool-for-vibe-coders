@@ -235,9 +235,16 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
         g += &format!("{vin}trim=start={}:end={},setpts=(PTS-STARTPTS)/{}[v{i}];", f(k.start), f(k.end), f(k.speed));
         for j in &tr {
             let tag = if tr.len() > 1 { format!("_{j}") } else { String::new() };
-            g += &format!("[0:a:{j}]atrim=start={}:end={},asetpts=PTS-STARTPTS,{}[a{i}{tag}];", f(k.start), f(k.end), atempo(k.speed));
+            // Tracks are mixed, so each is made stereo 48 kHz first.
+            let fmt = if tr.len() > 1 { ",aformat=sample_rates=48000:channel_layouts=stereo" } else { "" };
+            g += &format!("[0:a:{j}]atrim=start={}:end={},asetpts=PTS-STARTPTS,{}{fmt}[a{i}{tag}];", f(k.start), f(k.end), atempo(k.speed));
         }
-        if tr.len() > 1 { g += &format!("{}amix=inputs={}:duration=longest:normalize=0[a{i}];", tr.iter().map(|j| format!("[a{i}_{j}]")).collect::<String>(), tr.len()); }
+        // amerge + pan, not amix: ffmpeg 6.1's amix inside concat segments eats memory without limit
+        // when the picture has a long gap (a stalled screen grab).
+        if tr.len() > 1 {
+            let sum = |c: usize| (0..tr.len()).map(|t| format!("c{}", t * 2 + c)).collect::<Vec<_>>().join("+");
+            g += &format!("{}amerge=inputs={},pan=stereo|c0={}|c1={}[a{i}];", tr.iter().map(|j| format!("[a{i}_{j}]")).collect::<String>(), tr.len(), sum(0), sum(1));
+        }
     }
     if keep.len() > 1 {
         for i in 0..keep.len() { g += &if audio { format!("[v{i}][a{i}]") } else { format!("[v{i}]") }; }
