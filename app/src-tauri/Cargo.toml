@@ -52,6 +52,7 @@ panic = "abort"
 strip = true
 
 [target.'cfg(windows)'.dependencies]
+clipboard-win = "5.4.3"
 windows = { version = "0.61", features = ["Media_Ocr", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Globalization", "Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Gdi"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

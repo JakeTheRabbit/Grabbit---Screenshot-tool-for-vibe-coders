@@ -362,6 +362,12 @@ export function App() {
     } finally { setBusy(""); }
   }
 
+  /** Voice note + marks over the edited picture, then one paste into ChatGPT / Claude. */
+  async function talkToAi() {
+    const path = await send<string>({ type: "exportFile", name: name, dataURL: await render() });
+    await invoke("voice_open", { path, title: name });
+  }
+
   async function readQr() {
     const codes = await send<string[]>({ type: "qr", dataURL: await render() });
     if (!codes?.length) { api!.setToast({ message: "No QR code found", duration: 2500 }); return; }
@@ -432,6 +438,7 @@ export function App() {
             ["Copy and close", () => exportAs("copyClose", "Full"), "Ctrl+Enter"],
             ["Copy text in the picture", copyText],
             ["Read QR code", readQr],
+            ["Talk about it, copy for AI…", talkToAi],
           ]} />
           <Menu label="Save" icon="save" onMain={() => exportAs("saveQuick", "Full")} items={[
             ["Save as…", () => exportAs("save", "Full"), "Ctrl+Shift+S"],

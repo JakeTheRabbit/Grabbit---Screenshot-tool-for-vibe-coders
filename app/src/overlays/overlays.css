@@ -34,3 +34,10 @@ body.pin img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .stop svg { width: 12px; height: 12px; fill: currentColor; }
 .status { flex: 1; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stop svg { stroke: currentColor; fill: none; }
+body.editable .frame { border-style: dashed; border-color: #ffb340; background: rgba(255, 179, 64, 0.06); }
+.tip { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 8px 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.9); color: #fff; font-size: 13px; pointer-events: none; }
+body.editable .tip { display: block; }
+.describe .text { max-height: 230px; overflow: auto; padding: 10px 14px; font-size: 13px; line-height: 1.5; white-space: pre-wrap; user-select: text; }
+.describe .thumb.small { height: 90px; }
+.describe .thumb.small img { max-height: 90px; }
+.describe .btn { height: 28px; padding: 0 10px; font-size: 12.5px; }

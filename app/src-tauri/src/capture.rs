@@ -96,3 +96,50 @@ pub fn compose_windows(ids: &[u32], all: &[WinInfo]) -> Result<RgbaImage> {
     }
     Ok(out)
 }
+
+/// Several picked areas arranged into one picture: "row" (side by side), "column" (stacked), "grid" (two across) or
+/// "screen" (where they were on screen). White between them, so chat copies (JPEG) look right too.
+pub fn combine(parts: &[(RgbaImage, i32, i32)], layout: &str) -> RgbaImage {
+    const GAP: u32 = 24;
+    let white = image::Rgba([255, 255, 255, 255]);
+    if layout == "screen" {
+        let x0 = parts.iter().map(|p| p.1).min().unwrap_or(0);
+        let y0 = parts.iter().map(|p| p.2).min().unwrap_or(0);
+        let x1 = parts.iter().map(|p| p.1 + p.0.width() as i32).max().unwrap_or(1);
+        let y1 = parts.iter().map(|p| p.2 + p.0.height() as i32).max().unwrap_or(1);
+        let mut out = RgbaImage::from_pixel((x1 - x0) as u32, (y1 - y0) as u32, white);
+        for (img, x, y) in parts { image::imageops::overlay(&mut out, img, (*x - x0) as i64, (*y - y0) as i64); }
+        return out;
+    }
+    let cols = match layout { "row" => parts.len(), "column" => 1, _ => 2.min(parts.len()) }.max(1);
+    let rows = parts.len().div_ceil(cols);
+    let col_w: Vec<u32> = (0..cols).map(|c| parts.iter().skip(c).step_by(cols).map(|p| p.0.width()).max().unwrap_or(0)).collect();
+    let row_h: Vec<u32> = (0..rows).map(|r| parts.iter().skip(r * cols).take(cols).map(|p| p.0.height()).max().unwrap_or(0)).collect();
+    let w = col_w.iter().sum::<u32>() + GAP * (cols as u32 - 1);
+    let h = row_h.iter().sum::<u32>() + GAP * (rows as u32 - 1);
+    let mut out = RgbaImage::from_pixel(w.max(1), h.max(1), white);
+    for (i, (img, _, _)) in parts.iter().enumerate() {
+        let (c, r) = (i % cols, i / cols);
+        let x = col_w[..c].iter().sum::<u32>() + GAP * c as u32;
+        let y = row_h[..r].iter().sum::<u32>() + GAP * r as u32;
+        image::imageops::overlay(&mut out, img, x as i64, y as i64);
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn combine_layouts() {
+        let a = (RgbaImage::new(100, 50), 0, 0);
+        let b = (RgbaImage::new(80, 70), 300, 10);
+        let c = (RgbaImage::new(60, 40), 0, 200);
+        let parts = vec![a, b, c];
+        assert_eq!(combine(&parts, "row").dimensions(), (100 + 80 + 60 + 48, 70));
+        assert_eq!(combine(&parts, "column").dimensions(), (100, 50 + 70 + 40 + 48));
+        assert_eq!(combine(&parts, "grid").dimensions(), (100 + 80 + 24, 70 + 40 + 24));
+        assert_eq!(combine(&parts, "screen").dimensions(), (380, 240));
+    }
+}

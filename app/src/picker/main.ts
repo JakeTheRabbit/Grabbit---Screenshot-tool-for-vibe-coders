@@ -50,6 +50,9 @@ let picked: number[] = []; // multi-window
 let drag: { kind: "new" | "move" | "edge"; x0: number; y0: number; start: R; edge?: string; moved: boolean } | null = null;
 let preset: Preset = PRESETS[0];
 let measuring = false;
+/** Earlier areas of a multi-area capture (up to 3, plus the current one), combined with `layout`. */
+let kept: R[] = [];
+let layout = "row";
 let loupeFlip = { left: false, up: false };
 
 const local = (w: Win): R => ({ x: (w.x - info.x) / k, y: (w.y - info.y) / k, w: w.width / k, h: w.height / k });
@@ -93,7 +96,7 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const regions: R[] = picked.length ? picked.map((id) => clampR(local(info.windows.find((w) => w.id === id)!))) : sel ? [sel] : hoverWin && !drag ? [clampR(local(hoverWin))] : [];
+  const regions: R[] = kept.length ? [...kept, ...(sel ? [sel] : [])] : picked.length ? picked.map((id) => clampR(local(info.windows.find((w) => w.id === id)!))) : sel ? [sel] : hoverWin && !drag ? [clampR(local(hoverWin))] : [];
   // Dim everything outside the highlighted regions.
   ctx.save();
   ctx.beginPath();
@@ -108,6 +111,11 @@ function draw() {
     ctx.lineWidth = 2;
     ctx.strokeRect(Math.round(r.x) - 1, Math.round(r.y) - 1, Math.round(r.w) + 2, Math.round(r.h) + 2);
   }
+  // Number the areas of a multi-area capture.
+  if (kept.length) [...kept, ...(sel ? [sel] : [])].forEach((r, i) => {
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(r.x + 16, r.y + 16, 13, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "600 14px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(i + 1), r.x + 16, r.y + 17);
+  });
   if (sel && !drag && !picked.length) for (const [hx, hy] of handles(sel)) { ctx.fillStyle = "#fff"; ctx.strokeStyle = accent; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, 7); ctx.fill(); ctx.stroke(); }
   if (measuring && drag?.moved && sel) {
     ctx.strokeStyle = "#ff3b30"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
@@ -171,8 +179,12 @@ const MAIN: Item[] = [
   { id: "edit", label: "Edit", icon: "edit", key: "E" },
   { id: "save", label: "Save", icon: "save", key: `${MOD}S` },
   { id: "record", label: "Record", icon: "record", key: "R" },
+  { id: "add", label: "Add area", icon: "plus", key: "N" },
+  { id: "voice", label: "Talk to AI", icon: "mic", key: "V" },
 ];
 const MORE: Item[] = [
+  { id: "describe", label: "Describe with AI", icon: "sparkles", key: "X" },
+  { id: "batch", label: "Start an AI batch (talk through several)", icon: "mic", key: "B" },
   { id: "scroll", label: "Scrolling capture", icon: "scroll", key: "S" },
   { id: "ocr", label: "Copy text", icon: "text", key: "T" },
   { id: "qr", label: "Read QR code", icon: "qr", key: "Q" },
@@ -196,7 +208,7 @@ function button(it: Item) {
 async function showBar() {
   bar.innerHTML = "";
   const rec = info.mode === "Record";
-  for (const it of rec ? REC : MAIN) bar.append(button(it));
+  for (const it of rec ? REC : MAIN) if (it.id !== "add" || kept.length < 3) bar.append(button(it));
   if (rec) {
     const s = await invoke<{ record_microphone: boolean; record_system_audio: boolean }>("get_settings");
     for (const [key, ic, label] of [["record_system_audio", "sound", "System sound"], ["record_microphone", "mic", "Microphone"]] as const) {
@@ -214,6 +226,15 @@ async function showBar() {
       };
       bar.append(t);
     }
+  }
+  if (kept.length) {
+    const lay = document.createElement("select");
+    lay.className = "btn";
+    lay.title = "How the areas are combined";
+    for (const [v, t] of [["row", "Side by side"], ["column", "Stacked"], ["grid", "Grid"], ["screen", "As on screen"]]) lay.add(new Option(t, v, false, v === layout));
+    lay.onchange = () => { layout = lay.value; };
+    lay.onpointerdown = (e) => e.stopPropagation();
+    bar.append(lay);
   }
   const aspect = document.createElement("select");
   aspect.className = "btn";
@@ -255,6 +276,14 @@ function placeBar() {
 }
 
 async function act(id: string) {
+  if (id === "batch") { await invoke("picker_cancel"); await invoke("batch_start"); return; }
+  if (id === "add") {
+    if (!sel || kept.length >= 3) return;
+    kept.push(sel); sel = null; fromWindow = null; bar.hidden = true;
+    hint.hidden = false; hint.innerHTML = `${kept.length} area${kept.length > 1 ? "s" : ""} kept · drag area ${kept.length + 1}, then Copy or Edit combines them · <kbd>Esc</kbd> drops the last`;
+    draw();
+    return;
+  }
   if (id.startsWith("delay")) { await invoke("picker_delay", { secs: Number(id.slice(5)) }); return; }
   const target: R | null = sel ?? (hoverWin ? clampR(local(hoverWin)) : null);
   if (!target && !picked.length) return;
@@ -262,7 +291,7 @@ async function act(id: string) {
   const r = phys(target ?? clampR(local(info.windows.find((w) => w.id === picked[0])!)));
   document.body.classList.add("leaving");
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  await invoke("picked", { pick: { action: id, ...r, windows: ids, size: preset.size ?? null } });
+  await invoke("picked", { pick: { action: id, ...r, windows: kept.length ? [] : ids, size: kept.length ? null : preset.size ?? null, extra: kept.map(phys).map((p) => [p.x, p.y, p.width, p.height]), layout } });
 }
 
 /** Set when the selection came from clicking a window, so the window is captured whole (even if covered). */
@@ -285,7 +314,11 @@ function select(r: R | null, win: number[] | null = null) {
 
 // ---- mouse ----
 
+/** Input before the new frame is drawn belongs to nothing (the window is still hidden then). */
+const live = () => document.body.classList.contains("ready") && !!img;
+
 canvas.addEventListener("pointermove", (e) => {
+  if (!live()) return;
   mouse = { x: e.clientX, y: e.clientY };
   if (drag) {
     const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
@@ -326,6 +359,7 @@ function cursorFor(x: number, y: number) {
 }
 
 canvas.addEventListener("pointerdown", (e) => {
+  if (!live()) return;
   if (e.button === 2) { if (sel) select(null); else void invoke("picker_cancel"); return; }
   if (e.button !== 0) return;
   canvas.setPointerCapture(e.pointerId);
@@ -382,8 +416,10 @@ function quickAction(e: PointerEvent) {
 // ---- keys ----
 
 addEventListener("keydown", (e) => {
+  if (!live()) return;
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
+  if (e.key === "Escape" && !sel && kept.length) { sel = kept.pop()!; void showBar(); draw(); return; }
   if (e.key === "Escape") { if (sel || picked.length) { picked = []; select(null); } else void invoke("picker_cancel"); return; }
   if (e.key.startsWith("Arrow") && sel) {
     const s = e.shiftKey ? 10 : 1, r = { ...sel };
@@ -404,7 +440,7 @@ addEventListener("keydown", (e) => {
   }
   const target = sel || picked.length || hoverWin;
   if (!target) return;
-  const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", r: "record", s: "scroll", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };
+  const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", v: "voice", x: "describe", b: "batch", n: "add", r: "record", s: "scroll", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };
   if (mod && key === "s") { e.preventDefault(); void act("save"); return; }
   if (key === "enter" && e.shiftKey && info.mode !== "Record") { void act("reduced"); return; }
   if (!mod && map[key]) { e.preventDefault(); void act(map[key]); }
@@ -421,7 +457,7 @@ canvas.addEventListener("pointerleave", () => { mouse = { x: -1, y: -1 }; draw()
 addEventListener("contextmenu", (e) => e.preventDefault());
 // The window stays loaded between captures; "open" brings a fresh frame, "reset" clears it for next time.
 function reset() {
-  sel = null; hoverWin = null; picked = []; drag = null; measuring = false; fromWindow = null; preset = PRESETS[0];
+  sel = null; hoverWin = null; picked = []; drag = null; measuring = false; fromWindow = null; preset = PRESETS[0]; kept = []; layout = "row";
   bar.hidden = true; sizeTag.hidden = true; loupeBox.hidden = true;
   hint.hidden = false; hint.innerHTML = HINT;
   document.body.className = "";

@@ -32,6 +32,7 @@ check("red frame shows", !!(await targets()).find((t) => t.url.includes("recfram
 await sleep(3000);
 const s1 = await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_status')");
 check("timer runs", s1?.elapsed > 2, JSON.stringify(s1));
+const areaBefore = s1.area;
 await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_control', { what: 'pause' })");
 await sleep(1000);
 const s2 = await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_status')");
@@ -39,8 +40,17 @@ check("pause", s2?.paused === true);
 await sleep(1000);
 const s3 = await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_status')");
 check("timer stops while paused", Math.abs(s3.elapsed - s2.elapsed) < 0.2, `${s2.elapsed.toFixed(2)} → ${s3.elapsed.toFixed(2)}`);
+// Move and resize the frame while paused; the next part records there and is fitted to the first part's size.
+const frame = (await targets()).find((t) => t.url.includes("recframe.html"));
+check("frame editable while paused", await ev(frame, "document.body.classList.contains('editable')"));
+await ev(frame, `window.__TAURI_INTERNALS__.invoke('plugin:window|set_position', { label: 'recframe', value: { Physical: { x: 301, y: 201 } } })`);
+await ev(frame, `window.__TAURI_INTERNALS__.invoke('plugin:window|set_size', { label: 'recframe', value: { Physical: { width: 900, height: 520 } } })`);
+await sleep(300);
 await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_control', { what: 'pause' })");
-await sleep(2000);
+await sleep(500);
+const s4 = await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_status')");
+check("resume records the new spot", s4.area.x !== areaBefore.x && s4.area.width !== areaBefore.width, JSON.stringify(s4.area));
+await sleep(1500);
 await ev(bar, "window.__TAURI_INTERNALS__.invoke('rec_control', { what: 'stop' })");
 const out = await waitFor(() => { const l = latest(); return l && l.t > before ? l : null; }, 30000);
 check("video written", !!out, out?.f);
@@ -52,6 +62,7 @@ if (out) {
   check("even size, clipped to the area", v.width % 2 === 0 && v.height % 2 === 0 && v.width <= 641 && v.width >= 638, `${v.width}x${v.height}`);
   check("duration ≈ 5 s (pause left out)", dur > 4.2 && dur < 6.2, dur.toFixed(2));
   const titles = probe.streams.filter((s) => s.codec_type === "audio").map((s) => s.tags?.handler_name);
+  check("moved part joined at the first part's size", v.width === 640 && v.height === 360, `${v.width}x${v.height}`);
   check("named sound tracks", titles.every((t) => t === "System sound" || t === "Microphone"), JSON.stringify(titles));
   check("cursor track saved", existsSync(path.replace(/\.mp4$/, ".cursor.json")));
 }

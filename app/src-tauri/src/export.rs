@@ -3,7 +3,9 @@
 
 use crate::settings::{SaveFormat, Settings};
 use anyhow::Result;
-use clipboard_rs::{common::RustImage, Clipboard, ClipboardContent, ClipboardContext, RustImageData};
+use clipboard_rs::{Clipboard, ClipboardContext};
+#[cfg(not(windows))]
+use clipboard_rs::{common::RustImage, ClipboardContent, RustImageData};
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, RgbaImage};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -115,10 +117,8 @@ pub fn copy(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<Pat
     };
     let file = tmp.join(format!("{name}.{ext}"));
     std::fs::write(&file, &bytes)?;
-    let ctx = ClipboardContext::new().map_err(|e| anyhow::anyhow!("clipboard: {e}"))?;
-    let mut contents = vec![ClipboardContent::Image(RustImageData::from_dynamic_image(DynamicImage::ImageRgba8(pixels)))];
-    if s.copy_as_file { contents.push(ClipboardContent::Files(vec![file.to_string_lossy().into_owned()])); }
-    ctx.set(contents).map_err(|e| anyhow::anyhow!("clipboard: {e}"))?;
+    let files = if s.copy_as_file { vec![file.to_string_lossy().into_owned()] } else { vec![] };
+    set_clipboard(Clip { image: Some(&pixels), files: &files, text: None, html: None })?;
     Ok(file)
 }
 
@@ -128,4 +128,62 @@ pub fn copy_text(t: &str) -> Result<()> {
 
 pub fn copy_file(p: &Path) -> Result<()> {
     ClipboardContext::new().and_then(|c| c.set_files(vec![p.to_string_lossy().into_owned()])).map_err(|e| anyhow::anyhow!("clipboard: {e}"))
+}
+
+/// Everything that goes on the clipboard in one go. Windows gets one clipboard session for all formats (clipboard-rs
+/// closes the clipboard after an image, which silently drops the formats after it).
+pub struct Clip<'a> { pub image: Option<&'a RgbaImage>, pub files: &'a [String], pub text: Option<&'a str>, pub html: Option<&'a str> }
+
+pub fn set_clipboard(c: Clip) -> Result<()> {
+    #[cfg(windows)]
+    {
+        use clipboard_win::{formats, options, raw};
+        let _open = clipboard_win::Clipboard::new_attempts(10).map_err(|e| anyhow::anyhow!("clipboard busy: {e}"))?;
+        raw::empty().map_err(|e| anyhow::anyhow!("clipboard: {e}"))?;
+        if let Some(img) = c.image {
+            raw::set_without_clear(formats::CF_DIB, &dib(img)).map_err(|e| anyhow::anyhow!("clipboard picture: {e}"))?;
+            if let Some(png) = raw::register_format("PNG") { let _ = raw::set_without_clear(png.get(), &png_bytes(img, None)?); }
+        }
+        if !c.files.is_empty() { raw::set_file_list_with(c.files, options::NoClear).map_err(|e| anyhow::anyhow!("clipboard files: {e}"))?; }
+        if let Some(t) = c.text { raw::set_string_with(t, options::NoClear).map_err(|e| anyhow::anyhow!("clipboard text: {e}"))?; }
+        if let (Some(h), Some(f)) = (c.html, raw::register_format("HTML Format")) { let _ = raw::set_without_clear(f.get(), cf_html(h).as_bytes()); }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let ctx = ClipboardContext::new().map_err(|e| anyhow::anyhow!("clipboard: {e}"))?;
+        let mut v = Vec::new();
+        if let Some(img) = c.image { v.push(ClipboardContent::Image(RustImageData::from_dynamic_image(DynamicImage::ImageRgba8(img.clone())))); }
+        if !c.files.is_empty() { v.push(ClipboardContent::Files(c.files.to_vec())); }
+        if let Some(t) = c.text { v.push(ClipboardContent::Text(t.to_string())); }
+        if let Some(h) = c.html { v.push(ClipboardContent::Html(h.to_string())); }
+        ctx.set(v).map_err(|e| anyhow::anyhow!("clipboard: {e}"))
+    }
+}
+
+/// CF_DIB: a 32-bit bottom-up bitmap with a BITMAPINFOHEADER.
+#[cfg(windows)]
+fn dib(img: &RgbaImage) -> Vec<u8> {
+    let (w, h) = img.dimensions();
+    let mut out = Vec::with_capacity(40 + (w * h * 4) as usize);
+    for v in [40u32, w] { out.extend_from_slice(&v.to_le_bytes()); }
+    out.extend_from_slice(&(h as i32).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&32u16.to_le_bytes());
+    for v in [0u32, w * h * 4, 2835, 2835, 0, 0] { out.extend_from_slice(&v.to_le_bytes()); }
+    for y in (0..h).rev() { for x in 0..w { let p = img.get_pixel(x, y); out.extend_from_slice(&[p[2], p[1], p[0], p[3]]); } }
+    out
+}
+
+/// The CF_HTML wrapper Windows apps expect (byte offsets in a fixed-width header).
+#[cfg(windows)]
+fn cf_html(fragment: &str) -> String {
+    let head = "Version:0.9\r\nStartHTML:0000000000\r\nEndHTML:0000000000\r\nStartFragment:0000000000\r\nEndFragment:0000000000\r\n";
+    let pre = "<html><body>\r\n<!--StartFragment-->";
+    let post = "<!--EndFragment-->\r\n</body></html>";
+    let start_html = head.len();
+    let start_frag = start_html + pre.len();
+    let end_frag = start_frag + fragment.len();
+    let end_html = end_frag + post.len();
+    format!("Version:0.9\r\nStartHTML:{start_html:010}\r\nEndHTML:{end_html:010}\r\nStartFragment:{start_frag:010}\r\nEndFragment:{end_frag:010}\r\n{pre}{fragment}{post}")
 }

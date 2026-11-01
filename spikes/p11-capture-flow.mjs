@@ -31,7 +31,7 @@ async function openPicker() {
     return ps.length && cls.every((c) => c === "ready") ? ps : null;
   });
   if (!ok) return null;
-  await sleep(250);
+  await sleep(500);
   return connect(ok[0]);
 }
 async function closeAll() {
@@ -72,6 +72,26 @@ const saved = await waitFor(() => { const n = newest(); return n && n.t > before
 check("saved full-size copy", !!saved && /\.webp$/.test(saved.f), saved?.f);
 check("clipboard has the picture", /^\d+x\d+$/.test(clip("image")), clip("image"));
 check("quick-access card", await waitFor(async () => (await targets()).some((t) => t.url.includes("quick.html")), 3000));
+
+// 1b. Three areas combined side by side
+c = await openPicker();
+const kdpr = await c.ev("devicePixelRatio");
+await drag(c, 100, 100, 300, 250);
+await waitFor(() => c.ev("!document.getElementById('bar').hidden"), 2000);
+await key(c, "n");
+await drag(c, 400, 100, 500, 300);
+await waitFor(() => c.ev("!document.getElementById('bar').hidden"), 2000);
+await key(c, "n");
+await drag(c, 600, 100, 750, 200);
+await waitFor(() => c.ev("!document.getElementById('bar').hidden"), 2000);
+check("layout chooser shows", await c.ev("[...document.querySelectorAll('#bar select')].some((s) => [...s.options].some((o) => o.value === 'grid'))"));
+const before3 = newest()?.t ?? 0;
+await key(c, "Enter");
+c.ws.close();
+const combo = await waitFor(() => { const n = newest(); return n && n.t > before3 ? n : null; }, 5000);
+const dims = combo ? execFileSync("ffprobe", ["-v", "error", "-show_entries", "stream=width,height", "-of", "csv=p=0", join(shots, combo.f)], { encoding: "utf8" }).trim() : "";
+const want = `${Math.round(200 * kdpr) + Math.round(100 * kdpr) + Math.round(150 * kdpr) + 48},${Math.round(200 * kdpr)}`;
+check("three areas combined side by side", dims === want, `${dims} (want ${want})`);
 
 // 2. Copy text
 c = await openPicker();

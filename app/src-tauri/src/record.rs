@@ -18,7 +18,8 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Area { pub x: i32, pub y: i32, pub width: u32, pub height: u32 }
 
-enum Cmd { Pause, Resume, Stop(bool, mpsc::Sender<Result<Option<PathBuf>>>) }
+/// Resume may carry a new area: the frame was moved or resized while paused.
+enum Cmd { Pause, Resume(Option<(i32, i32, u32, u32)>), Stop(bool, mpsc::Sender<Result<Option<PathBuf>>>) }
 
 struct Session { tx: mpsc::Sender<Cmd>, area: Area, started: Instant, paused: Option<Instant>, paused_total: Duration }
 
@@ -76,7 +77,7 @@ pub fn selftest(s: &Settings, dir: &Path, secs: u64) -> Result<PathBuf> {
     let area = Area { x: scr.x + (scr.width - w) as i32 / 2, y: scr.y + (scr.height - h) as i32 / 2, width: w, height: h };
     let tmp = dir.join("rec-parts");
     std::fs::create_dir_all(&tmp)?;
-    let seg = start_segment(s, area, &scr, &tmp, 0)?;
+    let seg = start_segment(s, area, &scr, &tmp, 0, (area.width, area.height))?;
     std::thread::sleep(Duration::from_secs(secs));
     let done = stop_segment(seg);
     let out = dir.join("selftest.mp4");
@@ -165,7 +166,7 @@ fn webcam(s: &Settings) -> Option<(&'static str, String)> {
 
 /// ffmpeg arguments for one segment's picture (and, on Linux, system sound) into `out`. The webcam, when on, sits in
 /// a circle in the bottom-right corner.
-fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<String> {
+fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool, size: (u32, u32)) -> Vec<String> {
     let fps = s.record_fps.to_string();
     let q = s.record_quality;
     let mut v: Vec<String> = vec!["-hide_banner".into(), "-y".into()];
@@ -174,7 +175,8 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<
     // Filters on the screen picture, before the optional webcam overlay.
     let mut chain: Vec<String> = Vec::new();
     // NVENC can take Desktop Duplication's GPU frames directly; everything else needs them in memory.
-    let gpu_direct = cfg!(windows) && hw && enc == "h264_nvenc" && cam.is_none();
+    let resized = size != (a.width, a.height);
+    let gpu_direct = cfg!(windows) && hw && enc == "h264_nvenc" && cam.is_none() && !resized;
 
     #[cfg(windows)]
     {
@@ -223,6 +225,8 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<
     #[cfg(not(target_os = "linux"))]
     let sys_idx: Option<usize> = None;
 
+    // A part recorded after the frame was resized is fitted to the first part's size, so the parts still join.
+    if resized { chain.push(format!("scale={0}:{1}:force_original_aspect_ratio=decrease,pad={0}:{1}:(ow-iw)/2:(oh-ih)/2", size.0, size.1)); }
     if !gpu_direct { chain.push("format=yuv420p".into()); }
     match cam_idx {
         Some(ci) => {
@@ -260,7 +264,7 @@ struct Segment {
     log: std::sync::Arc<Mutex<String>>,
 }
 
-fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize) -> Result<Segment> {
+fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize, size: (u32, u32)) -> Result<Segment> {
     let mkv = dir.join(format!("part{n}.mkv"));
     #[cfg(any(windows, target_os = "macos"))]
     let system = if s.record_system_audio { Capture::system(dir.join(format!("part{n}-system.wav"))).map_err(|e| log::warn!("system sound: {e}")).ok() } else { None };
@@ -270,7 +274,7 @@ fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize) -> R
     let exe = video::ffmpeg(s)?;
     let mut last_err = String::new();
     for hw in [true, false] {
-        let args = video_args(s, a, scr, &mkv, hw);
+        let args = video_args(s, a, scr, &mkv, hw, size);
         log::info!("record: {}", args.join(" "));
         let mut c = Command::new(&exe);
         video::hide(c.args(&args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()));
@@ -396,7 +400,8 @@ pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
     let dir = std::env::temp_dir().join("Grabbit").join(export::stamp_name("rec").replace(' ', "-"));
     std::fs::create_dir_all(&dir)?;
     // Start the first segment here so errors reach the user straight away.
-    let first = start_segment(&s, area, &scr, &dir, 0)?;
+    let size = (area.width, area.height);
+    let first = start_segment(&s, area, &scr, &dir, 0, size)?;
     let (tx, rx) = mpsc::channel::<Cmd>();
     let started = first.video_start;
     let stop_cursor = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -407,14 +412,18 @@ pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
     let cursor = track_cursor(area, scale, stop_cursor.clone(), s.show_keys);
     let app2 = app.clone();
     std::thread::spawn(move || {
+        let (mut area, mut scr) = (area, scr);
         let mut seg = Some(first);
         let mut done: Vec<Done> = Vec::new();
         let mut n = 1;
         while let Ok(cmd) = rx.recv() {
             match cmd {
                 Cmd::Pause => if let Some(sg) = seg.take() { done.push(stop_segment(sg)); },
-                Cmd::Resume => if seg.is_none() {
-                    match start_segment(&s, area, &scr, &dir, n) { Ok(sg) => seg = Some(sg), Err(e) => actions::notify(&app2, &format!("{e}")) }
+                Cmd::Resume(moved) => if seg.is_none() {
+                    if let Some((x, y, w, h)) = moved {
+                        match fit(&app2, x, y, w, h) { Ok((a, sc)) => { area = a; scr = sc; } Err(e) => actions::notify(&app2, &format!("{e}")) }
+                    }
+                    match start_segment(&s, area, &scr, &dir, n, size) { Ok(sg) => seg = Some(sg), Err(e) => actions::notify(&app2, &format!("{e}")) }
                     n += 1;
                 },
                 Cmd::Stop(keep, reply) => {
@@ -455,7 +464,21 @@ fn finish(s: &Settings, dir: &Path, done: &[Done], track: &CursorTrack) -> Resul
 pub fn pause_resume(app: &AppHandle) {
     let mut g = SESSION.lock().unwrap();
     let Some(s) = g.as_mut() else { return };
-    if let Some(p) = s.paused.take() { s.paused_total += p.elapsed(); let _ = s.tx.send(Cmd::Resume); } else { s.paused = Some(Instant::now()); let _ = s.tx.send(Cmd::Pause); }
+    let frame = app.get_webview_window("recframe");
+    if let Some(p) = s.paused.take() {
+        s.paused_total += p.elapsed();
+        // Where the frame is now (it can be dragged or resized while paused); its border sits just outside the area.
+        let moved = frame.as_ref().and_then(|f| {
+            let (pos, size, k) = (f.outer_position().ok()?, f.outer_size().ok()?, f.scale_factor().ok()?);
+            let b = (3.0 * k).round() as i32;
+            let now = (pos.x + b, pos.y + b, (size.width as i32 - 2 * b).max(16) as u32, (size.height as i32 - 2 * b).max(16) as u32);
+            (now != (s.area.x, s.area.y, s.area.width, s.area.height)).then_some(now)
+        });
+        if let Some(m) = moved { s.area = Area { x: m.0, y: m.1, width: m.2, height: m.3 }; }
+        let _ = s.tx.send(Cmd::Resume(moved));
+    } else { s.paused = Some(Instant::now()); let _ = s.tx.send(Cmd::Pause); }
+    // While paused the frame can be grabbed; while recording, clicks go through it.
+    if let Some(f) = &frame { let _ = f.set_ignore_cursor_events(s.paused.is_none()); }
     let _ = app.emit("rec-state", s.paused.is_some());
 }
 
@@ -488,7 +511,7 @@ fn show_overlays(app: &AppHandle, a: Area) {
         let b = 3.0;
         let (lx, ly, lw, lh) = (a.x as f64 / scale, a.y as f64 / scale, a.width as f64 / scale, a.height as f64 / scale);
         if let Ok(w) = WebviewWindowBuilder::new(&a2, "recframe", WebviewUrl::App("recframe.html".into()))
-            .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(false).resizable(false)
+            .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(false).resizable(true)
             .position(lx - b, ly - b).inner_size(lw + 2.0 * b, lh + 2.0 * b).build() {
             let _ = w.set_ignore_cursor_events(true);
             exclude_from_capture(&w);

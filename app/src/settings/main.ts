@@ -2,7 +2,7 @@
 // words in them) and Check image (read Grabbit's invisible watermark from a found copy).
 
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import "../native.css";
 import "./settings.css";
 import { fileUrl, os, send } from "../bridge";
@@ -132,6 +132,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "number", key: "reduced_long_edge", label: "Smaller copies", min: 320, max: 8000, unit: "px long edge" },
     { kind: "number", key: "chat_max_kb", label: "Chat copies", min: 100, max: 20000, unit: "KB at most" },
     { kind: "custom", render: autostartRow },
+    { kind: "custom", render: backupRow },
   ],
   Keys: () => [
     { kind: "hotkey", key: "hotkeys.Capture", label: "Capture (tap) · Record (hold)" },
@@ -195,7 +196,9 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "ai.openai_key", label: "OpenAI API key", secret: true, placeholder: "sk-…" },
     { kind: "text", key: "ai.google_key", label: "Google AI API key", secret: true },
     { kind: "text", key: "ai.xai_key", label: "xAI API key", secret: true, placeholder: "xai-…" },
-    { kind: "text", key: "ai.openai_base", label: "OpenAI-compatible URL", placeholder: "Leave empty for api.openai.com", help: "For a local router or proxy" },
+    { kind: "text", key: "ai.openai_base", label: "OpenAI-compatible URL", placeholder: "Leave empty for api.openai.com", help: "Local and free: Ollama's http://localhost:11434/v1 with a vision model (key: any text)" },
+    { kind: "text", key: "ai.chat_model", label: "Model for describing and questions", placeholder: "Provider default", help: "e.g. qwen2.5vl or llava with Ollama" },
+    { kind: "toggle", key: "ai.auto_describe", label: "Describe every capture", help: "A paragraph and tags for each capture, saved in History so you can search by meaning" },
   ],
   Obsidian: () => [
     { kind: "folder", key: "obsidian_vault", label: "Vault" },
@@ -204,6 +207,26 @@ const SECTIONS: Record<string, () => Field[]> = {
   ],
   History: () => [{ kind: "custom", render: historyView }],
 };
+
+/** Back up settings to a file, or restore them (e.g. on a new computer). */
+function backupRow() {
+  const secrets = h("input", { type: "checkbox" }) as HTMLInputElement;
+  const out = h("button", { class: "btn" }, "Back up…") as HTMLButtonElement;
+  const inn = h("button", { class: "btn" }, "Restore…") as HTMLButtonElement;
+  out.onclick = async () => {
+    const path = await saveDialog({ defaultPath: "grabbit-settings.json", filters: [{ name: "Grabbit settings", extensions: ["json"] }] });
+    if (!path) return;
+    try { await invoke("settings_export", { path, secrets: secrets.checked }); toast("Settings backed up"); } catch (e) { toast(String(e)); }
+  };
+  inn.onclick = async () => {
+    const path = await open({ filters: [{ name: "Grabbit settings", extensions: ["json"] }] });
+    if (typeof path !== "string") return;
+    try { s = await invoke<S>("settings_import", { path }); toast("Settings restored"); show("General"); } catch (e) { toast(String(e)); }
+  };
+  return h("div", { class: "row" },
+    h("label", {}, h("span", { class: "title" }, "Back up or restore settings"), h("span", { class: "help" }, "One .json file: keys, folders, branding, sharing, everything")),
+    h("span", { class: "pick" }, h("label", { class: "help", style: "display:flex;gap:4px;align-items:center" }, secrets, "Include passwords and API keys"), out, inn));
+}
 
 function autostartRow() {
   const c = h("input", { type: "checkbox", class: "switch" }) as HTMLInputElement;

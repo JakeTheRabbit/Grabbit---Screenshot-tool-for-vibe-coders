@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fernhill Roasters — Weekly overview</title>
+<!-- Made-up demo page used for Grabbit's README screenshots and demo recording. Animates so a recording shows motion. -->
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --line:#e6e8ec; --text:#1b1d22; --muted:#6b7080; --a:#3884ff; --b:#16a37f; --c:#f08a24; --d:#e5484d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; color:var(--text); background:var(--bg); display:flex; height:100vh; overflow:hidden; }
+  nav { width:230px; background:#141821; color:#c9cdd8; padding:22px 16px; display:flex; flex-direction:column; gap:4px; }
+  nav .brand { display:flex; align-items:center; gap:10px; color:#fff; font-weight:700; font-size:17px; margin:0 6px 22px; }
+  nav .brand i { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#f08a24,#e5484d); display:block; }
+  nav a { padding:9px 12px; border-radius:8px; color:inherit; text-decoration:none; }
+  nav a.on { background:#232937; color:#fff; }
+  main { flex:1; padding:26px 32px; display:flex; flex-direction:column; gap:20px; min-width:0; }
+  header { display:flex; align-items:center; justify-content:space-between; }
+  h1 { margin:0; font-size:24px; }
+  header p { margin:2px 0 0; color:var(--muted); }
+  .pill { background:var(--card); border:1px solid var(--line); border-radius:999px; padding:7px 14px; color:var(--muted); }
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; box-shadow:0 1px 2px rgb(20 24 33 / .04); }
+  .kpi small { color:var(--muted); }
+  .kpi b { display:block; font-size:30px; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+  .up { color:var(--b); font-weight:600; } .down { color:var(--d); font-weight:600; }
+  .row { display:grid; grid-template-columns:1.7fr 1fr; gap:16px; flex:1; min-height:0; }
+  .card h2 { font-size:15px; margin:0 0 12px; }
+  svg { width:100%; height:calc(100% - 30px); display:block; }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:10px 4px; border-top:1px solid var(--line); }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; }
+  .bar { height:8px; border-radius:4px; background:#eef0f3; margin-top:6px; overflow:hidden; }
+  .bar div { height:100%; border-radius:4px; transition:width .8s cubic-bezier(.2,.8,.2,1); }
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand"><i></i>Fernhill Roasters</div>
+  <a class="on">Overview</a><a>Orders</a><a>Wholesale</a><a>Roast schedule</a><a>Green stock</a><a>Customers</a><a>Settings</a>
+</nav>
+<main>
+  <header>
+    <div><h1>Weekly overview</h1><p>Week 44 · all cafés and online</p></div>
+    <span class="pill">Last updated <span id="clock">just now</span></span>
+  </header>
+  <section class="kpis">
+    <div class="card kpi"><small>Revenue</small><b id="k1">$0</b><span class="up">▲ 12.4%</span> vs last week</div>
+    <div class="card kpi"><small>Orders</small><b id="k2">0</b><span class="up">▲ 8.1%</span></div>
+    <div class="card kpi"><small>Kg roasted</small><b id="k3">0</b><span class="up">▲ 3.6%</span></div>
+    <div class="card kpi"><small>Avg. basket</small><b id="k4">$0</b><span class="down">▼ 1.2%</span></div>
+  </section>
+  <section class="row">
+    <div class="card"><h2>Daily revenue</h2>
+      <svg viewBox="0 0 700 300" preserveAspectRatio="none" id="chart">
+        <g stroke="#e6e8ec">
+          <line x1="0" y1="60" x2="700" y2="60"/><line x1="0" y1="120" x2="700" y2="120"/><line x1="0" y1="180" x2="700" y2="180"/><line x1="0" y1="240" x2="700" y2="240"/>
+        </g>
+        <path id="area" fill="rgb(56 132 255 / .12)"/>
+        <path id="line" fill="none" stroke="#3884ff" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <path id="line2" fill="none" stroke="#f08a24" stroke-width="2.5" stroke-dasharray="7 6"/>
+      </svg>
+    </div>
+    <div class="card"><h2>Top blends</h2>
+      <table id="blends"></table>
+    </div>
+  </section>
+</main>
+<script>
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+  const kpis = [["k1", 48230, (v) => "$" + Math.round(v).toLocaleString()], ["k2", 1862, (v) => Math.round(v).toLocaleString()],
+                ["k3", 412, (v) => Math.round(v) + " kg"], ["k4", 25.9, (v) => "$" + v.toFixed(2)]];
+  const thisWeek = [5200, 6100, 5800, 7400, 8100, 9300, 6330], lastWeek = [4800, 5600, 5900, 6200, 7000, 7900, 5400];
+  const blends = [["Ridgeline Espresso", "#3884ff", 34], ["Morning Fog", "#16a37f", 26], ["Ember Dark", "#e5484d", 18], ["Kāpiti Filter", "#f08a24", 13], ["Decaf Swiss", "#8b5cf6", 9]];
+  document.getElementById("blends").innerHTML = blends.map(([n, c, p]) =>
+    `<tr><td><span class="dot" style="background:${c}"></span>${n}<div class="bar"><div style="width:0;background:${c}" data-w="${p}"></div></div></td><td>${p}%</td></tr>`).join("");
+  const path = (vals, k) => vals.map((v, i) => `${i ? "L" : "M"}${(i / (vals.length - 1)) * 700},${290 - (v / 10000) * 270 * k}`).join(" ");
+  const still = location.search.includes("still");   // ?still: the finished state at once (headless screenshots)
+  const start = still ? -1e9 : performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - start) / 2600), e = ease(t);
+    for (const [id, v, f] of kpis) document.getElementById(id).textContent = f(v * e);
+    document.getElementById("line").setAttribute("d", path(thisWeek, e));
+    document.getElementById("line2").setAttribute("d", path(lastWeek, e));
+    document.getElementById("area").setAttribute("d", path(thisWeek, e) + " L700,300 L0,300 Z");
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  setTimeout(() => document.querySelectorAll(".bar div").forEach((d) => { if (still) d.style.transition = "none"; d.style.width = d.dataset.w * 2.6 + "%"; }), still ? 0 : 600);
+  let s = still ? 42 : 0; setInterval(() => (document.getElementById("clock").textContent = ++s + " s ago"), 1000);
+</script>
+</body>
+</html>

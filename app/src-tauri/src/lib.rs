@@ -3,6 +3,7 @@
 mod actions;
 mod ai;
 mod audio;
+mod batch;
 mod capture;
 mod editor;
 mod export;
@@ -21,6 +22,7 @@ mod steps;
 mod studio;
 mod timelapse;
 mod video;
+mod voice;
 
 use std::{collections::HashMap, sync::Mutex};
 use tauri::{
@@ -46,10 +48,45 @@ pub struct AppState {
 
 pub fn state(app: &AppHandle) -> &AppState { app.state::<AppState>().inner() }
 
+/// grabbit://localhost/file/<path>: a local file with CORS allowed and byte ranges, so pages can draw it into a canvas
+/// and still export the canvas (the asset protocol taints it), and videos can seek.
+fn serve_file(path: &str, range: Option<&str>) -> Response<Vec<u8>> {
+    use std::io::{Read, Seek, SeekFrom};
+    let bad = |c: u16| Response::builder().status(c).header("Access-Control-Allow-Origin", "*").body(Vec::new()).unwrap();
+    let Ok(mut f) = std::fs::File::open(path) else { return bad(404) };
+    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+    let mime = match std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+        "png" => "image/png", "jpg" | "jpeg" => "image/jpeg", "webp" => "image/webp", "gif" => "image/gif",
+        "mp4" | "m4v" => "video/mp4", "webm" => "video/webm", "mov" => "video/quicktime", "mkv" => "video/x-matroska", _ => "application/octet-stream",
+    };
+    let (start, end) = range.and_then(|r| r.strip_prefix("bytes=")).and_then(|r| r.split_once('-'))
+        .map(|(a, b)| (a.parse::<u64>().unwrap_or(0), b.parse::<u64>().ok().unwrap_or(len.saturating_sub(1)).min(len.saturating_sub(1))))
+        .unwrap_or((0, len.saturating_sub(1)));
+    // Ranges are capped at 8 MB per answer; the player asks for the rest as it needs it.
+    let end = if range.is_some() { end.min(start + 8 * 1024 * 1024 - 1) } else { end };
+    let mut buf = vec![0u8; (end + 1).saturating_sub(start) as usize];
+    if f.seek(SeekFrom::Start(start)).and_then(|_| f.read_exact(&mut buf)).is_err() { return bad(416); }
+    let b = Response::builder().header("Content-Type", mime).header("Access-Control-Allow-Origin", "*").header("Accept-Ranges", "bytes");
+    if range.is_some() { b.status(206).header("Content-Range", format!("bytes {start}-{end}/{len}")).body(buf).unwrap() } else { b.body(buf).unwrap() }
+}
+
+pub(crate) fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() { if let Some(v) = std::str::from_utf8(&b[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok()) { out.push(v); i += 3; continue; } }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
 /// Serves frozen frames to the picker as raw RGBA (no encoding, so a 4K frame is there at once): grabbit://localhost/frame/<monitor>.
-fn serve(app: &AppHandle, path: &str) -> Response<Vec<u8>> {
+fn serve(app: &AppHandle, path: &str, range: Option<&str>) -> Response<Vec<u8>> {
     let not_found = || Response::builder().status(404).body(Vec::new()).unwrap();
-    let path = path.replace("%2F", "/").replace("%2f", "/");
+    let path = percent_decode(path);
+    if let Some(file) = path.strip_prefix("/file/") { return serve_file(file, range); }
     let Some(i) = path.strip_prefix("/frame/").and_then(|s| s.parse::<usize>().ok()) else { return not_found() };
     let frames = state(app).frames.lock().unwrap();
     let Some(f) = frames.get(i) else { return not_found() };
@@ -63,6 +100,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
         &item("capture_screen", "Capture whole screen")?,
         &item("record", "Record screen")?,
         &item("replay", "Save replay (last minute)")?,
+        &item("batch", "AI batch: talk through screenshots")?,
         &item("steps", "Record steps (how-to)")?,
         &item("timelapse", "Timed captures / timelapse")?,
         &PredefinedMenuItem::separator(app)?,
@@ -85,6 +123,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
             "record" => picker::start(app, picker::Mode::Record),
             "replay" => replay::save_now(app),
             "steps" => steps::toggle(app),
+            "batch" => batch::toggle(app),
             "timelapse" => timelapse::toggle(app),
             "open" => editor::open_dialog(app),
             "folder" => { let _ = tauri_plugin_opener::open_path(&state(app).settings.lock().unwrap().save_folder, None::<&str>); }
@@ -123,7 +162,8 @@ pub fn run() {
         .register_asynchronous_uri_scheme_protocol("grabbit", |ctx, req, responder| {
             let app = ctx.app_handle().clone();
             let path = req.uri().path().to_string();
-            std::thread::spawn(move || responder.respond(serve(&app, &path)));
+            let range = req.headers().get("range").and_then(|v| v.to_str().ok()).map(String::from);
+            std::thread::spawn(move || responder.respond(serve(&app, &path, range.as_deref())));
         })
         .invoke_handler(tauri::generate_handler![
             actions::dev_window,
@@ -135,6 +175,8 @@ pub fn run() {
             editor::get_settings,
             editor::set_settings,
             editor::open_settings_at,
+            editor::settings_export,
+            editor::settings_import,
             record::rec_status,
             record::rec_control,
             actions::copy_text,
@@ -152,6 +194,16 @@ pub fn run() {
             share::share_targets,
             ai::ai_edit,
             ai::ai_ask,
+            voice::voice_open,
+            voice::voice_stop,
+            voice::voice_restart,
+            voice::copy_for_ai,
+            batch::batch_add,
+            batch::batch_items,
+            batch::batch_finish,
+            batch::batch_clear,
+            batch::batch_start,
+            ai::ai_describe,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

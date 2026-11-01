@@ -21,7 +21,20 @@ function hint() {
   void listen<number>("progress", (e) => { fill.style.width = `${Math.min(100, e.payload * 100)}%`; });
 }
 
+/** AI description of a capture: readable, copyable. */
+function describe() {
+  const path = q.get("p");
+  root.innerHTML = `<div class="card describe">${path ? `<div class="thumb small"><img src="${fileUrl(path)}"></div>` : ""}
+    <div class="text"></div>
+    <div class="row"><span class="msg">Copied</span><button class="btn" data-a="copy">${icon("copy")}<span>Copy again</span></button><button class="ic" data-a="close" title="Close">${icon("close")}</button></div></div>`;
+  (root.querySelector(".text") as HTMLElement).textContent = q.get("t") ?? "";
+  root.querySelector<HTMLButtonElement>('[data-a="copy"]')!.onclick = () => void invoke("copy_text", { text: q.get("t") ?? "" });
+  root.querySelector<HTMLButtonElement>('[data-a="close"]')!.onclick = () => void win.close();
+  addEventListener("keydown", (e) => { if (e.key === "Escape") void win.close(); });
+}
+
 function quick() {
+  if (q.get("mode") === "describe") return describe();
   const path = q.get("p");
   const text = q.get("t") ?? "";
   const isVideo = !!path && /\.(mp4|mkv|mov|webm|gif)$/i.test(path);
@@ -29,6 +42,7 @@ function quick() {
     ${path ? `<div class="thumb" draggable="true">${isVideo ? `<video src="${fileUrl(path)}" muted autoplay loop></video>` : `<img src="${fileUrl(path)}">`}</div>` : ""}
     <div class="row"><span class="msg">${text}</span>${path ? `
       <button class="ic" data-a="edit" title="Edit">${icon("edit")}</button>
+      <button class="ic" data-a="ai" title="Talk about it, copy for an AI chat">${icon("mic")}</button>
       <button class="ic" data-a="pin" title="Pin to screen">${icon("pin")}</button>
       <button class="ic" data-a="share" title="Share">${icon("share")}</button>
       <button class="ic" data-a="folder" title="Show in folder">${icon("folder")}</button>` : ""}
@@ -64,7 +78,26 @@ function pin() {
   root.title = "Drag to move · scroll to zoom · double-click or Esc to close";
 }
 
-function recframe() { root.innerHTML = `<div class="frame"></div>`; }
+/** The red frame. While paused it can be dragged (inside) or resized (edges); resume records the new spot. */
+function recframe() {
+  root.innerHTML = `<div class="frame"></div><div class="tip">Paused · drag to move, drag an edge to resize, then resume</div>`;
+  void listen<boolean>("rec-state", (e) => document.body.classList.toggle("editable", e.payload));
+  const edge = (x: number, y: number) => {
+    const m = 10, w = innerWidth, h = innerHeight;
+    const v = y < m ? "North" : y > h - m ? "South" : "", hz = x < m ? "West" : x > w - m ? "East" : "";
+    return (v + hz) || null;
+  };
+  root.addEventListener("mousemove", (e) => {
+    if (!document.body.classList.contains("editable")) return;
+    const d = edge(e.clientX, e.clientY);
+    root.style.cursor = !d ? "move" : ({ North: "ns", South: "ns", East: "ew", West: "ew", NorthWest: "nwse", SouthEast: "nwse", NorthEast: "nesw", SouthWest: "nesw" } as Record<string, string>)[d] + "-resize";
+  });
+  root.addEventListener("mousedown", (e) => {
+    if (!document.body.classList.contains("editable") || e.button !== 0) return;
+    const d = edge(e.clientX, e.clientY);
+    if (d) void win.startResizeDragging(d as never); else void win.startDragging();
+  });
+}
 
 function scrollbar() {
   root.innerHTML = `<div class="rec"><span class="live"></span><span class="status">Starting…</span>
@@ -76,8 +109,22 @@ function scrollbar() {
   addEventListener("keydown", (e) => { if (e.key === "Escape") void invoke("scroll_control", { what: "cancel" }); });
 }
 
+/** The AI batch bar: how many pictures so far, Done opens the review. */
+function batchbar() {
+  root.innerHTML = `<div class="rec"><span class="live"></span><span class="status">AI batch · <b class="n">0</b> pictures · talk about each one</span>
+    <button class="stop" data-a="done">${icon("check")}<span>Done</span></button>
+    <button class="ic" data-a="cancel" title="Throw the batch away">${icon("close")}</button></div>`;
+  const n = root.querySelector(".n")!;
+  void invoke<unknown[]>("batch_items").then((i) => { n.textContent = String(i.length); });
+  void listen<number>("count", (e) => { n.textContent = String(e.payload); });
+  root.querySelector<HTMLButtonElement>('[data-a="done"]')!.onclick = () => void invoke("batch_finish");
+  root.querySelector<HTMLButtonElement>('[data-a="cancel"]')!.onclick = () => void invoke("batch_clear");
+  root.addEventListener("mousedown", (e) => { if (!(e.target as HTMLElement).closest("button")) void win.startDragging(); });
+}
+
 function recbar() {
   if (q.get("mode") === "scroll") return scrollbar();
+  if (q.get("mode") === "batch") return batchbar();
   root.innerHTML = `<div class="rec"><span class="live"></span><span class="time">0:00</span>
     <button class="ic" data-a="pause" title="Pause">${icon("pause")}</button>
     <button class="stop" data-a="stop" title="Stop and keep">${icon("stop")}<span>Stop</span></button>

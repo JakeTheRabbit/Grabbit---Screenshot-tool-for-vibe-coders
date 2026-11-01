@@ -81,7 +81,7 @@ pub fn handle_args(app: &AppHandle, args: &[String]) {
     let mut it = args.iter().skip(1).peekable();
     while let Some(a) = it.next() {
         let a = a.trim_start_matches("grabbit://").trim_end_matches('/');
-        if let Some(p) = a.strip_prefix("open/") { open_path(app, Path::new(&percent_decode(p))); continue; }
+        if let Some(p) = a.strip_prefix("open/") { open_path(app, Path::new(&crate::percent_decode(p))); continue; }
         match a {
             "--open" | "open" => if let Some(p) = it.next() { open_path(app, Path::new(p)); },
             "replay" => crate::replay::save_now(app),
@@ -95,20 +95,6 @@ pub fn handle_args(app: &AppHandle, args: &[String]) {
             _ => {}
         }
     }
-}
-
-fn percent_decode(s: &str) -> String {
-    let b = s.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] == b'%' && i + 2 < b.len() {
-            if let Some(v) = std::str::from_utf8(&b[i + 1..i + 3]).ok().and_then(|h| u8::from_str_radix(h, 16).ok()) { out.push(v); i += 3; continue; }
-        }
-        out.push(b[i]);
-        i += 1;
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 fn data_url(p: &Path) -> anyhow::Result<(String, u32, u32)> {
@@ -247,4 +233,22 @@ pub fn set_settings(app: AppHandle, settings: Settings) -> Result<(), String> {
     crate::hotkey::register_all(&app);
     crate::replay::sync(&app);
     Ok(())
+}
+
+/// Settings → Back up: JSON, secrets only when asked for.
+#[tauri::command]
+pub fn settings_export(app: AppHandle, path: String, secrets: bool) -> Result<(), String> {
+    let s = state(&app).settings.lock().unwrap().clone();
+    let s = if secrets { s } else { s.without_secrets() };
+    let body = json!({ "grabbit": 2, "exported": chrono::Local::now().to_rfc3339(), "secrets": secrets, "settings": s });
+    std::fs::write(&path, serde_json::to_string_pretty(&body).unwrap_or_default()).map_err(|e| e.to_string())
+}
+
+/// Settings → Restore: applies a backup made on any computer.
+#[tauri::command]
+pub fn settings_import(app: AppHandle, path: String) -> Result<Settings, String> {
+    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let next = state(&app).settings.lock().unwrap().restored(&text).map_err(|e| format!("Not a Grabbit settings backup: {e}"))?;
+    set_settings(app, next.clone())?;
+    Ok(next)
 }

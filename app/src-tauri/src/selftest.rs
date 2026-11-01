@@ -75,10 +75,13 @@ pub fn run(dir: &Path) -> i32 {
         use clipboard_rs::{Clipboard, ClipboardContext};
         let c = ClipboardContext::new().map_err(|e| anyhow::anyhow!("{e}"))?;
         let has = c.has(clipboard_rs::ContentFormat::Image);
+        let files = c.get_files().unwrap_or_default();
+        anyhow::ensure!(has, "no picture on the clipboard");
+        anyhow::ensure!(files.iter().any(|f| f.ends_with(".png")), "no file on the clipboard (chat apps attach the file)");
         export::copy_text("grabbit-selftest")?;
         let t = c.get_text().map_err(|e| anyhow::anyhow!("{e}"))?;
         anyhow::ensure!(t == "grabbit-selftest", "text read back: {t}");
-        Ok(format!("image on clipboard: {has}"))
+        Ok(format!("picture + file ({}) + text", files.len()))
     });
     step(&mut r, "ffmpeg + encoder", || Ok(format!("{} · {}", video::ffmpeg(&s)?.display(), video::hw_encoder(&s))));
     let mut rec = None;

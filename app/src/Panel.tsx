@@ -123,6 +123,19 @@ function AiPanel({ ops }: { ops: EditorOps }) {
       <button className="wide" disabled={!text.trim()} onClick={() => needRegion((region) => run({ op: "editText", region, text }, "Rewriting the text…"))}>Replace text</button>
       <h4>Edit the whole picture</h4>
       <button className="wide" disabled={!prompt.trim()} onClick={() => run({ op: "edit", prompt }, "Editing…")} title="Uses the description above">Apply description to everything</button>
+      <button className="wide" onClick={async () => {
+        ops.setBusy("Describing…");
+        try {
+          const d = await invoke<{ summary: string; tags: string[] }>("ai_describe", { dataUrl: await ops.render() });
+          const t = d.tags.length ? `${d.summary}
+
+Tags: ${d.tags.join(", ")}` : d.summary;
+          setAnswer(t);
+          await invoke("copy_text", { text: t });
+          ops.toast("Description copied");
+        } catch (e) { setAnswer(String(e)); }
+        ops.setBusy("");
+      }}>Describe &amp; tag (copies it)</button>
       <h4>Ask about this picture</h4>
       <textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="What's wrong in this error? Turn this table into CSV…" rows={3} />
       <button className="wide" disabled={!question.trim()} onClick={ask}>Ask</button>

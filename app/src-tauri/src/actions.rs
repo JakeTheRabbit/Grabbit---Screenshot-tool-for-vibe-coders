@@ -11,6 +11,12 @@ pub fn notify(app: &AppHandle, text: &str) {
 }
 
 fn grab(st: &AppState, p: &Picked) -> anyhow::Result<RgbaImage> {
+    if !p.extra.is_empty() {
+        let frames = st.frames.lock().unwrap();
+        let parts: Vec<(RgbaImage, i32, i32)> = p.extra.iter().chain(std::iter::once(&(p.x, p.y, p.width, p.height)))
+            .map(|&(x, y, w, h)| (capture::crop(&frames, x, y, w, h), x, y)).collect();
+        return Ok(capture::combine(&parts, p.layout.as_deref().unwrap_or("row")));
+    }
     let all = st.windows.lock().unwrap().clone();
     let img = match p.windows.as_slice() {
         [] => capture::crop(&st.frames.lock().unwrap(), p.x, p.y, p.width, p.height),
@@ -37,6 +43,10 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
         return Ok(());
     }
     let mut img = grab(&st, &p)?;
+    if crate::batch::narrating() {
+        let title = match p.windows.as_slice() { [id] => st.windows.lock().unwrap().iter().find(|w| w.id == *id).map(|w| w.title.clone()).unwrap_or_default(), _ => String::new() };
+        crate::batch::add_capture(app, &img, &title);
+    }
     if let Some((w, h)) = p.size { img = image::imageops::resize(&img, w, h, image::imageops::FilterType::Lanczos3); }
     *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
     st.frames.lock().unwrap().clear();
@@ -65,6 +75,14 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
             }
         }
         "edit" => editor::open_image(app, &img, &name, None),
+        "voice" => {
+            let out = mark::apply(&s, &img, id);
+            let tmp = std::env::temp_dir().join("Grabbit").join(format!("{name}.png"));
+            std::fs::create_dir_all(tmp.parent().unwrap())?;
+            std::fs::write(&tmp, export::png_bytes(&out, None)?)?;
+            let title = match p.windows.as_slice() { [id] => st.windows.lock().unwrap().iter().find(|w| w.id == *id).map(|w| w.title.clone()).unwrap_or_default(), _ => String::new() };
+            crate::voice::open(app, &tmp, None, &title);
+        }
         "save" => {
             let out = mark::apply(&s, &img, id);
             let app2 = app.clone();
@@ -87,6 +105,16 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
         "ocr" => {
             let text = ocr::recognize(&img).await?;
             if text.trim().is_empty() { notify(app, "No text found"); } else { export::copy_text(&text)?; notify(app, &format!("Copied text: {}", first_line(&text))); }
+        }
+        "describe" => {
+            let (s2, i2) = (s.clone(), img.clone());
+            notify(app, "Asking AI to describe it…");
+            let d = tauri::async_runtime::spawn_blocking(move || crate::ai::describe(&s2, &i2)).await??;
+            let text = if d.tags.is_empty() { d.summary.clone() } else { format!("{}\n\nTags: {}", d.summary, d.tags.join(", ")) };
+            export::copy_text(&text)?;
+            let saved = export::save_full(&s, &mark::apply(&s, &img, id), &name).ok();
+            crate::history::add_described(app, saved.as_deref(), &img, id, Some(text.clone()));
+            describe_card(app, saved.as_deref(), &text);
         }
         "qr" => {
             let found = read_codes(&img);
@@ -239,13 +267,32 @@ pub fn open_file(app: AppHandle, path: String) { editor::open_path(&app, std::pa
 /// Debug builds only: open a test page in a Grabbit window at a given place and size, in front (for live tests that
 /// must not touch anyone else's windows). Returns the window's physical rect.
 #[tauri::command]
-pub async fn dev_window(app: AppHandle, page: String, x: f64, y: f64, w: f64, h: f64) -> Result<(i32, i32, u32, u32), String> {
+pub async fn dev_window(app: AppHandle, page: String, x: f64, y: f64, w: f64, h: f64, monitor: Option<usize>) -> Result<(i32, i32, u32, u32), String> {
     if !cfg!(debug_assertions) { return Err("test builds only".into()); }
     if let Some(old) = app.get_webview_window("devtest") { let _ = old.destroy(); }
     let win = WebviewWindowBuilder::new(&app, "devtest", WebviewUrl::App(page.into()))
-        .title("Grabbit test page").position(x, y).inner_size(w, h).focused(true).always_on_top(true).build().map_err(|e| e.to_string())?;
+        .title("Grabbit test page").position(x, y).inner_size(w, h).focused(true).always_on_top(true)
+        .decorations(monitor.is_none()).build().map_err(|e| e.to_string())?;
+    // With a monitor: cover it exactly, edge to edge (README shots of the demo page).
+    if let Some(m) = monitor.and_then(|i| app.available_monitors().ok()?.into_iter().nth(i)) { crate::picker::cover(&win, &m); }
     std::thread::sleep(std::time::Duration::from_millis(800));
     let _ = win.set_focus();
     let (p, s) = (win.inner_position().map_err(|e| e.to_string())?, win.inner_size().map_err(|e| e.to_string())?);
     Ok((p.x, p.y, s.width, s.height))
+}
+
+/// The description, readable and copyable, in a small window by the capture.
+pub fn describe_card(app: &AppHandle, picture: Option<&std::path::Path>, text: &str) {
+    let url = format!("quick.html?mode=describe&t={}{}", urlencode(text), picture.map(|p| format!("&p={}", urlencode(&p.to_string_lossy()))).unwrap_or_default());
+    let a = app.clone();
+    let _ = std::thread::spawn(move || {
+        if let Some(w) = a.get_webview_window("quick") { let _ = w.destroy(); }
+        let Ok(Some(m)) = a.primary_monitor() else { return };
+        let s = m.scale_factor();
+        let (mw, mh) = (m.size().width as f64 / s, m.size().height as f64 / s);
+        let (w, h) = (420.0, 420.0);
+        let _ = WebviewWindowBuilder::new(&a, "quick", WebviewUrl::App(url.into()))
+            .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(true).resizable(false)
+            .inner_size(w, h).position(m.position().x as f64 / s + mw - w - 20.0, m.position().y as f64 / s + mh - h - 64.0).build();
+    });
 }

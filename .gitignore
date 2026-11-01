@@ -6,7 +6,7 @@ node_modules/
 .vs/
 
 # Built by src/editor-web (bun run build)
-src/Grabbit/EditorWeb/
+legacy/windows-wpf/src/Grabbit/EditorWeb/
 
 # Demo build output (docs/demo/*.mjs regenerate it; the README uses docs/screenshots)
 docs/demo/out/

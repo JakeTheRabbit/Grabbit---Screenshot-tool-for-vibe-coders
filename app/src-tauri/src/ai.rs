@@ -163,6 +163,30 @@ pub fn ask(s: &Settings, img: &RgbaImage, question: &str) -> Result<String> {
     }
 }
 
+#[derive(serde::Serialize, Clone, Debug, Default)]
+pub struct Description { pub summary: String, pub tags: Vec<String> }
+
+const DESCRIBE: &str = "Explain this screenshot for someone who can't see it, in one paragraph of plain English (3-5 sentences): what app or page it is, what it shows, the important numbers, names or messages, and anything that looks wrong or unusual. Then on a new line write 'Tags:' followed by 5 to 10 short lowercase tags separated by commas.";
+
+/// One paragraph of explanation plus tags, from the user's AI provider (or a local OpenAI-compatible one).
+pub fn describe(s: &Settings, img: &RgbaImage) -> Result<Description> {
+    let out = ask(s, img, DESCRIBE)?;
+    let (body, tags) = match out.rsplit_once("Tags:").or_else(|| out.rsplit_once("tags:")) {
+        Some((b, t)) => (b.trim().to_string(), t.split(',').map(|x| x.trim().trim_matches('.').to_lowercase()).filter(|x| !x.is_empty()).collect()),
+        None => (out.trim().to_string(), vec![]),
+    };
+    Ok(Description { summary: body, tags })
+}
+
+#[tauri::command]
+pub async fn ai_describe(app: AppHandle, data_url: String) -> Result<Description, String> {
+    let s = state(&app).settings.lock().unwrap().clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<Description> {
+        let img = image::load_from_memory(&B64.decode(data_url.split_once(',').map(|x| x.1).unwrap_or(&data_url))?)?.to_rgba8();
+        describe(&s, &img)
+    }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn ai_edit(app: AppHandle, data_url: String, op: Op) -> Result<String, String> {
     let s = state(&app).settings.lock().unwrap().clone();

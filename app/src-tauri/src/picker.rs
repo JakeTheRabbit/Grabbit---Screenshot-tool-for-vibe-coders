@@ -33,6 +33,11 @@ pub struct Picked {
     /// Social-media preset: the output is resized to exactly this many pixels.
     #[serde(default)]
     pub size: Option<(u32, u32)>,
+    /// Earlier areas of a multi-area capture (physical rects), combined with this one using `layout`.
+    #[serde(default)]
+    pub extra: Vec<(i32, i32, u32, u32)>,
+    #[serde(default)]
+    pub layout: Option<String>,
 }
 
 static MODE: std::sync::Mutex<Mode> = std::sync::Mutex::new(Mode::Pick);
@@ -51,7 +56,7 @@ static OPEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(
 
 /// Cover exactly one monitor. Moving a window onto a monitor with a different scale makes Windows resize it after
 /// the move, so the size is re-applied until it sticks.
-fn cover(w: &tauri::WebviewWindow, m: &tauri::Monitor) {
+pub fn cover(w: &tauri::WebviewWindow, m: &tauri::Monitor) {
     let (pos, size) = (*m.position(), *m.size());
     let _ = w.set_position(PhysicalPosition::new(pos.x, pos.y));
     for _ in 0..5 {
@@ -121,7 +126,7 @@ fn start_now(app: &AppHandle, mode: Mode) {
         };
         if let Some((x, y, width, height)) = r {
             let app = app.clone();
-            tauri::async_runtime::spawn(async move { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None }).await });
+            tauri::async_runtime::spawn(async move { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None, extra: vec![], layout: None }).await });
         }
         return;
     }
@@ -148,7 +153,7 @@ pub fn repeat_last(app: &AppHandle) {
         Err(e) => return actions::notify(app, &format!("Couldn't capture the screen: {e}")),
     }
     let app = app.clone();
-    tauri::async_runtime::spawn(async move { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None }).await });
+    tauri::async_runtime::spawn(async move { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None, extra: vec![], layout: None }).await });
 }
 
 /// The page has drawn its new frame: show it, and give the window under the mouse the keyboard.

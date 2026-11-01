@@ -28,6 +28,9 @@ export function onHostEvent<T>(f: (m: T) => void) {
 /** A local file as a URL the page can load. */
 export const fileUrl = (path: string) => (inTauri ? convertFileSrc(path) : path);
 
+/** A local file the page may also draw into a canvas and export (served with CORS; set crossOrigin = "anonymous"). */
+export const corsUrl = (path: string) => (inTauri ? convertFileSrc(`file/${path}`, "grabbit") : path);
+
 export const call = <T = unknown>(cmd: string, args?: Record<string, unknown>) => (inTauri ? invoke<T>(cmd, args) : Promise.resolve(null as T));
 
 /** OS name for per-platform styling: "windows" | "macos" | "linux". */

@@ -2233,6 +2233,7 @@ dependencies = [
  "base64 0.23.1",
  "chrono",
  "clipboard-rs",
+ "clipboard-win",
  "cpal",
  "device_query",
  "dirs 7.0.0",

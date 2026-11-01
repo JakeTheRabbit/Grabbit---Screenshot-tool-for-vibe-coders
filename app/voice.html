@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Talk about it</title>
+  </head>
+  <body>
+    <main id="stage">
+      <img id="pic" alt="" draggable="false" />
+      <canvas id="marks"></canvas>
+      <div id="frames"></div>
+      <div id="hint">Click to point at something · drag to box it · right-click a mark to remove it</div>
+    </main>
+    <aside>
+      <header><span class="dot"></span><b>Talk about it</b><span id="time">0:00</span><button id="close" class="btn" title="Close (Esc)"></button></header>
+      <div id="status">Listening…</div>
+      <div class="row"><button id="done" class="btn"></button><button id="redo" class="btn" hidden></button></div>
+      <label class="small" for="words">Your words (edit anything)</label>
+      <textarea id="words" placeholder="What should the AI do with this? Speak, or type here."></textarea>
+      <div class="opts">
+        <label><input type="checkbox" id="opt-panel" checked /> Print my words under the picture</label>
+        <label><input type="checkbox" id="opt-ocr" checked /> Include the text on screen</label>
+        <label hidden><input type="checkbox" id="opt-video" /> Attach the video file too</label>
+      </div>
+      <button id="copy" class="btn primary"></button>
+      <button id="addbatch" class="btn"></button>
+    </aside>
+    <script type="module" src="/src/voice/main.ts"></script>
+  </body>
+</html>

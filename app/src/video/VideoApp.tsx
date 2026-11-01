@@ -476,6 +476,7 @@ export function VideoApp() {
             ["Copy as GIF", () => exportAs("copy", "Gif")],
             ["Copy as animated WebP", () => exportAs("copy", "Webp")],
             ["Copy path (saves first)", () => exportAs("copyPath", "Full")],
+            ["Copy for AI: frames + what was said…", () => void call("voice_open", { path: "", video: meta.path, title: meta.name })],
           ]} />
           <Drop label="Save" disabled={!!busy} onMain={() => exportAs("save", "Full")} items={[
             ["Save as…", () => exportAs("saveAs", "Full")],

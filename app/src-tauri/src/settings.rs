@@ -65,6 +65,8 @@ pub struct Ai {
     pub provider: String,
     /// Optional OpenAI-compatible base URL (e.g. a local router). Empty = provider default.
     pub openai_base: String,
+    /// Describe and tag every capture in the background (needs a key or a local model).
+    pub auto_describe: bool,
     /// Empty = the provider's default image / chat model.
     pub image_model: String,
     pub chat_model: String,
@@ -186,5 +188,57 @@ impl Settings {
         std::fs::create_dir_all(config_dir())?;
         std::fs::write(path(), serde_json::to_string_pretty(self)?)?;
         Ok(())
+    }
+}
+
+impl Settings {
+    /// A copy without passwords, keys and tokens (for backups you might share or sync).
+    pub fn without_secrets(&self) -> Self {
+        let mut s = self.clone();
+        s.share.onedrive_token.clear();
+        s.share.immich_key.clear();
+        s.share.mega_password.clear();
+        s.ai.openai_key.clear();
+        s.ai.xai_key.clear();
+        s.ai.google_key.clear();
+        s
+    }
+
+    /// Restore from a backup: anything the file leaves out keeps its default, and secrets the backup didn't include
+    /// keep the values already set here.
+    pub fn restored(&self, json: &str) -> anyhow::Result<Self> {
+        let mut v: serde_json::Value = serde_json::from_str(json)?;
+        if let Some(inner) = v.get("settings") { v = inner.clone(); }
+        let mut s: Settings = serde_json::from_value(v)?;
+        let keep = |new: &mut String, old: &str| if new.is_empty() { *new = old.to_string(); };
+        keep(&mut s.share.onedrive_token, &self.share.onedrive_token);
+        keep(&mut s.share.immich_key, &self.share.immich_key);
+        keep(&mut s.share.mega_password, &self.share.mega_password);
+        keep(&mut s.ai.openai_key, &self.ai.openai_key);
+        keep(&mut s.ai.xai_key, &self.ai.xai_key);
+        keep(&mut s.ai.google_key, &self.ai.google_key);
+        for (k, v) in default_hotkeys() { s.hotkeys.entry(k).or_insert(v); }
+        Ok(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn backup_round_trip_keeps_secrets_out() {
+        let mut s = Settings::default();
+        s.ai.openai_key = "sk-secret".into();
+        s.record_fps = 60;
+        let backup = serde_json::to_string(&serde_json::json!({ "grabbit": 2, "settings": s.without_secrets() })).unwrap();
+        assert!(!backup.contains("sk-secret"));
+        let here = Settings { ai: Ai { openai_key: "sk-mine".into(), ..Default::default() }, ..Default::default() };
+        let r = here.restored(&backup).unwrap();
+        assert_eq!(r.record_fps, 60);
+        assert_eq!(r.ai.openai_key, "sk-mine");
+        // A partial file still loads, with defaults for the rest.
+        let p = here.restored(r#"{ "record_fps": 30 }"#).unwrap();
+        assert_eq!(p.chat_max_kb, 2048);
     }
 }
