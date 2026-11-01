@@ -262,9 +262,9 @@ struct Segment {
 
 fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize) -> Result<Segment> {
     let mkv = dir.join(format!("part{n}.mkv"));
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     let system = if s.record_system_audio { Capture::system(dir.join(format!("part{n}-system.wav"))).map_err(|e| log::warn!("system sound: {e}")).ok() } else { None };
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
     let system: Option<Capture> = None;
     let mic = if s.record_microphone { Capture::microphone(dir.join(format!("part{n}-mic.wav"))).map_err(|e| log::warn!("microphone: {e}")).ok() } else { None };
     let exe = video::ffmpeg(s)?;

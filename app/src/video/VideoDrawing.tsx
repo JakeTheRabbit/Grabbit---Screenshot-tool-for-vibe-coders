@@ -10,8 +10,11 @@ import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 
 export type Timed = { id: string; label: string; from: number; to: number };
 export type Baked = { dataURL: string; from: number; to: number };
+/** A privacy blur: a box in video pixels, blurred while its bar is under the playhead. */
+export type Blur = { x: number; y: number; width: number; height: number; from: number; to: number };
 export type DrawingHandle = {
-  bake(): Promise<Baked[]>;
+  bake(): Promise<{ overlays: Baked[]; blurs: Blur[] }>;
+  addBlur(): void;
   select(id: string): void;
   setTimes(id: string, from: number, to: number): void;
   count(): number;
@@ -20,7 +23,10 @@ export type DrawingHandle = {
 const DEFAULT_SPAN = 4; // seconds a new drawing stays up
 const PAD = 32; // px around baked drawings
 
+const isBlur = (e: ExcalidrawElement) => !!(e.customData as { grabbitBlur?: boolean } | undefined)?.grabbitBlur;
+
 function label(e: ExcalidrawElement) {
+  if (isBlur(e)) return "Blur";
   if (e.type === "text") return `“${(e as unknown as { text: string }).text.slice(0, 24)}”`;
   return { arrow: "Arrow", rectangle: "Box", ellipse: "Ellipse", diamond: "Diamond", line: "Line", freedraw: "Pen", image: "Image", frame: "Frame" }[e.type as string] ?? e.type;
 }
@@ -114,13 +120,29 @@ export function VideoDrawing(props: {
         sync(tRef.current, true);
         report();
       },
+      addBlur() {
+        if (!api) return;
+        const [el] = convertToExcalidrawElements([{
+          type: "rectangle", x: width * 0.35, y: height * 0.35, width: width * 0.3, height: height * 0.3,
+          strokeColor: "#7048e8", strokeStyle: "dashed", strokeWidth: 2, backgroundColor: "rgba(112,72,232,0.15)", fillStyle: "solid", roughness: 0,
+          customData: { grabbitBlur: true },
+        }]);
+        api.updateScene({ elements: [...api.getSceneElementsIncludingDeleted(), el], appState: { selectedElementIds: { [el.id]: true } } as Partial<AppState> as never, captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+      },
       async bake() {
-        if (!api || all.current.size === 0) return [];
+        if (!api || all.current.size === 0) return { overlays: [], blurs: [] };
+        const blurs: Blur[] = [];
+        for (const e of all.current.values()) {
+          const s = spanOf(e);
+          if (!isBlur(e) || !s) continue;
+          const x = Math.max(0, Math.round(e.x)), y = Math.max(0, Math.round(e.y));
+          blurs.push({ x, y, width: Math.min(width - x, Math.round(e.width)), height: Math.min(height - y, Math.round(e.height)), from: s.from, to: s.to });
+        }
         // One picture per distinct time span, so ffmpeg overlays as few layers as possible.
         const groups = new Map<string, { from: number; to: number; els: ExcalidrawElement[] }>();
         for (const e of all.current.values()) {
           const s = spanOf(e);
-          if (!s || s.to - s.from < 0.01) continue;
+          if (!s || s.to - s.from < 0.01 || isBlur(e)) continue;
           const k = `${s.from}-${s.to}`;
           (groups.get(k) ?? groups.set(k, { ...s, els: [] }).get(k)!).els.push(e);
         }
@@ -140,7 +162,7 @@ export function VideoDrawing(props: {
           frame.getContext("2d")!.drawImage(canvas, Math.round(minX - PAD), Math.round(minY - PAD));
           out.push({ dataURL: frame.toDataURL("image/png"), from: g.from, to: g.to });
         }
-        return out;
+        return { overlays: out, blurs };
       },
     });
   });

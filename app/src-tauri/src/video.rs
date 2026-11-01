@@ -183,7 +183,11 @@ pub struct Overlay { pub png: PathBuf, pub from: f64, pub to: f64 }
 
 /// Effects applied on the source timeline, before cutting: studio effects and burnt-in captions.
 #[derive(Default)]
-pub struct Extras { pub studio: Option<(crate::studio::Studio, crate::record::CursorTrack)>, pub subs: Option<PathBuf> }
+pub struct Extras { pub studio: Option<(crate::studio::Studio, crate::record::CursorTrack)>, pub subs: Option<PathBuf>, pub blurs: Vec<Blur> }
+
+/// A privacy blur: video pixels, shown while the source time is between `from` and `to`.
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
+pub struct Blur { pub x: u32, pub y: u32, pub width: u32, pub height: u32, pub from: f64, pub to: f64 }
 
 fn f(d: f64) -> String { format!("{:.3}", d).trim_end_matches('0').trim_end_matches('.').to_string() }
 
@@ -208,6 +212,14 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     let ring_idx = 1 + overlays.len();
     let has_ring = extras.studio.as_ref().map(|(st, _)| st.clicks).unwrap_or(false);
     let logo_idx = ring_idx + has_ring as usize;
+    // Blurs first, so nothing drawn on top gets blurred by accident.
+    for (i, b) in extras.blurs.iter().enumerate() {
+        let (x, y) = (b.x.min(info.width.saturating_sub(4)), b.y.min(info.height.saturating_sub(4)));
+        let (w, h) = (b.width.clamp(4, info.width - x) & !1, b.height.clamp(4, info.height - y) & !1);
+        let r = (w.min(h) / 6).clamp(4, 40);
+        g += &format!("{src}split[bm{i}][bs{i}];[bs{i}]crop={w}:{h}:{x}:{y},boxblur={r}:3[bb{i}];[bm{i}][bb{i}]overlay={x}:{y}:enable='between(t,{},{})'[bz{i}];", f(b.from), f(b.to));
+        src = format!("[bz{i}]");
+    }
     for (i, o) in overlays.iter().enumerate() {
         g += &format!("{src}[{}:v]overlay=0:0:enable='between(t,{},{})'[ov{i}];", i + 1, f(o.from), f(o.to));
         src = format!("[ov{i}]");
@@ -378,10 +390,11 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     let extras = Extras {
         studio: if studio.any() { crate::record::cursor_track(&path).map(|t| (studio, t)) } else { None },
         subs: if m["burnCaptions"].as_bool().unwrap_or(false) { Some(path.with_extension("srt")).filter(|p| p.exists()) } else { None },
+        blurs: serde_json::from_value(m["blurs"].clone()).unwrap_or_default(),
     };
     let speed_changed = keep.iter().any(|p| (p.speed - 1.0).abs() > 1e-3);
     let edited = m["edited"].as_bool().unwrap_or(false) || !drawings.is_empty() || speed_changed || tracks(&info, sound) != tracks(&info, Sound::All) || info.tracks.len() > 1
-        || s.branding.on_videos || s.metadata.strip || extras.studio.is_some() || extras.subs.is_some();
+        || s.branding.on_videos || s.metadata.strip || extras.studio.is_some() || extras.subs.is_some() || !extras.blurs.is_empty();
     let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
     let ext = match target { Target::Gif => "gif", Target::Webp => "webp", _ => "mp4" };
@@ -463,7 +476,8 @@ mod tests {
         // Make sure there are clicks and keys to draw.
         track.moves.push((1.0, 200, 150, 1)); track.moves.push((1.1, 200, 150, 0));
         track.keys.push((2.0, "LControl".into())); track.keys.push((2.1, "S".into()));
-        let extras = Extras { studio: Some((crate::studio::Studio { zoom: true, clicks: true, keys: true }, track)), subs: None };
+        let extras = Extras { studio: Some((crate::studio::Studio { zoom: true, clicks: true, keys: true }, track)), subs: None,
+            blurs: vec![Blur { x: 100, y: 100, width: 300, height: 200, from: 0.5, to: 3.0 }] };
         let out = std::env::temp_dir().join("grabbit-studio-test.mp4");
         let keep = [Part { start: 0.0, end: info.duration.min(4.0), speed: 1.0 }];
         render(&s, &input, &keep, &Target::Full, &out, Sound::All, &[], &extras, None, |_| {}).unwrap();

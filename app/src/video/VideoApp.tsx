@@ -325,8 +325,8 @@ export function VideoApp() {
       saveTo = await saveDialog({ defaultPath: `${meta.name}.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
       if (!saveTo) { setBusy(null); return; }
     }
-    const overlays = (await draw.current?.bake()) ?? [];
-    post({ type: "export", action, target, path: meta.path, saveTo, segments: keepRef.current.map((g) => [g.s, g.e, g.v ?? 1]), edited, sound, overlays,
+    const { overlays, blurs } = (await draw.current?.bake()) ?? { overlays: [], blurs: [] };
+    post({ type: "export", action, target, path: meta.path, saveTo, segments: keepRef.current.map((g) => [g.s, g.e, g.v ?? 1]), edited, sound, overlays, blurs,
       studio: fx, burnCaptions: burn && !!cues?.length, shareTo: shareTo.current });
   };
   const exportRef = useRef(exportAs);
@@ -511,6 +511,8 @@ export function VideoApp() {
           title="Draw on the video with Excalidraw (D). Each drawing shows for 4 s from the playhead; drag its bar on the timeline to change when.">
           {drawing ? "Done drawing" : "Draw"}
         </button>
+        <button onClick={() => { video.current?.pause(); setDrawing(true); setTimeout(() => draw.current?.addBlur(), 50); }}
+          title="Blur a box (faces, emails, keys) while its bar is under the playhead. Move and resize it like a drawing.">Blur box</button>
         <span className="sep" />
         <button onClick={split} title="Split the part under the playhead (S)">Split</button>
         <button onClick={remove} disabled={keep.length < 2} title="Cut out the selected part (Delete)">Cut part</button>
