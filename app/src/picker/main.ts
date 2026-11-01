@@ -2,7 +2,7 @@
 // colour, then the action bar. Plain canvas + DOM so it opens instantly.
 
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import "../native.css";
 import "./picker.css";
 import { os } from "../bridge";
@@ -463,9 +463,11 @@ function reset() {
   document.body.className = "";
 }
 const HINT = hint.innerHTML;
-void listen<number>("open", (e) => {
+// This window's events only: a global listen() would hear every monitor's "open" and show the last frame everywhere.
+const me = getCurrentWebviewWindow();
+void me.listen<number>("open", (e) => {
   reset();
   frameIdx = e.payload;
   start().catch((err) => { document.body.classList.add("ready"); hint.hidden = false; hint.textContent = "Couldn't open the picker: " + err; void invoke("picker_shown"); });
 });
-void listen("reset", reset);
+void me.listen("reset", reset);
