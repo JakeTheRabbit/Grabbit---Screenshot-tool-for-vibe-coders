@@ -168,20 +168,24 @@ export function VideoApp() {
     if (meta) post({ type: "dirty", value: key(keep) !== saved || drawVersion !== savedDraw });
   }, [keep, saved, meta, drawVersion, savedDraw]);
 
-  // Where the picture actually sits inside the stage (object-fit: contain), for the drawing layer.
+  // Where the picture sits in the stage; the video and the drawing layer both use it. While drawing it shrinks to the
+  // space inside Excalidraw's toolbar (top), style panel (left, 12.5rem on wide windows) and zoom/undo bar (bottom),
+  // so none of them cover the picture.
   useLayoutEffect(() => {
     const el = stage.current;
     if (!el || !meta) return;
     const fitBox = () => {
-      const W = el.clientWidth, H = el.clientHeight, k = Math.min(W / meta.width, H / meta.height);
+      const W = el.clientWidth, H = el.clientHeight;
+      const [t, r, b, l] = drawing ? [68, 16, 64, W >= 730 ? 232 : 16] : [0, 0, 0, 0];
+      const k = Math.min((W - l - r) / meta.width, (H - t - b) / meta.height);
       const w = meta.width * k, h = meta.height * k;
-      setBox({ left: (W - w) / 2, top: (H - h) / 2, width: w, height: h });
+      setBox({ left: l + (W - l - r - w) / 2, top: t + (H - t - b - h) / 2, width: w, height: h });
     };
     fitBox();
     const ro = new ResizeObserver(fitBox);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [meta]);
+  }, [meta, drawing]);
 
   // ---- filmstrip ----
   const thumbCount = useMemo(() => (meta ? Math.min(150, Math.max(8, Math.ceil(meta.duration * 2))) : 0), [meta]);
@@ -491,7 +495,7 @@ export function VideoApp() {
       </header>
 
       <main ref={stage} onClick={() => !drawing && togglePlay()}>
-        <video ref={video} src={meta.url} preload="auto" />
+        <video ref={video} src={meta.url} preload="auto" style={{ left: box.left, top: box.top, width: box.width, height: box.height }} />
         <VideoDrawing box={box} width={meta.width} height={meta.height} t={t} duration={dur} drawing={drawing}
           onItems={(list, sel) => {
             setItems(list);
