@@ -430,6 +430,16 @@ export function App() {
     return { x, y, size };
   }
 
+  // The sticker picker closes on Esc or a click anywhere outside it (its own header button toggles it).
+  useEffect(() => {
+    if (!stickers) return;
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setStickers(false); } };
+    const down = (e: PointerEvent) => { if (!(e.target as Element).closest?.(".stickers, [data-stickers]")) setStickers(false); };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("pointerdown", down, true);
+    return () => { window.removeEventListener("keydown", key, true); window.removeEventListener("pointerdown", down, true); };
+  }, [stickers]);
+
   function addEmoji(e: string) {
     const { x, y, size } = stickerSpot(72);
     addElements([{ type: "text", text: e, x, y, fontSize: size }]);
@@ -489,7 +499,7 @@ export function App() {
             ["Black out the selected box", () => applyRedact("black")],
             ["Spotlight the selected box", applySpotlight],
           ]} />
-          <button className={stickers ? "on" : ""} onClick={() => setStickers(!stickers)} title="Emoji and icons"><Icon name="smile" />Stickers</button>
+          <button className={stickers ? "on" : ""} data-stickers onClick={() => setStickers(!stickers)} title="Emoji and icons"><Icon name="smile" />Stickers</button>
         </div>
         <div className="seg">
           {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
@@ -567,10 +577,11 @@ export function App() {
           {panel && <Panel which={panel} ops={ops} beauty={beauty} setBeauty={setBeauty} onClose={() => setPanel(null)} />}
           {stickers && (
             <div className="stickers">
-              <div className="grid emoji">{EMOJI.map((e) => <button key={e} onClick={() => addEmoji(e)}>{e}</button>)}</div>
+              <header><b>Stickers</b><button className="x" onClick={() => setStickers(false)} title="Close (Esc)">×</button></header>
+              <div className="grid emoji">{EMOJI.map((e) => <button key={e} onClick={() => { addEmoji(e); setStickers(false); }}>{e}</button>)}</div>
               <div className="grid icons">
                 {ICONS.map((i) => (
-                  <button key={i.name} title={i.name} onClick={() => addIcon(i.svg)} dangerouslySetInnerHTML={{ __html: i.svg }} />
+                  <button key={i.name} title={i.name} onClick={() => { addIcon(i.svg); setStickers(false); }} dangerouslySetInnerHTML={{ __html: i.svg }} />
                 ))}
               </div>
               <div className="hint">Icons take the current stroke colour.</div>
