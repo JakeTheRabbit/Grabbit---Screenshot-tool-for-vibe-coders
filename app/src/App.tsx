@@ -9,6 +9,31 @@ import { getImage, onHost, post, type ExportAction, type RecentItem, type Size }
 import { EMOJI, ICONS, iconDataURL } from "./stickers";
 import { Icon } from "./icons";
 import { redact, spotlight, type Box } from "./redact";
+import { invoke } from "@tauri-apps/api/core";
+import { send } from "./bridge";
+import { beautify, DEFAULT_BEAUTY, type Beauty } from "./beautify";
+import { findPrivate, type Word } from "./private";
+import { Panel, type EditorOps, type PanelName } from "./Panel";
+
+/** A button that opens a small menu of related actions. */
+function Menu({ label, icon, primary, onMain, items }: { label: string; icon: Parameters<typeof Icon>[0]["name"]; primary?: boolean; onMain?: () => void; items: [string, () => void, string?][] }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    setTimeout(() => addEventListener("click", close, { once: true }));
+    return () => removeEventListener("click", close);
+  }, [open]);
+  return (
+    <div className="menuwrap">
+      <div className={`split${primary ? " primary" : ""}`}>
+        <button className={primary ? "primary" : ""} onClick={onMain ?? (() => setOpen(!open))}><Icon name={icon} />{label}</button>
+        {onMain && <button className={`caret${primary ? " primary" : ""}`} onClick={() => setOpen(!open)} aria-label={`More ${label} options`}>▾</button>}
+      </div>
+      {open && <div className="dropdown">{items.map(([t, f, k]) => <button key={t} onClick={() => { setOpen(false); f(); }}><span>{t}</span>{k && <kbd>{k}</kbd>}</button>)}</div>}
+    </div>
+  );
+}
 
 const BASE_ID = "grabbit-base";
 
@@ -31,6 +56,9 @@ export function App() {
   const [tab, setTab] = useState<"capture" | "copied">("capture");
   const [stickers, setStickers] = useState(false);
   const [busy, setBusy] = useState("");
+  const [panel, setPanel] = useState<PanelName | null>(null);
+  const [beauty, setBeautyState] = useState<Beauty>(() => { try { return { ...DEFAULT_BEAUTY, ...JSON.parse(localStorage.getItem("beauty") ?? "{}"), on: false }; } catch { return DEFAULT_BEAUTY; } });
+  const setBeauty = (b: Beauty) => { setBeautyState(b); try { localStorage.setItem("beauty", JSON.stringify(b)); } catch { /* private mode */ } };
   const [tabs, setTabs] = useState<{ id: string; name: string; dirty: boolean }[]>([]);
   const [activeId, setActiveId] = useState("");
   const [dark, setDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
@@ -150,7 +178,7 @@ export function App() {
     const off = onHost(async (m) => {
       if (m.type === "recent") setRecent(m.recent);
       if (m.type === "load" || m.type === "addTab") {
-        if (m.type === "load") setRecent(m.recent);
+        if (m.type === "load") { setRecent(m.recent); if (m.type === "load" && m.panel) setPanel(m.panel as PanelName); }
         addDoc(m.name, m);
       }
       if (m.type === "requestClose") {
@@ -202,8 +230,12 @@ export function App() {
       exportPadding: 0,
       mimeType: "image/png",
     });
-    return blobToDataURL(blob);
+    const png = await blobToDataURL(blob);
+    return beautyRef.current.on ? beautify(png, beautyRef.current) : png;
   }, [api]);
+  const beautyRef = useRef(beauty);
+  beautyRef.current = beauty;
+  (window as unknown as { grabbitRender: typeof render }).grabbitRender = render;   // test hook (CDP checks)
 
   async function exportAs(action: ExportAction, size: Size) {
     const d = active.current;
@@ -269,6 +301,81 @@ export function App() {
     });
   }
 
+  const baseDataURL = () => { const b = base(); return b ? api!.getFiles()[b.fileId!]?.dataURL ?? null : null; };
+
+  /** Selected box in picture pixels. */
+  const selectedRegion = () => {
+    const b = base();
+    const t = selectedBoxes().find((e) => e.type === "rectangle" || e.type === "ellipse" || e.type === "diamond");
+    if (!b || !t) return null;
+    const x = Math.max(0, Math.round(t.x - b.x)), y = Math.max(0, Math.round(t.y - b.y));
+    const w = Math.min(Math.round(b.width) - x, Math.round(t.width)), h = Math.min(Math.round(b.height) - y, Math.round(t.height));
+    return w > 2 && h > 2 ? { x, y, width: w, height: h } : null;
+  };
+
+  /** Swap the picture underneath (AI edits), keeping drawings and undo. */
+  function replaceBase(dataURL: string) {
+    const b = base();
+    if (!b) return;
+    const id = fileId();
+    api!.addFiles([{ id, dataURL: dataURL as DataURL, mimeType: "image/png", created: Date.now() }]);
+    api!.updateScene({
+      elements: api!.getSceneElementsIncludingDeleted().map((e) => e.id === BASE_ID ? { ...e, fileId: id, version: e.version + 1 } as ExcalidrawElement : e),
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+  }
+
+  /** Read the picture's text, then pixelate every email, IP, key, phone or card number found. */
+  async function autoHide() {
+    const b = base();
+    const src = baseDataURL();
+    if (!b || !src) return;
+    setBusy("Looking for private details…");
+    try {
+      const words = await send<Word[]>({ type: "ocr", dataURL: src });
+      const hits = findPrivate(words ?? []);
+      if (!hits.length) { api!.setToast({ message: "Nothing private found. Draw a box and use Pixelate for anything else.", duration: 3500 }); return; }
+      const replacements: ExcalidrawElement[] = [];
+      for (const h of hits) {
+        const r = await redact(src, b as Box, { x: b.x + h.x, y: b.y + h.y, width: h.width, height: h.height } as Box, "pixelate");
+        if (!r) continue;
+        const id = fileId();
+        api!.addFiles([{ id, dataURL: r.dataURL as DataURL, mimeType: "image/png", created: Date.now() }]);
+        replacements.push(...convertToExcalidrawElements([{ type: "image", fileId: id, ...r.box, customData: { grabbitHidden: h.kind } }], { regenerateIds: false }));
+      }
+      api!.updateScene({ elements: [...api!.getSceneElementsIncludingDeleted(), ...replacements], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
+      const kinds = [...new Set(hits.map((h) => h.kind))].join(", ");
+      api!.setToast({ message: `Hid ${hits.length} private detail${hits.length > 1 ? "s" : ""} (${kinds}). Ctrl+Z to undo.`, duration: 4000 });
+    } finally { setBusy(""); }
+  }
+
+  async function copyText() {
+    setBusy("Reading text…");
+    try {
+      const words = await send<Word[]>({ type: "ocr", dataURL: await render() });
+      const lines: string[] = [];
+      let cur = -1;
+      for (const w of words ?? []) { if (w.line !== cur) { lines.push(w.text); cur = w.line; } else lines[lines.length - 1] += " " + w.text; }
+      if (!lines.length) { api!.setToast({ message: "No text found", duration: 2500 }); return; }
+      await invoke("copy_text", { text: lines.join("\n") });
+      api!.setToast({ message: `Copied ${lines.length} line${lines.length > 1 ? "s" : ""} of text`, duration: 2500 });
+    } finally { setBusy(""); }
+  }
+
+  async function readQr() {
+    const codes = await send<string[]>({ type: "qr", dataURL: await render() });
+    if (!codes?.length) { api!.setToast({ message: "No QR code found", duration: 2500 }); return; }
+    await invoke("copy_text", { text: codes.join("\n") });
+    api!.setToast({ message: `Copied: ${codes[0].slice(0, 80)}`, duration: 3500 });
+  }
+
+  const ops: EditorOps = {
+    render, baseDataURL, selectedRegion, replaceBase, name,
+    toast: (t) => api?.setToast({ message: t, duration: 4000 }),
+    setBusy,
+    size: (() => { const b = api ? base() : undefined; return b ? { width: Math.round(b.width), height: Math.round(b.height) } : null; })(),
+  };
+
   function addStep() {
     const n = api!.getSceneElements().filter((e) => e.customData?.grabbitStep).length + 1;
     const color = api!.getAppState().currentItemStrokeColor;
@@ -319,24 +426,38 @@ export function App() {
     <div className="shell">
       <header className="bar">
         <div className="seg">
-          <button className="primary" onClick={() => exportAs("copy", "Full")} title="Copy full size (Ctrl+Shift+Enter)"><Icon name="copy" />Copy</button>
-          <button onClick={() => exportAs("copy", "Reduced")} title="Copy with the long edge cut down to 1920 px"><Icon name="shrink" />Smaller</button>
-          <button onClick={() => exportAs("copy", "Chat")} title="Copy as a small JPEG for chat apps"><Icon name="chat" />Chat</button>
-          <button onClick={() => exportAs("copyClose", "Full")} title="Copy and close (Ctrl+Enter)"><Icon name="check" />Copy &amp; close</button>
-        </div>
-        <div className="seg">
-          <button onClick={() => exportAs("saveQuick", "Full")} title="Save to the Grabbit folder, lossless WebP (Ctrl+S)"><Icon name="save" />Save</button>
-          <button onClick={() => exportAs("copyPath", "Full")} title="Save, then copy the file's path in quotes (like Explorer's Copy as path)"><Icon name="link" />Copy path</button>
-          <button onClick={() => exportAs("save", "Full")} title="Choose where, as WebP, PNG or JPEG (Ctrl+Shift+S)"><Icon name="saveAs" />Save as…</button>
-          <button onClick={saveProject} title="Save an editable .excalidraw file you can reopen later"><Icon name="editable" />Editable</button>
+          <Menu label="Copy" icon="copy" primary onMain={() => exportAs("copy", "Full")} items={[
+            ["Copy smaller (≤ 1920 px)", () => exportAs("copy", "Reduced")],
+            ["Copy for chat (small JPEG)", () => exportAs("copy", "Chat")],
+            ["Copy and close", () => exportAs("copyClose", "Full"), "Ctrl+Enter"],
+            ["Copy text in the picture", copyText],
+            ["Read QR code", readQr],
+          ]} />
+          <Menu label="Save" icon="save" onMain={() => exportAs("saveQuick", "Full")} items={[
+            ["Save as…", () => exportAs("save", "Full"), "Ctrl+Shift+S"],
+            ["Save and copy the path", () => exportAs("copyPath", "Full")],
+            ["Save editable (.excalidraw)", saveProject],
+            ["Pin on top of everything", () => exportAs("pin", "Full")],
+          ]} />
         </div>
         <div className="seg">
           <button onClick={addStep} title="Numbered step badge (next number)"><Icon name="step" />Step</button>
-          <button onClick={() => applyRedact("pixelate")} title="Select a box, then pixelate what's under it"><Icon name="pixelate" />Pixelate</button>
-          <button onClick={() => applyRedact("blur")} title="Select a box, then blur what's under it"><Icon name="blur" />Blur</button>
-          <button onClick={() => applyRedact("black")} title="Select a box, then fill it solid black"><Icon name="black" />Black out</button>
-          <button onClick={applySpotlight} title="Select a box, then dim everything else"><Icon name="spot" />Spotlight</button>
+          <Menu label="Hide" icon="pixelate" items={[
+            ["Hide private details automatically", autoHide],
+            ["Pixelate the selected box", () => applyRedact("pixelate")],
+            ["Blur the selected box", () => applyRedact("blur")],
+            ["Black out the selected box", () => applyRedact("black")],
+            ["Spotlight the selected box", applySpotlight],
+          ]} />
           <button className={stickers ? "on" : ""} onClick={() => setStickers(!stickers)} title="Emoji and icons"><Icon name="smile" />Stickers</button>
+        </div>
+        <div className="seg">
+          {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
+            <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)}>
+              <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[p]}
+              {p === "beautify" && beauty.on && <span className="dot" />}
+            </button>
+          ))}
         </div>
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
         <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>
@@ -384,7 +505,7 @@ export function App() {
             </nav>
           )}
           <Excalidraw
-            excalidrawAPI={(a) => { setApi(a); Object.assign(window.grabbit, { api: a, convert: convertToExcalidrawElements }); }}   // test hook (CDP checks)
+            excalidrawAPI={(a) => { setApi(a); Object.assign(((window as unknown as { grabbit: object }).grabbit ??= {}), { api: a, convert: convertToExcalidrawElements }); }}   // test hook (CDP checks)
             theme={dark ? "dark" : "light"}
             name={name}
             initialData={{
@@ -403,6 +524,7 @@ export function App() {
               tools: { image: true },
             }}
           />
+          {panel && <Panel which={panel} ops={ops} beauty={beauty} setBeauty={setBeauty} onClose={() => setPanel(null)} />}
           {stickers && (
             <div className="stickers">
               <div className="grid emoji">{EMOJI.map((e) => <button key={e} onClick={() => addEmoji(e)}>{e}</button>)}</div>

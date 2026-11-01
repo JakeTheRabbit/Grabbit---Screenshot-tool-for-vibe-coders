@@ -140,6 +140,9 @@ pub fn embed(img: &mut RgbaImage, payload: u64) {
 /// Read the mark back. Searches the 64 pixel alignments and the 56 tile phases, so a cropped copy still reads.
 /// Returns the payload when its check byte matches.
 pub fn read(img: &RgbaImage) -> Option<u64> {
+    // The mark repeats everywhere, so a central 1024 px square holds plenty of copies and keeps this quick.
+    let (w, h) = (img.width().min(1024), img.height().min(1024));
+    let img = &image::imageops::crop_imm(img, (img.width() - w) / 2, (img.height() - h) / 2, w, h).to_image();
     let c = basis();
     let mut best: Option<(u64, f32)> = None;
     for oy in 0..8 { for ox in 0..8 {

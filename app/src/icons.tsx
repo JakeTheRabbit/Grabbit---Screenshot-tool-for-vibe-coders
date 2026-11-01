@@ -14,8 +14,10 @@ import blur from "lucide-static/icons/droplets.svg?raw";
 import black from "lucide-static/icons/square.svg?raw";
 import spot from "lucide-static/icons/scan-eye.svg?raw";
 import smile from "lucide-static/icons/smile-plus.svg?raw";
+import sparkles from "lucide-static/icons/sparkles.svg?raw";
+import info from "lucide-static/icons/info.svg?raw";
 
-const svgs = { copy, shrink, chat, check, save, link, saveAs, editable, close, step, pixelate, blur, black, spot, smile };
+const svgs = { copy, shrink, chat, check, save, link, saveAs, editable, close, step, pixelate, blur, black, spot, smile, sparkles, info };
 export type IconName = keyof typeof svgs;
 
 export function Icon({ name }: { name: IconName }) {

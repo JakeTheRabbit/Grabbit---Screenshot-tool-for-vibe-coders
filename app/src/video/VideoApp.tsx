@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { VideoDrawing, type DrawingHandle, type Timed } from "./VideoDrawing";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { fileUrl, inTauri, onHostEvent, send } from "../bridge";
+import { call, fileUrl, inTauri, onHostEvent, send } from "../bridge";
 
 // Recording timeline: scrub, trim the ends, split, cut parts out. The edit is just a list of kept ranges;
 // Grabbit's core (video.rs) renders them with ffmpeg, so nothing here touches the video file.
 
-type Seg = { s: number; e: number };
-type Meta = { name: string; path?: string; url: string; duration: number; fps: number; width: number; height: number; hasAudio: boolean; bytes: number; hasSystem?: boolean; hasMic?: boolean };
-type Target = "Full" | "Chat" | "Gif";
-type Action = "copy" | "save" | "saveAs" | "copyPath" | "closeSave";
+type Seg = { s: number; e: number; v?: number };   // v: playback speed of the part (1 = normal)
+type Cue = { start: number; end: number; text: string };
+type Social = { name: string; width: number; height: number };
+type Meta = { social?: Social[]; cursor?: { moves: unknown[]; keys: unknown[] } | null; hasCaptions?: boolean; name: string; path?: string; url: string; duration: number; fps: number; width: number; height: number; hasAudio: boolean; bytes: number; hasSystem?: boolean; hasMic?: boolean };
+type Target = "Full" | "Chat" | "Gif" | "Webp" | `Social:${number}x${number}`;
+type Action = "copy" | "save" | "saveAs" | "copyPath" | "closeSave" | "share";
 type Sound = "All" | "System" | "Mic" | "None";
 type HostMsg =
   | ({ type: "load" } & Meta)
@@ -25,7 +27,32 @@ function fmt(t: number, fine = true) {
   const m = Math.floor(t / 60), s = t - m * 60;
   return `${m}:${fine ? s.toFixed(2).padStart(5, "0") : String(Math.floor(s)).padStart(2, "0")}`;
 }
-const key = (k: Seg[]) => k.map((g) => `${g.s.toFixed(3)}-${g.e.toFixed(3)}`).join(",");
+const key = (k: Seg[]) => k.map((g) => `${g.s.toFixed(3)}-${g.e.toFixed(3)}x${g.v ?? 1}`).join(",");
+/** Take [a, b] ranges out of the kept parts (cut silences, cut a caption's stretch). */
+const without = (k: Seg[], cuts: [number, number][]) => {
+  let out = k;
+  for (const [a, b] of cuts) out = out.flatMap((g) => g.e <= a || g.s >= b ? [g] : [{ ...g, e: Math.min(g.e, a) }, { ...g, s: Math.max(g.s, b) }]).filter((g) => g.e - g.s >= MIN);
+  return out;
+};
+const FILLER = /^(?:[\s,.!?…-]*(?:um+|uh+|erm+|er|ah+|hmm+|mm+|like|you know)[\s,.!?…-]*)+$/i;
+
+/** A button with a menu of related actions. */
+function Drop({ label, primary, disabled, onMain, items }: { label: string; primary?: boolean; disabled?: boolean; onMain?: () => void; items: [string, () => void][] }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    setTimeout(() => addEventListener("click", close, { once: true }));
+    return () => removeEventListener("click", close);
+  }, [open]);
+  return (
+    <span className="drop">
+      <button className={primary ? "primary" : ""} disabled={disabled} onClick={onMain ?? (() => setOpen(!open))}>{label}</button>
+      {onMain && <button className={"caret" + (primary ? " primary" : "")} disabled={disabled} onClick={() => setOpen(!open)} aria-label={`More ${label}`}>▾</button>}
+      {open && <div className="menu">{items.map(([t, f]) => <button key={t} onClick={() => { setOpen(false); f(); }}>{t}</button>)}</div>}
+    </span>
+  );
+}
 const total = (k: Seg[]) => k.reduce((a, g) => a + g.e - g.s, 0);
 const clip = (k: Seg[], a: number, b: number) =>
   k.map((g) => ({ s: Math.max(g.s, a), e: Math.min(g.e, b) })).filter((g) => g.e - g.s >= MIN);
@@ -74,6 +101,12 @@ export function VideoApp() {
   const [drawVersion, setDrawVersion] = useState(0);
   const [savedDraw, setSavedDraw] = useState(0);
   const [box, setBox] = useState({ left: 0, top: 0, width: 1, height: 1 });
+  const [fx, setFx] = useState({ zoom: false, clicks: false, keys: false });
+  const [cues, setCues] = useState<Cue[] | null>(null);
+  const [captionsOpen, setCaptionsOpen] = useState(false);
+  const [burn, setBurn] = useState(false);
+  const [targets, setTargets] = useState<string[]>([]);
+  useEffect(() => { void call<string[]>("share_targets").then((t) => setTargets(t ?? [])); }, []);
   const stage = useRef<HTMLElement>(null);
   const draw = useRef<DrawingHandle | null>(null);
   const itemsKey = useRef("");
@@ -128,7 +161,7 @@ export function VideoApp() {
     return off;
   }, []);
 
-  const edited = !(keep.length === 1 && keep[0].s < 0.01 && keep[0].e > dur - 0.01);
+  const edited = !(keep.length === 1 && keep[0].s < 0.01 && keep[0].e > dur - 0.01 && (keep[0].v ?? 1) === 1);
   const drawVersionRef = useRef(0);
   drawVersionRef.current = drawVersion;
   useEffect(() => {
@@ -242,7 +275,45 @@ export function VideoApp() {
   const trimBefore = () => { const n = clip(keepRef.current, t, dur); if (n.length) commit(n); };
   const trimAfter = () => { const n = clip(keepRef.current, 0, t); if (n.length) commit(n); };
   const reset = () => { commit([{ s: 0, e: dur }]); setSel(null); };
+  const setSpeed = (v: number) => {
+    if (sel === null) { setNote("Click a part first (split with S), then pick its speed"); return; }
+    commit(keepRef.current.map((g, i) => (i === sel ? { ...g, v } : g)));
+  };
+  const cutSilences = async () => {
+    setBusy({ label: "Finding quiet parts", value: 0.5 });
+    try {
+      const quiet = (await send<[number, number][]>({ type: "silences", path: meta!.path, min: 0.8 })) ?? [];
+      // Keep a little either side so words aren't clipped.
+      const cuts = quiet.map(([a, b]) => [a + 0.15, b - 0.15] as [number, number]).filter(([a, b]) => b - a > 0.3);
+      if (!cuts.length) setNote("No long quiet parts found");
+      else { commit(without(keepRef.current, cuts)); setNote(`Cut ${cuts.length} quiet part${cuts.length > 1 ? "s" : ""} (${fmt(cuts.reduce((x, [a, b]) => x + b - a, 0), false)}). Ctrl+Z undoes it.`); }
+    } catch (e) { setNote(String(e)); }
+    setBusy(null);
+  };
+  const makeCaptions = async () => {
+    setCaptionsOpen(true);
+    if (cues) return;
+    try {
+      const engine = await send<string>({ type: "captionEngine" });
+      if (engine === "none") { setNote("Captions need ffmpeg 8 (with whisper) or an OpenAI key in Settings → AI"); setCaptionsOpen(false); return; }
+      if (engine === "download") {
+        if (!confirm("Captions run on this computer with a speech model (148 MB, downloaded once from Hugging Face). Download it now?")) { setCaptionsOpen(false); return; }
+        await send({ type: "downloadModel" });
+      }
+      setBusy({ label: engine === "openai" ? "Transcribing with OpenAI" : "Transcribing on this computer", value: 0.5 });
+      setCues((await send<Cue[]>({ type: "captions", path: meta!.path })) ?? []);
+    } catch (e) { setNote(String(e)); setCaptionsOpen(false); }
+    setBusy(null);
+  };
+  const saveCues = (next: Cue[]) => { setCues(next); void send({ type: "saveCaptions", path: meta!.path, cues: next }); };
+  const cutFillers = () => {
+    const f = (cues ?? []).filter((c) => FILLER.test(c.text)).map((c) => [c.start, c.end] as [number, number]);
+    if (!f.length) { setNote("No filler-only lines found"); return; }
+    commit(without(keepRef.current, f));
+    setNote(`Cut ${f.length} filler line${f.length > 1 ? "s" : ""}`);
+  };
 
+  const shareTo = useRef<string | null>(null);
   const exportAs = async (action: Action, target: Target) => {
     if (busy || !meta) return;
     lastAction.current = action;
@@ -255,7 +326,8 @@ export function VideoApp() {
       if (!saveTo) { setBusy(null); return; }
     }
     const overlays = (await draw.current?.bake()) ?? [];
-    post({ type: "export", action, target, path: meta.path, saveTo, segments: keepRef.current.map((g) => [g.s, g.e]), edited, sound, overlays });
+    post({ type: "export", action, target, path: meta.path, saveTo, segments: keepRef.current.map((g) => [g.s, g.e, g.v ?? 1]), edited, sound, overlays,
+      studio: fx, burnCaptions: burn && !!cues?.length, shareTo: shareTo.current });
   };
   const exportRef = useRef(exportAs);
   exportRef.current = exportAs;
@@ -399,13 +471,20 @@ export function VideoApp() {
             </label>
           )}
           <span className="sep" />
-          <button className="primary" disabled={!!busy} onClick={() => exportAs("copy", "Full")} title="Copy the video as a file — pastes as an attachment (Ctrl+C)">Copy</button>
-          <button disabled={!!busy} onClick={() => exportAs("copy", "Chat")} title="Copy a smaller copy, under 94 MB, ≤ 1920 px (Ctrl+Shift+C)">Copy for chat</button>
-          <button disabled={!!busy} onClick={() => exportAs("copy", "Gif")} title="Copy as an animated GIF (12 fps, ≤ 960 px)">Copy GIF</button>
-          <span className="sep" />
-          <button disabled={!!busy} onClick={() => exportAs("save", "Full")} title="Save next to the original as “… edited.mp4” (Ctrl+S)">Save</button>
-          <button disabled={!!busy} onClick={() => exportAs("saveAs", "Full")} title="Save as… (Ctrl+Shift+S)">Save as…</button>
-          <button disabled={!!busy} onClick={() => exportAs("copyPath", "Full")} title="Save, then copy the file's path">Copy path</button>
+          <Drop label="Copy" primary disabled={!!busy} onMain={() => exportAs("copy", "Full")} items={[
+            ["Copy for chat (≤ 94 MB)", () => exportAs("copy", "Chat")],
+            ["Copy as GIF", () => exportAs("copy", "Gif")],
+            ["Copy as animated WebP", () => exportAs("copy", "Webp")],
+            ["Copy path (saves first)", () => exportAs("copyPath", "Full")],
+          ]} />
+          <Drop label="Save" disabled={!!busy} onMain={() => exportAs("save", "Full")} items={[
+            ["Save as…", () => exportAs("saveAs", "Full")],
+            ...(meta.social ?? []).map((x) => [`Save for ${x.name} (${x.width}×${x.height})`, () => exportAs("save", `Social:${x.width}x${x.height}`)] as [string, () => void]),
+          ]} />
+          <Drop label="Share" disabled={!!busy} items={targets.length ? targets.map((t) => [
+            t === "obsidian" ? "Send to Obsidian" : `Upload to ${({ onedrive: "OneDrive", immich: "Immich", mega: "MEGA" } as Record<string, string>)[t]} and copy link`,
+            () => { shareTo.current = t; void exportAs("share", "Full").finally(() => { shareTo.current = null; }); },
+          ] as [string, () => void]) : [["Set up sharing in Settings…", () => void call("open_settings_at", { section: "Sharing" })]]} />
         </div>
       </header>
 
@@ -440,6 +519,20 @@ export function VideoApp() {
         <button onClick={undo} disabled={!past.current.length} title="Undo (Ctrl+Z)">Undo</button>
         <button onClick={redo} disabled={!future.current.length} title="Redo (Ctrl+Y)">Redo</button>
         {edited && <button onClick={reset} title="Back to the whole recording">Reset</button>}
+        <span className="sep" />
+        <select className="speed" value={sel !== null ? String(keep[sel]?.v ?? 1) : ""} onChange={(e) => setSpeed(Number(e.target.value))} title="Speed of the selected part">
+          {sel === null && <option value="">Speed…</option>}
+          {[0.5, 1, 1.5, 2, 4, 8].map((v) => <option key={v} value={v}>{v}×</option>)}
+        </select>
+        {meta.hasAudio && <button onClick={cutSilences} title="Cut every quiet stretch longer than about a second">Cut silences</button>}
+        {meta.hasAudio && <button className={captionsOpen ? "on" : ""} onClick={() => (captionsOpen ? setCaptionsOpen(false) : makeCaptions())} title="Captions from the speech; edit them, cut lines out, burn them in">Captions</button>}
+        {meta.cursor && (
+          <span className="fx" title="Effects from the recorded mouse and keys, applied when you copy or save">
+            <label><input type="checkbox" checked={fx.zoom} onChange={(e) => setFx({ ...fx, zoom: e.target.checked })} />Zoom on clicks</label>
+            <label><input type="checkbox" checked={fx.clicks} onChange={(e) => setFx({ ...fx, clicks: e.target.checked })} />Click rings</label>
+            {(meta.cursor.keys?.length ?? 0) > 0 && <label><input type="checkbox" checked={fx.keys} onChange={(e) => setFx({ ...fx, keys: e.target.checked })} />Keys</label>}
+          </span>
+        )}
         <span className="grow" />
         <span className="kept">{edited ? <>Keeps <b>{fmt(total(keep))}</b> of {fmt(dur)} · {keep.length} part{keep.length > 1 ? "s" : ""}</> : "Whole recording"}</span>
         <span className="sep" />
@@ -461,6 +554,7 @@ export function VideoApp() {
             {gaps.map((g, i) => <div key={`g${i}`} className="gap" style={{ left: g.s * pps, width: (g.e - g.s) * pps }} />)}
             {keep.map((g, i) => (
               <div key={`k${i}`} className={"seg" + (sel === i ? " sel" : "")} style={{ left: g.s * pps, width: (g.e - g.s) * pps }}>
+                {(g.v ?? 1) !== 1 && <span className="speedtag">{g.v}×</span>}
                 <div className="edge l" data-edge="s" data-i={i} title="Drag to trim" />
                 <div className="edge r" data-edge="e" data-i={i} title="Drag to trim" />
               </div>
@@ -478,6 +572,28 @@ export function VideoApp() {
           <div className="playhead" style={{ left: t * pps }}><i /></div>
         </div>
       </div>
+
+      {captionsOpen && cues && (
+        <aside className="captions">
+          <header>
+            <b>Captions</b>
+            <label><input type="checkbox" checked={burn} onChange={(e) => setBurn(e.target.checked)} />Burn into the video</label>
+            <button onClick={cutFillers} title="Cut lines that are only “um”, “uh”…">Cut fillers</button>
+            <button onClick={() => setCaptionsOpen(false)} title="Close">×</button>
+          </header>
+          <div className="cues">
+            {cues.length === 0 && <p>No speech found.</p>}
+            {cues.map((c, i) => (
+              <div key={i} className={"cue" + (t >= c.start && t < c.end ? " now" : "") + (keep.some((g) => g.s < c.end && g.e > c.start) ? "" : " cut")}>
+                <button className="at" onClick={() => seek(c.start)}>{fmt(c.start, false)}</button>
+                <input value={c.text} onChange={(e) => setCues(cues.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)))} onBlur={() => saveCues(cues)} />
+                <button title="Cut this stretch out of the video" onClick={() => commit(without(keepRef.current, [[c.start, c.end]]))}>✂</button>
+              </div>
+            ))}
+          </div>
+          <footer className="hint">Saved as {meta.name}.srt next to the video. Edit a line to fix it; ✂ cuts that part of the video.</footer>
+        </aside>
+      )}
 
       <footer>
         {busy ? (

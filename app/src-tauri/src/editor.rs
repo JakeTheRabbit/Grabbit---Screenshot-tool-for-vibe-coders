@@ -140,6 +140,8 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
                 None => reply(w, json!({ "type": "recent", "recent": recent() })),
             }
         }
+        // The video editor sends "export" too; its messages carry the kept parts.
+        "export" if msg.get("segments").is_some() => return crate::video::handle(app, w, "export", &msg, &s).await,
         "export" => {
             let img = decode_data_url(msg["dataURL"].as_str().unwrap_or(""))?;
             let name = msg["name"].as_str().unwrap_or("Grabbit").to_string();
@@ -169,6 +171,18 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
                 "pin" => actions::pin(app, &out)?,
                 other => anyhow::bail!("unknown export action {other}"),
             }
+        }
+        // Share: the rendered picture as a file (branding, watermark and metadata applied), returning its path.
+        "exportFile" => {
+            let img = decode_data_url(msg["dataURL"].as_str().unwrap_or(""))?;
+            let id = mark::capture_id();
+            let out = mark::apply(&s, &img, id);
+            let dir = std::env::temp_dir().join("Grabbit").join("share");
+            std::fs::create_dir_all(&dir)?;
+            let p = export::free(&dir, msg["name"].as_str().unwrap_or("Grabbit"), "png");
+            std::fs::write(&p, export::png_bytes(&out, export::xmp(&s).as_deref())?)?;
+            history::add(app, Some(&p), &img, id);
+            return Ok(json!(p));
         }
         "saveProject" => {
             use tauri_plugin_dialog::DialogExt;
@@ -201,6 +215,9 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
     }
     Ok(Value::Null)
 }
+
+#[tauri::command]
+pub fn open_settings_at(app: AppHandle, section: String) { open_settings(&app, Some(&section)); }
 
 #[tauri::command]
 pub fn get_settings(app: AppHandle) -> Settings { state(&app).settings.lock().unwrap().clone() }

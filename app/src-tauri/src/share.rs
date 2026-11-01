@@ -43,12 +43,6 @@ pub fn share(app: &AppHandle, path: &Path, target: Option<&str>) -> Result<Strin
     Ok(link)
 }
 
-pub fn share_path(app: &AppHandle, p: &Path) -> Result<()> {
-    let link = share(app, p, None)?;
-    actions::notify(app, &format!("Link copied: {link}"));
-    Ok(())
-}
-
 // ---- OneDrive ----
 
 fn client_id(s: &Settings) -> &str { if s.share.onedrive_client_id.is_empty() { ONEDRIVE_CLIENT_ID } else { &s.share.onedrive_client_id } }

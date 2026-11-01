@@ -181,6 +181,10 @@ pub enum Target { Full, Chat, Gif, Webp, Social(u32, u32) }
 
 pub struct Overlay { pub png: PathBuf, pub from: f64, pub to: f64 }
 
+/// Effects applied on the source timeline, before cutting: studio effects and burnt-in captions.
+#[derive(Default)]
+pub struct Extras { pub studio: Option<(crate::studio::Studio, crate::record::CursorTrack)>, pub subs: Option<PathBuf> }
+
 fn f(d: f64) -> String { format!("{:.3}", d).trim_end_matches('0').trim_end_matches('.').to_string() }
 
 /// atempo only takes 0.5–2 per stage, so bigger changes chain several.
@@ -194,19 +198,28 @@ fn atempo(speed: f64) -> String {
 }
 
 /// Build the ffmpeg arguments (testable without running anything).
-pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], target: &Target, output: &Path, sound: Sound, overlays: &[Overlay], logo: Option<&Path>) -> Vec<String> {
+pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], target: &Target, output: &Path, sound: Sound, overlays: &[Overlay], logo: Option<&Path>, extras: &Extras) -> Vec<String> {
     let tr = if matches!(target, Target::Gif | Target::Webp) { vec![] } else { tracks(info, sound) };
     let audio = !tr.is_empty();
     let total: f64 = keep.iter().map(|k| (k.end - k.start) / k.speed).sum();
     let mut g = String::new();
     let mut src = "[0:v]".to_string();
+    // Inputs: 0 video, then drawings, then the click ring, then the logo.
+    let ring_idx = 1 + overlays.len();
+    let has_ring = extras.studio.as_ref().map(|(st, _)| st.clicks).unwrap_or(false);
+    let logo_idx = ring_idx + has_ring as usize;
     for (i, o) in overlays.iter().enumerate() {
         g += &format!("{src}[{}:v]overlay=0:0:enable='between(t,{},{})'[ov{i}];", i + 1, f(o.from), f(o.to));
         src = format!("[ov{i}]");
     }
-    if !overlays.is_empty() { g += &format!("{src}split={}{};", keep.len(), (0..keep.len()).map(|i| format!("[src{i}]")).collect::<String>()); }
+    if let Some((st, track)) = &extras.studio {
+        if st.any() { g += &crate::studio::filters(st, track, info.width, info.height, info.fps, &src, "[stu]", has_ring.then_some(ring_idx)); src = "[stu]".into(); }
+    }
+    if let Some(srt) = &extras.subs { g += &format!("{src}{}[sub];", crate::studio::subtitles_filter(srt)); src = "[sub]".into(); }
+    let pre = src != "[0:v]";
+    if pre { g += &format!("{src}split={}{};", keep.len(), (0..keep.len()).map(|i| format!("[src{i}]")).collect::<String>()); }
     for (i, k) in keep.iter().enumerate() {
-        let vin = if overlays.is_empty() { "[0:v]".to_string() } else { format!("[src{i}]") };
+        let vin = if !pre { "[0:v]".to_string() } else { format!("[src{i}]") };
         g += &format!("{vin}trim=start={}:end={},setpts=(PTS-STARTPTS)/{}[v{i}];", f(k.start), f(k.end), f(k.speed));
         for j in &tr {
             let tag = if tr.len() > 1 { format!("_{j}") } else { String::new() };
@@ -221,7 +234,7 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
         g += "[v0]null[vc];";
         if audio { g += "[a0]anull[ac];"; }
     }
-    let n_in = 1 + overlays.len();
+    let n_in = logo_idx;
     let mut vc = "[vc]".to_string();
     if logo.is_some() {
         let b = &s.branding;
@@ -258,6 +271,7 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     let mut a: Vec<String> = ["-hide_banner", "-v", "error", "-y", "-i"].map(String::from).to_vec();
     a.push(input.to_string_lossy().into());
     for o in overlays { a.push("-i".into()); a.push(o.png.to_string_lossy().into()); }
+    if has_ring { a.extend(["-loop".into(), "1".into(), "-i".into(), crate::studio::ring_png().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default()]); }
     if let Some(l) = logo { a.push("-i".into()); a.push(l.to_string_lossy().into()); }
     a.extend(["-filter_complex".into(), g, "-map".into(), "[vo]".into()]);
     if audio { a.extend(["-map".into(), "[ac]".into()]); }
@@ -271,11 +285,11 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     a
 }
 
-pub fn render(s: &Settings, input: &Path, keep: &[Part], target: &Target, output: &Path, sound: Sound, overlays: &[Overlay], key: Option<&str>, mut progress: impl FnMut(f64)) -> Result<()> {
+pub fn render(s: &Settings, input: &Path, keep: &[Part], target: &Target, output: &Path, sound: Sound, overlays: &[Overlay], extras: &Extras, key: Option<&str>, mut progress: impl FnMut(f64)) -> Result<()> {
     let info = probe(s, input)?;
     let total: f64 = keep.iter().map(|k| (k.end - k.start) / k.speed).sum();
     let logo = (s.branding.on_videos && Path::new(&s.branding.logo_path).exists()).then(|| PathBuf::from(&s.branding.logo_path));
-    let args = render_args(s, input, &info, keep, target, output, sound, overlays, logo.as_deref());
+    let args = render_args(s, input, &info, keep, target, output, sound, overlays, logo.as_deref(), extras);
     log::info!("render: {}", args.join(" "));
     let r = run(&ffmpeg(s)?, &args, key, |l| {
         if let Some(us) = l.strip_prefix("out_time_us=").and_then(|v| v.parse::<f64>().ok()) { if total > 0.0 { progress((us / 1e6 / total).clamp(0.0, 1.0)); } }
@@ -298,6 +312,7 @@ pub fn load_message(s: &Settings, path: &Path) -> Result<Value> {
         "hasSystem": !tracks(&info, Sound::System).is_empty(), "hasMic": !tracks(&info, Sound::Mic).is_empty(),
         "social": SOCIAL.iter().map(|(n, w, h)| json!({ "name": n, "width": w, "height": h })).collect::<Vec<_>>(),
         "cursor": crate::record::cursor_track(path),
+        "hasCaptions": path.with_extension("srt").exists(),
     }))
 }
 
@@ -305,6 +320,30 @@ pub fn load_message(s: &Settings, path: &Path) -> Result<Value> {
 pub async fn handle(app: &AppHandle, w: &WebviewWindow, t: &str, m: &Value, s: &Settings) -> Result<Value> {
     match t {
         "cancel" => { if let Some(pid) = RUNNING.lock().unwrap().get(w.label()).copied() { kill(pid); } }
+        "silences" => {
+            let path = PathBuf::from(m["path"].as_str().unwrap_or(""));
+            let (s, min) = (s.clone(), m["min"].as_f64().unwrap_or(0.8));
+            let r = tauri::async_runtime::spawn_blocking(move || crate::studio::silences(&s, &path, min)).await??;
+            return Ok(json!(r));
+        }
+        "captionEngine" => return Ok(json!(crate::studio::caption_engine(s))),
+        "downloadModel" => {
+            let w2 = w.clone();
+            tauri::async_runtime::spawn_blocking(move || crate::studio::download_model(|p| { let _ = w2.emit_to(w2.label(), "host", json!({ "type": "progress", "value": p, "label": "Downloading the speech model" })); })).await??;
+            return Ok(Value::Null);
+        }
+        "captions" => {
+            let path = PathBuf::from(m["path"].as_str().unwrap_or(""));
+            let s = s.clone();
+            let r = tauri::async_runtime::spawn_blocking(move || crate::studio::transcribe(&s, &path)).await??;
+            return Ok(json!(r));
+        }
+        "saveCaptions" => {
+            let path = PathBuf::from(m["path"].as_str().unwrap_or(""));
+            let cues: Vec<crate::studio::Cue> = serde_json::from_value(m["cues"].clone())?;
+            crate::studio::write_srt(&path.with_extension("srt"), &cues)?;
+            return Ok(json!(path.with_extension("srt")));
+        }
         "export" => {
             let (app, w, m, s) = (app.clone(), w.clone(), m.clone(), s.clone());
             tauri::async_runtime::spawn_blocking(move || {
@@ -335,9 +374,14 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     };
     let sound = match m["sound"].as_str().unwrap_or("All").to_ascii_lowercase().as_str() { "system" => Sound::System, "mic" => Sound::Mic, "none" => Sound::None, _ => Sound::All };
     let drawings = m["overlays"].as_array().cloned().unwrap_or_default();
+    let studio: crate::studio::Studio = serde_json::from_value(m["studio"].clone()).unwrap_or_default();
+    let extras = Extras {
+        studio: if studio.any() { crate::record::cursor_track(&path).map(|t| (studio, t)) } else { None },
+        subs: if m["burnCaptions"].as_bool().unwrap_or(false) { Some(path.with_extension("srt")).filter(|p| p.exists()) } else { None },
+    };
     let speed_changed = keep.iter().any(|p| (p.speed - 1.0).abs() > 1e-3);
     let edited = m["edited"].as_bool().unwrap_or(false) || !drawings.is_empty() || speed_changed || tracks(&info, sound) != tracks(&info, Sound::All) || info.tracks.len() > 1
-        || s.branding.on_videos || s.metadata.strip;
+        || s.branding.on_videos || s.metadata.strip || extras.studio.is_some() || extras.subs.is_some();
     let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
     let ext = match target { Target::Gif => "gif", Target::Webp => "webp", _ => "mp4" };
@@ -346,7 +390,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     let output = match action {
         "saveAs" => PathBuf::from(m["saveTo"].as_str().context("no file chosen")?),
         _ if target == Target::Full && !edited => path.clone(),
-        "copy" => { let t = std::env::temp_dir().join("Grabbit"); std::fs::create_dir_all(&t)?; t.join(format!("{name}{suffix}.{ext}")) }
+        "copy" | "share" => { let t = std::env::temp_dir().join("Grabbit"); std::fs::create_dir_all(&t)?; t.join(format!("{name}{suffix}.{ext}")) }
         _ => export::free(&dir, &format!("{name}{suffix}"), ext),
     };
     let tmp = std::env::temp_dir().join("Grabbit");
@@ -362,7 +406,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
         if output != path {
             let label = match target { Target::Chat => "Making a chat-sized copy", Target::Gif => "Making a GIF", Target::Webp => "Making an animated WebP", Target::Social(..) => "Making the social-size copy", _ => "Rendering" };
             let mut last = -1.0;
-            render(s, &path, &keep, &target, &output, sound, &overlays, Some(w.label()), |v| {
+            render(s, &path, &keep, &target, &output, sound, &overlays, &extras, Some(w.label()), |v| {
                 if v - last >= 0.01 { last = v; let _ = w.emit_to(w.label(), "host", json!({ "type": "progress", "value": v, "label": label })); }
             })?;
         }
@@ -374,7 +418,10 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
         };
         if target == Target::Chat && std::fs::metadata(&output)?.len() > CHAT_MAX_BYTES { note += " — still over 94 MB, cut it shorter for Signal"; }
         if action == "closeSave" { let _ = w.destroy(); actions::notify(app, &format!("Edits saved: {}", output.display())); }
-        if action == "share" { crate::share::share_path(app, &output)?; }
+        if action == "share" {
+            let link = crate::share::share(app, &output, m["shareTo"].as_str())?;
+            note = if link.starts_with("http") { format!("Link copied: {link}") } else { link };
+        }
         Ok(note)
     })();
     for o in overlays { let _ = std::fs::remove_file(o.png); }
@@ -405,11 +452,31 @@ mod tests {
         assert_eq!(atempo(3.0), "atempo=2,atempo=1.5");
     }
 
+    /// Real render with studio effects: GRABBIT_VIDEO_TEST=<recording.mp4 with .cursor.json> cargo test studio_render -- --ignored
+    #[test]
+    #[ignore]
+    fn studio_render() {
+        let input = PathBuf::from(std::env::var("GRABBIT_VIDEO_TEST").expect("set GRABBIT_VIDEO_TEST"));
+        let s = Settings::default();
+        let info = probe(&s, &input).unwrap();
+        let mut track = crate::record::cursor_track(&input).expect("cursor track");
+        // Make sure there are clicks and keys to draw.
+        track.moves.push((1.0, 200, 150, 1)); track.moves.push((1.1, 200, 150, 0));
+        track.keys.push((2.0, "LControl".into())); track.keys.push((2.1, "S".into()));
+        let extras = Extras { studio: Some((crate::studio::Studio { zoom: true, clicks: true, keys: true }, track)), subs: None };
+        let out = std::env::temp_dir().join("grabbit-studio-test.mp4");
+        let keep = [Part { start: 0.0, end: info.duration.min(4.0), speed: 1.0 }];
+        render(&s, &input, &keep, &Target::Full, &out, Sound::All, &[], &extras, None, |_| {}).unwrap();
+        let o = probe(&s, &out).unwrap();
+        assert_eq!((o.width, o.height), (info.width, info.height));
+        assert!(o.duration > 3.0);
+    }
+
     #[test]
     fn args_cut_speed_social() {
         let s = Settings::default();
         let keep = [Part { start: 0.0, end: 2.0, speed: 1.0 }, Part { start: 4.0, end: 8.0, speed: 2.0 }];
-        let a = render_args(&s, Path::new("in.mp4"), &info(&[SYSTEM_TRACK, MIC_TRACK]), &keep, &Target::Social(1080, 1920), Path::new("out.mp4"), Sound::All, &[], None).join(" ");
+        let a = render_args(&s, Path::new("in.mp4"), &info(&[SYSTEM_TRACK, MIC_TRACK]), &keep, &Target::Social(1080, 1920), Path::new("out.mp4"), Sound::All, &[], None, &Extras::default()).join(" ");
         assert!(a.contains("setpts=(PTS-STARTPTS)/2"));
         assert!(a.contains("atempo=2"));
         assert!(a.contains("concat=n=2:v=1:a=1"));

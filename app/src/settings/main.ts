@@ -25,7 +25,7 @@ type Field =
   | { kind: "button"; label: string; run: (b: HTMLButtonElement) => void | Promise<void> }
   | { kind: "custom"; render: () => HTMLElement };
 
-const get = (k: string) => k.split(".").reduce((o, p) => o?.[p], s);
+const get = (k: string): any => k.split(".").reduce((o: any, p) => o?.[p], s);
 function set(k: string, v: unknown) {
   const parts = k.split(".");
   let o = s;

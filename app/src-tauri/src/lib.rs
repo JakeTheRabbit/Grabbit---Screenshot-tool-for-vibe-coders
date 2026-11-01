@@ -14,6 +14,7 @@ mod picker;
 mod record;
 mod settings;
 mod share;
+mod studio;
 mod video;
 
 use std::{collections::HashMap, sync::Mutex};
@@ -115,6 +116,7 @@ pub fn run() {
             editor::editor_msg,
             editor::get_settings,
             editor::set_settings,
+            editor::open_settings_at,
             record::rec_status,
             record::rec_control,
             actions::copy_text,
