@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CaptureUpdateAction, Excalidraw, FONT_FAMILY, convertToExcalidrawElements, exportToBlob,
-  getSceneVersion, restoreElements, serializeAsJSON,
+  getCommonBounds, getSceneVersion, restoreElements, serializeAsJSON,
 } from "@excalidraw/excalidraw";
-import type { AppState, BinaryFiles, ExcalidrawImperativeAPI, BinaryFileData, DataURL } from "@excalidraw/excalidraw/types";
+import type { AppState, BinaryFiles, ExcalidrawImperativeAPI, BinaryFileData, DataURL, NormalizedZoomValue } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement, FileId } from "@excalidraw/excalidraw/element/types";
 import { getImage, onHost, post, type ExportAction, type RecentItem, type Size } from "./host";
 import { EMOJI, ICONS, iconDataURL } from "./stickers";
@@ -112,7 +112,27 @@ export function App() {
       captureUpdate: CaptureUpdateAction.NEVER,
     });
     api.history.clear();   // undo history is per visit; switching tabs starts it fresh
-    if (!d.view) requestAnimationFrame(() => api.scrollToContent(undefined, { fitToViewport: true, viewportZoomFactor: 0.92, animate: false }));
+    if (!d.view) requestAnimationFrame(() => {
+      // Fit into the area right of Excalidraw's style panel (12.5rem, shown whenever a tool is picked) and below its
+      // toolbar, and left of our own side panel if one is open, so picking a tool never covers the picture. Narrow
+      // windows put Excalidraw's panel at the bottom instead.
+      const s = api.getAppState();
+      const els = api.getSceneElements();
+      if (!els.length) return;
+      const [x1, y1, x2, y2] = getCommonBounds(els);
+      const left = s.width >= 730 ? 232 : 24, top = 76, pad = 24;
+      const side = document.querySelector(".panel")?.getBoundingClientRect().left;
+      const w = (side ? side - s.offsetLeft : s.width) - left - pad, h = s.height - top - pad;
+      const zoom = Math.min(Math.max(Math.min(w / (x2 - x1), h / (y2 - y1)), 0.1), 30);
+      api.updateScene({
+        appState: {
+          zoom: { value: zoom as NormalizedZoomValue },
+          scrollX: (left + (w - (x2 - x1) * zoom) / 2) / zoom - x1,
+          scrollY: (top + (h - (y2 - y1) * zoom) / 2) / zoom - y1,
+        },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    });
     setActiveId(d.id);
     setName(d.name);
     document.title = `Grabbit — ${d.name}`;
