@@ -12,10 +12,14 @@ mod mark;
 mod ocr;
 mod picker;
 mod record;
+mod replay;
 mod settings;
+mod scroll;
 mod selftest;
 mod share;
+mod steps;
 mod studio;
+mod timelapse;
 mod video;
 
 use std::{collections::HashMap, sync::Mutex};
@@ -58,6 +62,9 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
         &item("capture", "Capture")?,
         &item("capture_screen", "Capture whole screen")?,
         &item("record", "Record screen")?,
+        &item("replay", "Save replay (last minute)")?,
+        &item("steps", "Record steps (how-to)")?,
+        &item("timelapse", "Timed captures / timelapse")?,
         &PredefinedMenuItem::separator(app)?,
         &item("open", "Open picture or video…")?,
         &item("folder", "Open Grabbit folder")?,
@@ -76,6 +83,9 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
             "capture" => picker::start(app, picker::Mode::Pick),
             "capture_screen" => picker::start(app, picker::Mode::Screen),
             "record" => picker::start(app, picker::Mode::Record),
+            "replay" => replay::save_now(app),
+            "steps" => steps::toggle(app),
+            "timelapse" => timelapse::toggle(app),
             "open" => editor::open_dialog(app),
             "folder" => { let _ = tauri_plugin_opener::open_path(&state(app).settings.lock().unwrap().save_folder, None::<&str>); }
             "settings" => editor::open_settings(app, None),
@@ -105,6 +115,7 @@ pub fn run() {
         .plugin(tauri_plugin_log::Builder::new().level(log::LevelFilter::Info).level_for("xcap", log::LevelFilter::Off).max_file_size(2_000_000)
             .targets([tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: Some("grabbit".into()) }),
                       tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout)]).build())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--background"])))
@@ -115,6 +126,7 @@ pub fn run() {
             std::thread::spawn(move || responder.respond(serve(&app, &path)));
         })
         .invoke_handler(tauri::generate_handler![
+            actions::dev_window,
             picker::picker_info,
             picker::picker_shown,
             picker::picked,
@@ -126,6 +138,7 @@ pub fn run() {
             record::rec_status,
             record::rec_control,
             actions::copy_text,
+            scroll::scroll_control,
             actions::copy_file_image,
             actions::picker_delay,
             actions::quick_action,
@@ -143,10 +156,22 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            // grabbit://capture, grabbit://record, grabbit://open/<path>… from scripts, launchers and shortcuts.
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                #[cfg(any(windows, target_os = "linux"))]
+                let _ = app.deep_link().register_all();
+                let h = app.handle().clone();
+                app.deep_link().on_open_url(move |e| {
+                    let args: Vec<String> = std::iter::once(String::new()).chain(e.urls().iter().map(|u| u.to_string())).collect();
+                    editor::handle_args(&h, &args);
+                });
+            }
             tray(app.handle())?;
             hotkey::register_all(app.handle());
             let h = app.handle().clone();
             std::thread::spawn(move || picker::warm(&h));
+            replay::sync(app.handle());
             let args: Vec<String> = std::env::args().collect();
             editor::handle_args(app.handle(), &args);
             Ok(())

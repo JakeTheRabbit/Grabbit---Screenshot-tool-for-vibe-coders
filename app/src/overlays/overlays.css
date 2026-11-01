@@ -32,3 +32,5 @@ body.pin img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .time { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 44px; }
 .stop { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #ff3b30; color: #fff; font-weight: 600; }
 .stop svg { width: 12px; height: 12px; fill: currentColor; }
+.status { flex: 1; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stop svg { stroke: currentColor; fill: none; }

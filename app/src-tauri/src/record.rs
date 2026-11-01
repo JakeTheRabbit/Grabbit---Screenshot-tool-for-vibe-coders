@@ -134,31 +134,60 @@ fn wayland_only() -> bool {
     cfg!(target_os = "linux") && std::env::var("XDG_SESSION_TYPE").map(|t| t == "wayland").unwrap_or(false) && std::env::var("GRABBIT_FORCE_X11").is_err()
 }
 
-/// ffmpeg arguments for one segment's picture (and, on Linux, system sound) into `out`.
+/// The first camera ffmpeg can open on this OS, as (input format, input name).
+fn webcam(s: &Settings) -> Option<(&'static str, String)> {
+    static CAM: std::sync::OnceLock<Option<(&'static str, String)>> = std::sync::OnceLock::new();
+    CAM.get_or_init(|| {
+        // Tests (and CI, which has no camera) use a generated picture instead of a real camera.
+        if std::env::var("GRABBIT_FAKE_CAM").is_ok() { return Some(("lavfi", "testsrc2=s=640x480:r=30".to_string())); }
+        if cfg!(target_os = "linux") {
+            return Path::new("/dev/video0").exists().then(|| ("v4l2", "/dev/video0".to_string()));
+        }
+        let fmt = if cfg!(windows) { "dshow" } else { "avfoundation" };
+        let args: Vec<String> = ["-hide_banner", "-list_devices", "true", "-f", fmt, "-i", if cfg!(windows) { "dummy" } else { "" }].map(String::from).to_vec();
+        let r = video::run(&video::ffmpeg(s).ok()?, &args, None, |_| {}).ok()?;
+        let mut video_section = !cfg!(target_os = "macos");
+        for l in r.err.lines() {
+            if cfg!(target_os = "macos") {
+                if l.contains("AVFoundation video devices") { video_section = true; continue; }
+                if l.contains("AVFoundation audio devices") { break; }
+                // "[AVFoundation indev @ 0x…] [0] FaceTime HD Camera" — skip "Capture screen N".
+                if video_section && !l.contains("Capture screen") {
+                    if let Some(name) = l.rsplit("] ").next().filter(|_| l.matches('[').count() >= 2) { return Some((fmt, name.trim().to_string())); }
+                }
+            } else if l.contains("(video)") {
+                if let Some(name) = l.split('"').nth(1) { return Some((fmt, format!("video={name}"))); }
+            }
+        }
+        None
+    }).clone()
+}
+
+/// ffmpeg arguments for one segment's picture (and, on Linux, system sound) into `out`. The webcam, when on, sits in
+/// a circle in the bottom-right corner.
 fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<String> {
     let fps = s.record_fps.to_string();
     let q = s.record_quality;
     let mut v: Vec<String> = vec!["-hide_banner".into(), "-y".into()];
     let enc = video::hw_encoder(s);
+    let cam = if s.record_webcam { webcam(s) } else { None };
+    // Filters on the screen picture, before the optional webcam overlay.
+    let mut chain: Vec<String> = Vec::new();
+    // NVENC can take Desktop Duplication's GPU frames directly; everything else needs them in memory.
+    let gpu_direct = cfg!(windows) && hw && enc == "h264_nvenc" && cam.is_none();
+
     #[cfg(windows)]
     {
         if hw {
             v.extend(["-f".into(), "lavfi".into(), "-i".into(), format!(
                 "ddagrab=output_idx={}:framerate={fps}:offset_x={}:offset_y={}:video_size={}x{}:draw_mouse={}",
                 scr.index, a.x - scr.x, a.y - scr.y, a.width, a.height, s.record_cursor as u8)]);
-            if enc == "h264_nvenc" {
-                v.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq", "-rc", "vbr"].map(String::from));
-                v.extend(["-cq".into(), q.to_string(), "-b:v".into(), "0".into()]);
-            } else {
-                v.extend(["-vf".into(), "hwdownload,format=bgra,format=yuv420p".into()]);
-                v.extend(video::h264(s, q, 0));
-            }
+            if !gpu_direct { chain.push("hwdownload".into()); chain.push("format=bgra".into()); }
         } else {
             v.extend(["-f", "gdigrab", "-framerate"].map(String::from));
             v.push(fps.clone());
             v.extend(["-offset_x".into(), a.x.to_string(), "-offset_y".into(), a.y.to_string(), "-video_size".into(), format!("{}x{}", a.width, a.height),
-                "-draw_mouse".into(), (s.record_cursor as u8).to_string(), "-i".into(), "desktop".into(), "-pix_fmt".into(), "yuv420p".into()]);
-            v.extend(video::h264(s, q, 0));
+                "-draw_mouse".into(), (s.record_cursor as u8).to_string(), "-i".into(), "desktop".into()]);
         }
     }
     #[cfg(target_os = "macos")]
@@ -167,8 +196,7 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<
         v.extend(["-f", "avfoundation", "-capture_cursor"].map(String::from));
         v.push((s.record_cursor as u8).to_string());
         v.extend(["-framerate".into(), fps.clone(), "-i".into(), format!("Capture screen {}:none", scr.index)]);
-        v.extend(["-vf".into(), format!("crop={}:{}:{}:{},format=yuv420p", a.width, a.height, a.x - scr.x, a.y - scr.y)]);
-        v.extend(video::h264(s, q, 0));
+        chain.push(format!("crop={}:{}:{}:{}", a.width, a.height, a.x - scr.x, a.y - scr.y));
     }
     #[cfg(target_os = "linux")]
     {
@@ -177,13 +205,48 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<
         v.extend(["-f", "x11grab", "-framerate"].map(String::from));
         v.push(fps.clone());
         v.extend(["-draw_mouse".into(), (s.record_cursor as u8).to_string(), "-video_size".into(), format!("{}x{}", a.width, a.height), "-i".into(), format!("{display}+{},{}", a.x, a.y)]);
-        let sys = s.record_system_audio && pulse_ok();
-        if sys { v.extend(["-f", "pulse", "-i", "@DEFAULT_MONITOR@"].map(String::from)); }
-        v.extend(["-pix_fmt".into(), "yuv420p".into()]);
-        v.extend(video::h264(s, q, 0));
-        if sys { v.extend(["-c:a", "flac", "-metadata:s:a:0", "title=System sound"].map(String::from)); }
     }
-    let _ = enc;
+    let mut next_input = 1;
+    let cam_idx = cam.as_ref().map(|(fmt, name)| {
+        v.extend(["-f".into(), fmt.to_string()]);
+        if *fmt == "avfoundation" { v.extend(["-framerate".into(), "30".into()]); }
+        v.extend(["-i".into(), name.clone()]);
+        next_input += 1;
+        next_input - 1
+    });
+    #[cfg(target_os = "linux")]
+    let sys_idx = (s.record_system_audio && pulse_ok()).then(|| {
+        v.extend(["-f", "pulse", "-i", "@DEFAULT_MONITOR@"].map(String::from));
+        next_input += 1;
+        next_input - 1
+    });
+    #[cfg(not(target_os = "linux"))]
+    let sys_idx: Option<usize> = None;
+
+    if !gpu_direct { chain.push("format=yuv420p".into()); }
+    match cam_idx {
+        Some(ci) => {
+            let d = (a.width.min(a.height) / 4).max(96) & !1;
+            let r = d / 2;
+            let m = (a.width.min(a.height) / 40).max(8);
+            v.extend(["-filter_complex".into(), format!(
+                "[0:v]{}[scr];[{ci}:v]scale={d}:{d}:force_original_aspect_ratio=increase,crop={d}:{d},format=yuva420p,geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)':a='if(lte((X-{r})*(X-{r})+(Y-{r})*(Y-{r}),{r}*{r}),255,0)'[cam];[scr][cam]overlay=W-w-{m}:H-h-{m}:shortest=1,format=yuv420p[v]",
+                chain.join(","))]);
+            v.extend(["-map".into(), "[v]".into()]);
+            if let Some(si) = sys_idx { v.extend(["-map".into(), format!("{si}:a")]); }
+        }
+        None => {
+            if !chain.is_empty() { v.extend(["-vf".into(), chain.join(",")]); }
+            if let Some(si) = sys_idx { v.extend(["-map".into(), "0:v".into(), "-map".into(), format!("{si}:a")]); }
+        }
+    }
+    if gpu_direct {
+        v.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq", "-rc", "vbr"].map(String::from));
+        v.extend(["-cq".into(), q.to_string(), "-b:v".into(), "0".into()]);
+    } else {
+        v.extend(video::h264(s, q, 0));
+    }
+    if sys_idx.is_some() { v.extend(["-c:a", "flac", "-metadata:s:a:0", "title=System sound"].map(String::from)); }
     v.extend(["-g".into(), (s.record_fps * 2).to_string(), out.to_string_lossy().into()]);
     v
 }
@@ -367,6 +430,7 @@ pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
         }
     });
     *SESSION.lock().unwrap() = Some(Session { tx, area, started, paused: None, paused_total: Duration::ZERO });
+    if state(app).settings.lock().unwrap().hide_desktop_icons { desktop_icons(false); }
     show_overlays(app, area);
     Ok(())
 }
@@ -398,6 +462,7 @@ pub fn pause_resume(app: &AppHandle) {
 pub fn stop(app: &AppHandle, keep: bool) {
     let Some(sess) = SESSION.lock().unwrap().take() else { return };
     close_overlays(app);
+    if state(app).settings.lock().unwrap().hide_desktop_icons { desktop_icons(true); }
     let (tx, rx) = mpsc::channel();
     let _ = sess.tx.send(Cmd::Stop(keep, tx));
     let app = app.clone();
@@ -440,6 +505,33 @@ fn show_overlays(app: &AppHandle, a: Area) {
 
 fn close_overlays(app: &AppHandle) {
     for l in ["recframe", "recbar"] { if let Some(w) = app.get_webview_window(l) { let _ = w.destroy(); } }
+}
+
+/// Windows: hide (or show again) the desktop icons, by hiding Explorer's desktop list view. Elsewhere this is a no-op:
+/// macOS can only do it by restarting Finder, and Linux desktops each do it differently.
+pub fn desktop_icons(visible: bool) {
+    #[cfg(windows)]
+    unsafe {
+        use windows::core::w;
+        use windows::Win32::UI::WindowsAndMessaging::{FindWindowExW, FindWindowW, ShowWindow, SW_HIDE, SW_SHOW};
+        let mut view = None;
+        if let Ok(progman) = FindWindowW(w!("Progman"), None) {
+            view = FindWindowExW(Some(progman), None, w!("SHELLDLL_DefView"), None).ok();
+        }
+        if view.is_none() {
+            // With a slideshow wallpaper the view lives under one of the WorkerW windows.
+            let mut after = None;
+            while let Ok(ww) = FindWindowExW(None, after, w!("WorkerW"), None) {
+                if let Ok(v) = FindWindowExW(Some(ww), None, w!("SHELLDLL_DefView"), None) { view = Some(v); break; }
+                after = Some(ww);
+            }
+        }
+        if let Some(v) = view {
+            if let Ok(list) = FindWindowExW(Some(v), None, w!("SysListView32"), None) { let _ = ShowWindow(list, if visible { SW_SHOW } else { SW_HIDE }); }
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = visible;
 }
 
 pub fn exclude_from_capture(w: &tauri::WebviewWindow) {

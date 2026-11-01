@@ -18,6 +18,9 @@
       "assetProtocol": { "enable": true, "scope": ["**"] }
     }
   },
+  "plugins": {
+    "deep-link": { "desktop": { "schemes": ["grabbit"] } }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis", "msi", "dmg", "app", "appimage", "deb", "rpm"],

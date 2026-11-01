@@ -11,6 +11,20 @@ use std::{
     time::Instant,
 };
 
+/// Plays silence on an output device: loopback only delivers while something plays.
+pub fn silence_stream(d: &cpal::Device, cfg: &cpal::SupportedStreamConfig) -> Result<cpal::Stream> {
+    let s = d.build_output_stream_raw(cfg.config(), cfg.sample_format(), |data: &mut Data, _| {
+        match data.sample_format() {
+            SampleFormat::F32 => data.as_slice_mut::<f32>().unwrap_or(&mut []).fill(0.0),
+            SampleFormat::I16 => data.as_slice_mut::<i16>().unwrap_or(&mut []).fill(0),
+            SampleFormat::I32 => data.as_slice_mut::<i32>().unwrap_or(&mut []).fill(0),
+            _ => {}
+        }
+    }, |e| log::warn!("keep-alive: {e}"), None)?;
+    s.play()?;
+    Ok(s)
+}
+
 pub struct Capture {
     _stream: cpal::Stream,
     _keep_alive: Option<cpal::Stream>,
@@ -20,7 +34,7 @@ pub struct Capture {
     pub path: PathBuf,
 }
 
-fn to_i16(data: &Data) -> Vec<i16> {
+pub fn samples_i16(data: &Data) -> Vec<i16> {
     match data.sample_format() {
         SampleFormat::F32 => data.as_slice::<f32>().unwrap_or(&[]).iter().map(|s| (s.clamp(-1.0, 1.0) * 32767.0) as i16).collect(),
         SampleFormat::I16 => data.as_slice::<i16>().unwrap_or(&[]).to_vec(),
@@ -38,7 +52,7 @@ fn start(device: cpal::Device, cfg: cpal::SupportedStreamConfig, path: PathBuf, 
     let (w, st) = (writer.clone(), started.clone());
     let stream = device.build_input_stream_raw(cfg.config(), cfg.sample_format(), move |data: &Data, _| {
         st.lock().unwrap().get_or_insert_with(Instant::now);
-        if let Some(wr) = w.lock().unwrap().as_mut() { for s in to_i16(data) { let _ = wr.write_sample(s); } }
+        if let Some(wr) = w.lock().unwrap().as_mut() { for s in samples_i16(data) { let _ = wr.write_sample(s); } }
     }, |e| log::warn!("audio: {e}"), None)?;
     stream.play()?;
     Ok(Capture { _stream: stream, _keep_alive: keep_alive, writer, started, path })
@@ -57,15 +71,7 @@ impl Capture {
     pub fn system(path: PathBuf) -> Result<Self> {
         let d = cpal::default_host().default_output_device().context("no speakers")?;
         let cfg = d.default_output_config()?;
-        let silence = d.build_output_stream_raw(cfg.config(), cfg.sample_format(), |data: &mut Data, _| {
-            match data.sample_format() {
-                SampleFormat::F32 => data.as_slice_mut::<f32>().unwrap_or(&mut []).fill(0.0),
-                SampleFormat::I16 => data.as_slice_mut::<i16>().unwrap_or(&mut []).fill(0),
-                SampleFormat::I32 => data.as_slice_mut::<i32>().unwrap_or(&mut []).fill(0),
-                _ => {}
-            }
-        }, |e| log::warn!("keep-alive: {e}"), None)?;
-        silence.play()?;
+        let silence = silence_stream(&d, &cfg)?;
         start(d, cfg, path, Some(silence))
     }
 

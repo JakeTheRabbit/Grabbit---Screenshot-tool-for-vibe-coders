@@ -98,6 +98,8 @@ pub struct Settings {
     pub ffmpeg_path: String,
     pub replay_seconds: u32,
     pub replay_enabled: bool,
+    pub timelapse_seconds: u32,
+    pub hide_desktop_icons: bool,
 
     pub branding: Branding,
     pub metadata: Metadata,
@@ -153,6 +155,8 @@ impl Default for Settings {
             ffmpeg_path: String::new(),
             replay_seconds: 60,
             replay_enabled: false,
+            timelapse_seconds: 10,
+            hide_desktop_icons: false,
             branding: Branding { position: "bottom-right".into(), scale: 0.15, opacity: 0.8, ..Default::default() },
             metadata: Metadata { strip: true, ..Default::default() },
             share: Share::default(),

@@ -30,6 +30,12 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
         st.frames.lock().unwrap().clear();
         return record::start(app, (p.x, p.y, p.width, p.height));
     }
+    if p.action == "scroll" {
+        st.frames.lock().unwrap().clear();
+        *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
+        crate::scroll::start(app, (p.x, p.y, p.width, p.height));
+        return Ok(());
+    }
     let mut img = grab(&st, &p)?;
     if let Some((w, h)) = p.size { img = image::imageops::resize(&img, w, h, image::imageops::FilterType::Lanczos3); }
     *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
@@ -229,3 +235,17 @@ pub async fn check_mark(app: AppHandle, path: String) -> Result<serde_json::Valu
 
 #[tauri::command]
 pub fn open_file(app: AppHandle, path: String) { editor::open_path(&app, std::path::Path::new(&path)); }
+
+/// Debug builds only: open a test page in a Grabbit window at a given place and size, in front (for live tests that
+/// must not touch anyone else's windows). Returns the window's physical rect.
+#[tauri::command]
+pub async fn dev_window(app: AppHandle, page: String, x: f64, y: f64, w: f64, h: f64) -> Result<(i32, i32, u32, u32), String> {
+    if !cfg!(debug_assertions) { return Err("test builds only".into()); }
+    if let Some(old) = app.get_webview_window("devtest") { let _ = old.destroy(); }
+    let win = WebviewWindowBuilder::new(&app, "devtest", WebviewUrl::App(page.into()))
+        .title("Grabbit test page").position(x, y).inner_size(w, h).focused(true).always_on_top(true).build().map_err(|e| e.to_string())?;
+    std::thread::sleep(std::time::Duration::from_millis(800));
+    let _ = win.set_focus();
+    let (p, s) = (win.inner_position().map_err(|e| e.to_string())?, win.inner_size().map_err(|e| e.to_string())?);
+    Ok((p.x, p.y, s.width, s.height))
+}

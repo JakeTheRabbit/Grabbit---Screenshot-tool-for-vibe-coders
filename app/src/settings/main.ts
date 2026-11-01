@@ -148,6 +148,8 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "toggle", key: "record_system_audio", label: "System sound", help: "Its own track: choose per copy what goes in" },
     { kind: "toggle", key: "record_microphone", label: "Microphone", help: "Its own track too" },
     { kind: "toggle", key: "record_cursor", label: "Mouse pointer" },
+    { kind: "toggle", key: "record_webcam", label: "Webcam bubble", help: "Your camera in a circle in the bottom-right corner" },
+    ...(os === "windows" ? [{ kind: "toggle", key: "hide_desktop_icons", label: "Hide desktop icons while recording" } as Field] : []),
     { kind: "select", key: "record_fps", label: "Frame rate", options: [["30", "30 fps"], ["60", "60 fps"]] },
     { kind: "number", key: "record_quality", label: "Quality", min: 14, max: 35, unit: "(lower = sharper, bigger)" },
     { kind: "toggle", key: "show_keys", label: "Record key presses", help: "Shown as captions in the video editor" },
@@ -155,6 +157,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "toggle", key: "edit_after_recording", label: "Open the video editor when finished" },
     { kind: "toggle", key: "replay_enabled", label: "Replay buffer", help: "Always keeps the last minute or two; the hotkey saves it" },
     { kind: "number", key: "replay_seconds", label: "Replay length", min: 10, max: 600, unit: "seconds" },
+    { kind: "number", key: "timelapse_seconds", label: "Timed captures", min: 1, max: 3600, unit: "seconds apart (tray → Timed captures)" },
     { kind: "text", key: "ffmpeg_path", label: "ffmpeg", placeholder: "Found automatically", help: "Only if ffmpeg isn't on your PATH" },
   ],
   Branding: () => [

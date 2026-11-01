@@ -173,6 +173,7 @@ const MAIN: Item[] = [
   { id: "record", label: "Record", icon: "record", key: "R" },
 ];
 const MORE: Item[] = [
+  { id: "scroll", label: "Scrolling capture", icon: "scroll", key: "S" },
   { id: "ocr", label: "Copy text", icon: "text", key: "T" },
   { id: "qr", label: "Read QR code", icon: "qr", key: "Q" },
   { id: "pin", label: "Pin to screen", icon: "pin", key: "I" },
@@ -403,7 +404,7 @@ addEventListener("keydown", (e) => {
   }
   const target = sel || picked.length || hoverWin;
   if (!target) return;
-  const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", r: "record", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };
+  const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", r: "record", s: "scroll", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };
   if (mod && key === "s") { e.preventDefault(); void act("save"); return; }
   if (key === "enter" && e.shiftKey && info.mode !== "Record") { void act("reduced"); return; }
   if (!mod && map[key]) { e.preventDefault(); void act(map[key]); }

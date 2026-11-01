@@ -66,7 +66,18 @@ function pin() {
 
 function recframe() { root.innerHTML = `<div class="frame"></div>`; }
 
+function scrollbar() {
+  root.innerHTML = `<div class="rec"><span class="live"></span><span class="status">Starting…</span>
+    <button class="stop" data-a="done">${icon("check")}<span>Done</span></button>
+    <button class="ic" data-a="cancel" title="Cancel">${icon("close")}</button></div>`;
+  const st = root.querySelector(".status")!;
+  void listen<string>("status", (e) => { st.textContent = e.payload; });
+  root.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => void invoke("scroll_control", { what: b.dataset.a })));
+  addEventListener("keydown", (e) => { if (e.key === "Escape") void invoke("scroll_control", { what: "cancel" }); });
+}
+
 function recbar() {
+  if (q.get("mode") === "scroll") return scrollbar();
   root.innerHTML = `<div class="rec"><span class="live"></span><span class="time">0:00</span>
     <button class="ic" data-a="pause" title="Pause">${icon("pause")}</button>
     <button class="stop" data-a="stop" title="Stop and keep">${icon("stop")}<span>Stop</span></button>

@@ -25,7 +25,9 @@ import folder from "lucide-static/icons/folder-open.svg?raw";
 import shield from "lucide-static/icons/shield-check.svg?raw";
 import search from "lucide-static/icons/search.svg?raw";
 import sparkles from "lucide-static/icons/sparkles.svg?raw";
+import check from "lucide-static/icons/check.svg?raw";
+import scroll from "lucide-static/icons/arrow-down-to-line.svg?raw";
 
-const all = { copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
+const all = { check, scroll, copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
 export type Icon = keyof typeof all;
 export const icon = (n: Icon) => all[n];

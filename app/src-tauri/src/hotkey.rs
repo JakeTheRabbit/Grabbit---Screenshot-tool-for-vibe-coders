@@ -39,7 +39,8 @@ pub fn on_event(app: &AppHandle, sc: &Shortcut, ev: ShortcutEvent) {
         HotkeyAction::CaptureScreen => picker::start(app, picker::Mode::Screen),
         HotkeyAction::CaptureRepeat => picker::repeat_last(app),
         HotkeyAction::Record => picker::start(app, picker::Mode::Record),
-        HotkeyAction::ReplaySave | HotkeyAction::Steps => { let _ = app.emit("hotkey", format!("{action:?}")); }
+        HotkeyAction::ReplaySave => crate::replay::save_now(app),
+        HotkeyAction::Steps => crate::steps::toggle(app),
     }
 }
 

@@ -89,6 +89,17 @@ pub fn run(dir: &Path) -> i32 {
         rec = Some(p.clone());
         Ok(format!("{}x{} {:.1} s, tracks {:?}", i.width, i.height, i.duration, i.tracks))
     });
+    step(&mut r, "record 2 s with webcam bubble (generated camera)", || {
+        std::env::set_var("GRABBIT_FAKE_CAM", "1");
+        let mut s2 = s.clone();
+        s2.record_webcam = true;
+        let d2 = dir.join("cam");
+        std::fs::create_dir_all(&d2)?;
+        let p = crate::record::selftest(&s2, &d2, 2)?;
+        let i = video::probe(&s2, &p)?;
+        anyhow::ensure!(i.duration > 1.0, "duration {}", i.duration);
+        Ok(format!("{}x{} {:.1} s", i.width, i.height, i.duration))
+    });
     step(&mut r, "render: cut + speed + GIF + social", || {
         let src = rec.clone().ok_or_else(|| anyhow::anyhow!("no recording"))?;
         let keep = [video::Part { start: 0.0, end: 1.0, speed: 1.0 }, video::Part { start: 1.5, end: 2.5, speed: 2.0 }];
