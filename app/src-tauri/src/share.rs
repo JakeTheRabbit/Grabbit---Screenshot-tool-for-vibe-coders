@@ -24,6 +24,7 @@ pub fn configured(s: &Settings) -> Vec<&'static str> {
     if !sh.onedrive_token.is_empty() { v.push("onedrive"); }
     if !sh.immich_url.is_empty() && !sh.immich_key.is_empty() { v.push("immich"); }
     if !sh.mega_email.is_empty() && !sh.mega_password.is_empty() { v.push("mega"); }
+    if !sh.s3_endpoint.is_empty() && !sh.s3_bucket.is_empty() && !sh.s3_access_key.is_empty() && !sh.s3_secret_key.is_empty() { v.push("s3"); }
     if !s.obsidian_vault.is_empty() { v.push("obsidian"); }
     v
 }
@@ -36,10 +37,69 @@ pub fn share(app: &AppHandle, path: &Path, target: Option<&str>) -> Result<Strin
         "onedrive" => onedrive_upload(app, &s, path)?,
         "immich" => immich_upload(&s, path)?,
         "mega" => mega_upload(&s, path)?,
+        "s3" => s3_instant(app, &s, path)?,
         "obsidian" => return obsidian_send(&s, path).map(|p| format!("Saved to Obsidian: {}", p.display())),
         other => bail!("unknown share destination {other}"),
     };
     export::copy_text(&link)?;
+    Ok(link)
+}
+
+// ---- S3-compatible ----
+
+fn hmac(key: &[u8], data: &str) -> Vec<u8> {
+    use hmac::{KeyInit, Mac};
+    let mut m = hmac::Hmac::<sha2::Sha256>::new_from_slice(key).expect("any key length");
+    m.update(data.as_bytes());
+    m.finalize().into_bytes().to_vec()
+}
+
+fn sha_hex(b: &[u8]) -> String { use sha2::Digest; hex::encode(sha2::Sha256::digest(b)) }
+
+/// Object key and the public link it will have.
+fn s3_names(s: &Settings, path: &Path) -> (String, String) {
+    let sh = &s.share;
+    let file = path.file_name().unwrap_or_default().to_string_lossy().replace(' ', "-");
+    let key = format!("{}{}-{}", if sh.s3_prefix.is_empty() { String::new() } else { format!("{}/", sh.s3_prefix.trim_matches('/')) }, chrono::Local::now().format("%Y%m%d%H%M%S"), file);
+    let base = if sh.s3_public_url.is_empty() { format!("{}/{}", sh.s3_endpoint.trim_end_matches('/'), sh.s3_bucket) } else { sh.s3_public_url.trim_end_matches('/').to_string() };
+    (key.clone(), format!("{base}/{}", key.split('/').map(actions::urlencode).collect::<Vec<_>>().join("/")))
+}
+
+/// PUT with AWS Signature V4 (path-style, unsigned payload: works with S3, R2, B2, MinIO, Wasabi).
+pub fn s3_put(s: &Settings, path: &Path, key: &str) -> Result<()> {
+    let sh = &s.share;
+    let region = if sh.s3_region.is_empty() { "auto" } else { sh.s3_region.as_str() };
+    let endpoint = sh.s3_endpoint.trim_end_matches('/');
+    let host = endpoint.split("://").nth(1).unwrap_or(endpoint).split('/').next().unwrap_or("");
+    let canon_path = format!("/{}/{}", sh.s3_bucket, key.split('/').map(actions::urlencode).collect::<Vec<_>>().join("/"));
+    let now = chrono::Utc::now();
+    let (date, stamp) = (now.format("%Y%m%d").to_string(), now.format("%Y%m%dT%H%M%SZ").to_string());
+    let mime = match path.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase().as_str() {
+        "png" => "image/png", "jpg" | "jpeg" => "image/jpeg", "webp" => "image/webp", "gif" => "image/gif", "mp4" => "video/mp4", "webm" => "video/webm", _ => "application/octet-stream",
+    };
+    let headers = format!("content-type:{mime}\nhost:{host}\nx-amz-content-sha256:UNSIGNED-PAYLOAD\nx-amz-date:{stamp}\n");
+    let signed = "content-type;host;x-amz-content-sha256;x-amz-date";
+    let canonical = format!("PUT\n{canon_path}\n\n{headers}\n{signed}\nUNSIGNED-PAYLOAD");
+    let scope = format!("{date}/{region}/s3/aws4_request");
+    let to_sign = format!("AWS4-HMAC-SHA256\n{stamp}\n{scope}\n{}", sha_hex(canonical.as_bytes()));
+    let k = hmac(&hmac(&hmac(&hmac(format!("AWS4{}", sh.s3_secret_key).as_bytes(), &date), region), "s3"), "aws4_request");
+    let sig = hex::encode(hmac(&k, &to_sign));
+    let auth = format!("AWS4-HMAC-SHA256 Credential={}/{scope}, SignedHeaders={signed}, Signature={sig}", sh.s3_access_key);
+    let r = http().put(format!("{endpoint}{canon_path}")).header("content-type", mime).header("x-amz-content-sha256", "UNSIGNED-PAYLOAD")
+        .header("x-amz-date", &stamp).header("authorization", auth).body(std::fs::read(path)?).send()?;
+    if !r.status().is_success() { bail!("S3 upload failed ({}): {}", r.status(), r.text().unwrap_or_default().chars().take(300).collect::<String>()) }
+    Ok(())
+}
+
+/// Instant link: the address is known before the upload, so it's copied straight away and the upload finishes in the
+/// background (a note says when it's live, or if it failed).
+fn s3_instant(app: &AppHandle, s: &Settings, path: &Path) -> Result<String> {
+    let (key, link) = s3_names(s, path);
+    let (a, s2, p2) = (app.clone(), s.clone(), path.to_path_buf());
+    std::thread::spawn(move || match s3_put(&s2, &p2, &key) {
+        Ok(()) => actions::notify(&a, "Upload finished: the link is live"),
+        Err(e) => actions::notify(&a, &format!("{e}")),
+    });
     Ok(link)
 }
 
@@ -230,6 +290,13 @@ pub async fn share_setup(app: AppHandle, target: String) -> Result<String, Strin
             "onedrive" => onedrive_sign_in(&app),
             "immich" => immich_test(&s),
             "mega" => mega_login(&s).map(|_| "Signed in to MEGA".to_string()),
+            "s3" => {
+                let probe = std::env::temp_dir().join("Grabbit").join("grabbit-s3-test.txt");
+                std::fs::create_dir_all(probe.parent().unwrap()).ok();
+                std::fs::write(&probe, "Grabbit can upload here.").ok();
+                let (key, link) = s3_names(&s, &probe);
+                s3_put(&s, &probe, &key).map(|_| format!("Uploaded a test file: {link}"))
+            }
             t => Err(anyhow::anyhow!("unknown {t}")),
         }
     }).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())
@@ -242,3 +309,27 @@ pub async fn share_file(app: AppHandle, path: String, target: Option<String>) ->
 
 #[tauri::command]
 pub fn share_targets(app: AppHandle) -> Vec<&'static str> { configured(&state(&app).settings.lock().unwrap()) }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// AWS's published Signature V4 signing-key example (secret, date, region, service → key).
+    #[test]
+    fn sigv4_signing_key() {
+        let k = hmac(&hmac(&hmac(&hmac(b"AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY", "20120215"), "us-east-1"), "iam"), "aws4_request");
+        assert_eq!(hex::encode(k), "f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d");
+    }
+
+    #[test]
+    fn s3_link_is_known_before_upload() {
+        let mut s = Settings::default();
+        s.share.s3_endpoint = "https://acc.r2.cloudflarestorage.com".into();
+        s.share.s3_bucket = "shots".into();
+        s.share.s3_public_url = "https://cdn.example.com/".into();
+        s.share.s3_prefix = "grabbit".into();
+        let (key, link) = s3_names(&s, Path::new("C:/x/Grabbit 2026.png"));
+        assert!(key.starts_with("grabbit/") && key.ends_with("-Grabbit-2026.png"));
+        assert!(link.starts_with("https://cdn.example.com/grabbit/") && !link.contains(' '));
+    }
+}

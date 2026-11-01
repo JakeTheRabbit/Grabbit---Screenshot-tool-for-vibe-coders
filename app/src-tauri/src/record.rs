@@ -440,6 +440,7 @@ pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
     });
     *SESSION.lock().unwrap() = Some(Session { tx, area, started, paused: None, paused_total: Duration::ZERO });
     if state(app).settings.lock().unwrap().hide_desktop_icons { desktop_icons(false); }
+    watch(app);
     show_overlays(app, area);
     Ok(())
 }
@@ -591,4 +592,36 @@ pub fn rec_control(app: AppHandle, what: String) {
         "pause" => pause_resume(&app),
         _ => {}
     }
+}
+
+/// While recording: the time in the tray, and a stop (keeping what's recorded) before the disk fills up.
+fn watch(app: &AppHandle) {
+    const MIN_FREE: u64 = 1_500_000_000;
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let folder = state(&app).settings.lock().unwrap().video_folder.clone();
+        let tray = app.tray_by_id("main");
+        while is_recording(&app) {
+            let t = elapsed() as u64;
+            let label = format!("Recording {}:{:02}", t / 60, t % 60);
+            if let Some(tr) = &tray {
+                let _ = tr.set_tooltip(Some(&label));
+                #[cfg(target_os = "macos")]
+                let _ = tr.set_title(Some(&format!("● {}:{:02}", t / 60, t % 60)));
+            }
+            let free = [std::path::PathBuf::from(&folder), std::env::temp_dir()].iter()
+                .filter_map(|p| fs4::available_space(p).ok()).min().unwrap_or(u64::MAX);
+            if free < MIN_FREE {
+                stop(&app, true);
+                actions::notify(&app, "Recording stopped and saved: the disk is almost full");
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1000));
+        }
+        if let Some(tr) = &tray {
+            let _ = tr.set_tooltip(Some("Grabbit: tap the capture key for a screenshot, hold it to record"));
+            #[cfg(target_os = "macos")]
+            let _ = tr.set_title(None::<&str>);
+        }
+    });
 }

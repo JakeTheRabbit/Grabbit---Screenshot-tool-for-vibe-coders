@@ -177,7 +177,7 @@ pub fn tracks(info: &Info, sound: Sound) -> Vec<usize> {
 pub struct Part { pub start: f64, pub end: f64, pub speed: f64 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Target { Full, Chat, Gif, Webp, Social(u32, u32) }
+pub enum Target { Full, Chat, Gif, Webp, Social(u32, u32), Beautify }
 
 pub struct Overlay { pub png: PathBuf, pub from: f64, pub to: f64 }
 
@@ -248,6 +248,8 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     }
     let n_in = logo_idx;
     let mut vc = "[vc]".to_string();
+    // Beautify: the picture on a gradient with rounded corners, same size as the recording.
+    let beauty_idx = if *target == Target::Beautify { Some((n_in + logo.is_some() as usize, n_in + logo.is_some() as usize + 1)) } else { None };
     if logo.is_some() {
         let b = &s.branding;
         let m = "main_w/40";
@@ -274,6 +276,13 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
             codec = h264(s, 20, 0);
             if audio { codec.extend(["-c:a", "aac", "-b:a", "192k"].map(String::from)); }
         }
+        Target::Beautify => {
+            let (bi, mi) = beauty_idx.unwrap();
+            let (fw, fh) = beautify_inner(info.width, info.height);
+            g += &format!("{vc}scale={fw}:{fh}:flags=lanczos,format=yuva420p[fg0];[fg0][{mi}:v]alphamerge[fg];[{bi}:v][fg]overlay=(W-w)/2:(H-h)/2:shortest=1,format=yuv420p[vo]");
+            codec = h264(s, 21, 0);
+            if audio { codec.extend(["-c:a", "aac", "-b:a", "160k"].map(String::from)); }
+        }
         Target::Full => {
             g += &format!("{vc}scale='trunc(iw/2)*2':'trunc(ih/2)*2',format=yuv420p[vo]");
             codec = h264(s, 21, 0);
@@ -285,6 +294,12 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     for o in overlays { a.push("-i".into()); a.push(o.png.to_string_lossy().into()); }
     if has_ring { a.extend(["-loop".into(), "1".into(), "-i".into(), crate::studio::ring_png().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default()]); }
     if let Some(l) = logo { a.push("-i".into()); a.push(l.to_string_lossy().into()); }
+    if *target == Target::Beautify {
+        let (bg, mask) = beautify_layers(info.width & !1, info.height & !1).unwrap_or_default();
+        // The background loops (the overlay ends with the video); the mask is read once and alphamerge keeps reusing it
+        // (looping it too would make alphamerge run forever).
+        a.extend(["-loop".into(), "1".into(), "-i".into(), bg.to_string_lossy().into(), "-i".into(), mask.to_string_lossy().into()]);
+    }
     a.extend(["-filter_complex".into(), g, "-map".into(), "[vo]".into()]);
     if audio { a.extend(["-map".into(), "[ac]".into()]); }
     a.extend(codec);
@@ -297,15 +312,55 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     a
 }
 
+/// Size of the recording inside the Beautify frame (88 %, even).
+fn beautify_inner(w: u32, h: u32) -> (u32, u32) { (((w as f32 * 0.88) as u32) & !1, ((h as f32 * 0.88) as u32) & !1) }
+
+/// The gradient background and the rounded-corner mask for Beautify, drawn once per size.
+fn beautify_layers(w: u32, h: u32) -> Result<(PathBuf, PathBuf)> {
+    let dir = std::env::temp_dir().join("Grabbit");
+    std::fs::create_dir_all(&dir)?;
+    let (bg, mask) = (dir.join(format!("beauty-bg-{w}x{h}.png")), dir.join(format!("beauty-mask-{w}x{h}.png")));
+    if !bg.exists() {
+        let (a, b) = ([255f32, 122., 69.], [232f32, 57., 109.]);
+        let img = image::RgbaImage::from_fn(w, h, |x, y| {
+            let t = ((x as f32 / w as f32) + (y as f32 / h as f32)) / 2.0;
+            image::Rgba([(a[0] + (b[0] - a[0]) * t) as u8, (a[1] + (b[1] - a[1]) * t) as u8, (a[2] + (b[2] - a[2]) * t) as u8, 255])
+        });
+        img.save(&bg)?;
+    }
+    if !mask.exists() {
+        let (fw, fh) = beautify_inner(w, h);
+        let r = (fw.min(fh) as f32 * 0.03).max(8.0);
+        let img = image::GrayImage::from_fn(fw, fh, |x, y| {
+            let (cx, cy) = ((x as f32 + 0.5).clamp(r, fw as f32 - r), (y as f32 + 0.5).clamp(r, fh as f32 - r));
+            let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+            image::Luma([((r - d + 0.5).clamp(0.0, 1.0) * 255.0) as u8])
+        });
+        img.save(&mask)?;
+    }
+    Ok((bg, mask))
+}
+
 pub fn render(s: &Settings, input: &Path, keep: &[Part], target: &Target, output: &Path, sound: Sound, overlays: &[Overlay], extras: &Extras, key: Option<&str>, mut progress: impl FnMut(f64)) -> Result<()> {
     let info = probe(s, input)?;
     let total: f64 = keep.iter().map(|k| (k.end - k.start) / k.speed).sum();
     let logo = (s.branding.on_videos && Path::new(&s.branding.logo_path).exists()).then(|| PathBuf::from(&s.branding.logo_path));
     let args = render_args(s, input, &info, keep, target, output, sound, overlays, logo.as_deref(), extras);
     log::info!("render: {}", args.join(" "));
-    let r = run(&ffmpeg(s)?, &args, key, |l| {
+    // Safety net: no render may run far longer than its video could need.
+    let k = key.map(String::from).unwrap_or_else(|| format!("render-{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)));
+    let limit = std::time::Duration::from_secs_f64((total * 20.0).max(120.0));
+    let (k2, timed_out) = (k.clone(), std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)));
+    let flag = timed_out.clone();
+    std::thread::spawn(move || {
+        let t0 = std::time::Instant::now();
+        while t0.elapsed() < limit { std::thread::sleep(std::time::Duration::from_millis(500)); if !RUNNING.lock().unwrap().contains_key(&k2) && t0.elapsed().as_secs() > 2 { return; } }
+        if let Some(pid) = RUNNING.lock().unwrap().get(&k2).copied() { flag.store(true, std::sync::atomic::Ordering::SeqCst); kill(pid); }
+    });
+    let r = run(&ffmpeg(s)?, &args, Some(&k), |l| {
         if let Some(us) = l.strip_prefix("out_time_us=").and_then(|v| v.parse::<f64>().ok()) { if total > 0.0 { progress((us / 1e6 / total).clamp(0.0, 1.0)); } }
     })?;
+    if timed_out.load(std::sync::atomic::Ordering::SeqCst) { let _ = std::fs::remove_file(output); bail!("rendering took far too long and was stopped"); }
     if r.code != 0 {
         let _ = std::fs::remove_file(output);
         bail!("ffmpeg failed: {}", r.err.trim().lines().last().unwrap_or("unknown error"));
@@ -380,7 +435,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
         .filter(|p| p.end - p.start > 0.01).collect();
     anyhow::ensure!(!keep.is_empty(), "nothing left to export");
     let target = match m["target"].as_str().unwrap_or("Full") {
-        "Chat" => Target::Chat, "Gif" => Target::Gif, "Webp" => Target::Webp,
+        "Chat" => Target::Chat, "Gif" => Target::Gif, "Webp" => Target::Webp, "Beautify" => Target::Beautify,
         t if t.starts_with("Social:") => { let (a, b) = t[7..].split_once('x').unwrap_or(("1080", "1080")); Target::Social(a.parse()?, b.parse()?) }
         _ => Target::Full,
     };
@@ -398,7 +453,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
     let ext = match target { Target::Gif => "gif", Target::Webp => "webp", _ => "mp4" };
-    let suffix = match &target { Target::Chat => " chat".to_string(), Target::Social(w, h) => format!(" {w}x{h}"), Target::Gif | Target::Webp => String::new(), Target::Full => if edited { " edited".into() } else { String::new() } };
+    let suffix = match &target { Target::Chat => " chat".to_string(), Target::Beautify => " styled".to_string(), Target::Social(w, h) => format!(" {w}x{h}"), Target::Gif | Target::Webp => String::new(), Target::Full => if edited { " edited".into() } else { String::new() } };
     let action = m["action"].as_str().unwrap_or("copy");
     let output = match action {
         "saveAs" => PathBuf::from(m["saveTo"].as_str().context("no file chosen")?),
@@ -417,7 +472,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     }
     let result = (|| -> Result<String> {
         if output != path {
-            let label = match target { Target::Chat => "Making a chat-sized copy", Target::Gif => "Making a GIF", Target::Webp => "Making an animated WebP", Target::Social(..) => "Making the social-size copy", _ => "Rendering" };
+            let label = match target { Target::Beautify => "Adding the background", Target::Chat => "Making a chat-sized copy", Target::Gif => "Making a GIF", Target::Webp => "Making an animated WebP", Target::Social(..) => "Making the social-size copy", _ => "Rendering" };
             let mut last = -1.0;
             render(s, &path, &keep, &target, &output, sound, &overlays, &extras, Some(w.label()), |v| {
                 if v - last >= 0.01 { last = v; let _ = w.emit_to(w.label(), "host", json!({ "type": "progress", "value": v, "label": label })); }

@@ -112,6 +112,10 @@ pub fn run(dir: &Path) -> i32 {
         video::render(&s, &src, &keep, &video::Target::Gif, &gif, video::Sound::None, &[], &video::Extras::default(), None, |_| {})?;
         let i = video::probe(&s, &mp4)?;
         anyhow::ensure!((i.width, i.height) == (1080, 1920), "size {}x{}", i.width, i.height);
+        let styled = dir.join("styled.mp4");
+        video::render(&s, &src, &keep, &video::Target::Beautify, &styled, video::Sound::All, &[], &video::Extras::default(), None, |_| {})?;
+        let b = video::probe(&s, &styled)?;
+        anyhow::ensure!(b.width > 0 && b.duration > 1.0, "beautify render");
         Ok(format!("mp4 {:.1} s, gif {} KB", i.duration, std::fs::metadata(&gif)?.len() / 1024))
     });
 

@@ -1,147 +1,182 @@
 # Grabbit
 
-**Screenshots and screen recordings for Windows 11, straight to the clipboard, sized for wherever you paste them.**
+**Screenshots, screen recordings and AI-ready captures for Windows, macOS and Linux. Straight to the clipboard, sized for wherever you paste them.**
 
-Tap **PrtScn** to grab, hold it to record. Annotate pictures and videos with a full drawing editor. Trim and cut recordings on a timeline. Paste into Signal, Slack, Word or anywhere else as the right kind of file.
+Tap **PrtScn** to grab, hold it to record. Draw on pictures and videos, cut recordings on a timeline, and say what you want so it's pasted into ChatGPT, Claude or Gemini with the picture in one go.
 
-![The picker: a region selected, the action bar at the mouse](docs/screenshots/picker.png)
+![Picking an area: the action bar sits under the selection](docs/screenshots/picker.png)
+
+**[Download](https://github.com/JakeTheRabbit/grabbit/releases/latest)** · [Install](#install) · [Features](#features) · [Keys](#keys) · [Platforms](#what-differs-between-platforms) · [Privacy](#privacy) · [Build from source](#build-from-source)
+
+---
+
+## The 10-second tour
+
+| Do this | Get this |
+|---|---|
+| **Tap** PrtScn (macOS: <kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd>) | The screens freeze. Drag an area, click a window, or press <kbd>F</kbd> for the whole screen. **Enter** copies it. |
+| **Hold** it for 2 s | A pill fills up, then you pick what to record. Press the key again (or Stop) to finish. |
+| Press **V** on a selection | Talk about it. Your words, the picture and the text on screen go on the clipboard for one paste into an AI chat. |
+
+Everything else is one click away on the bar, and nothing has to be set up first.
 
 ## Features
 
 **Capture**
-- Tap **PrtScn** to freeze every screen, then pick a region, window or whole screen. An 8× pixel loupe shows coordinates, size and colour.
-- Ctrl+click several windows to capture them together, each grabbed whole even when covered.
-- **Scrolling capture** of long pages and documents, stitched seamlessly (sticky headers appear once).
-- One action bar: **Copy · Smaller · Chat size · Edit · Scroll · Save · Copy path · Record**.
+- Region, window (captured whole even when covered), whole screen, or **up to 4 areas** combined side by side, stacked, as a grid, or as on screen.
+- Move and resize the selection after you draw it; arrow keys nudge it (<kbd>Alt</kbd>+arrows resize).
+- A pixel loupe with coordinates and colour (<kbd>C</kbd> copies the hex), a **measure** tool (<kbd>M</kbd>), and **size presets** for Instagram, Stories/Reels/TikTok/Snapchat, YouTube, X, LinkedIn, Facebook and Pinterest (<kbd>A</kbd>).
+- **Scrolling capture** of long pages: Grabbit scrolls and stitches; sticky headers appear once.
+- **Copy text** from anything on screen (OCR), **read QR codes**, **pin** a capture on top of everything, capture again **in 3 or 10 s**, **timed captures** that end as a timelapse.
+- Every capture lands on the clipboard as a picture **and** a named file (chat apps attach it), and is saved as **lossless WebP** (pixel-exact at ~40 % of PNG). **Smaller** and **Chat** copies in one click.
+- A **quick-access card** after each capture: drag the thumbnail straight into any app, or edit, pin, share, talk to AI.
 
-**Clipboard that pastes everywhere**
-- PNG + DIBV5 (keeps transparency in Office) + DIB + a real file, so chat apps attach it with a name.
-- **Smaller** (long edge ≤ 1920 px) and **Chat** (JPEG ≤ 2 MB) copies in one click.
-- Everything is saved full-size as **lossless WebP**: pixel-exact at about 40 % of PNG's size.
+**Talk to AI** — the most context in one paste
+- Pick an area and press **Talk to AI** (<kbd>V</kbd>), or use it on any picture or video afterwards.
+- Say what you want. **Click the picture to point, drag to box something:** the numbered marks go into your words where you made them, and the AI sees the same numbers on the picture.
+- Your words appear in an **editable box** before anything is copied, so a misheard word is easy to fix.
+- One <kbd>Ctrl</kbd>+<kbd>Enter</kbd> puts it all on the clipboard: the picture (with your words printed under it, so they survive any chat app), your words first, then context — the window, the time, and **the text on screen** read automatically so the model can quote exact labels and numbers.
+- **Videos:** key frames from the moments something was said, each labelled with its time and the words, plus a timestamped transcript (and optionally the video file, for models that watch video).
+- **AI batch:** start a batch and keep talking while you take screenshot after screenshot. Whatever you say after each capture belongs to that picture. Review them all, fix any words, and paste every picture with its own explanation in one go.
+- **Describe & tag** (<kbd>X</kbd>): a paragraph explaining any screenshot and a set of tags, copied, kept in History, and searchable. Optionally for every capture automatically.
 
 **Record**
-- **Hold PrtScn for 2 s** to record an area, a window or a screen. A red frame and a small Stop bar sit beside it and never appear in the video.
-- GPU capture and encoding (Desktop Duplication + NVENC H.264; x264 without NVIDIA).
-- **System sound and microphone on separate tracks**: choose later what goes into each copy.
-- The finished `.mp4` lands on the clipboard as a file and opens in the video editor.
+- **Hold PrtScn for 2 s** (or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>PrtScn</kbd>, or Record on the bar). A red frame and a small Stop bar sit beside the area and never appear in the video.
+- **Pause**, then **move or resize the frame** before you carry on.
+- **System sound and microphone on separate tracks**, chosen per copy later. Optional **webcam bubble**. Records your clicks and keys for the studio effects below.
+- Hardware encoding where available (NVIDIA, Intel, AMD, Apple), x264 everywhere else. Recordings are crash-safe, stop by themselves before the disk fills, and show the time in the tray.
+- **Replay buffer:** always keeps the last 10 s – 10 min; one key saves it.
+- **Step recorder:** click through a task and get a **how-to** as Markdown and a Word document, a numbered picture per step.
 
-**Edit pictures**: the [Excalidraw](https://github.com/excalidraw/excalidraw) editor, offline
-- Arrows, boxes, text, pen, highlighter and numbered steps.
-- **Pixelate · Blur · Black out** for anything sensitive, plus **Spotlight**.
-- Emoji and icons, tabs, a recent-captures strip, and saving as an editable `.excalidraw` file.
+**Edit pictures** — the [Excalidraw](https://github.com/excalidraw/excalidraw) editor, offline
+- Arrows, boxes, text, pen, highlighter, numbered **steps**, emoji and icons, tabs and a recent-captures strip.
+- **Hide** private details: one click finds and pixelates **emails, IP addresses, phone and card numbers, API keys and tokens** (or pixelate / blur / black out / spotlight any box).
+- **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes.
+- **AI** (your own key, or a free local model): remove the background, remove or change what's in a box, change the text in a box, edit the whole picture, ask about it, describe & tag.
+
+![The picture editor with Beautify](docs/screenshots/editor.png)
 
 **Edit videos**
-- A filmstrip timeline: scrub, frame-step, **split**, **cut parts out**, trim the ends, undo.
-- **Draw on the video with Excalidraw.** Each drawing has its own bar on the timeline, so you choose exactly when it shows.
-- **Sound picker**: system + mic, either one, or no sound.
-- **Copy**, **Copy for chat** (under 94 MB for Signal), **Copy GIF**, **Save**.
+- Filmstrip timeline: split, cut parts out, trim, **speed a part up or down**, undo.
+- **Cut silences** in one click. **Captions** made on your computer (or with OpenAI): edit the lines, ✂ cut a line's stretch out of the video, cut filler words, burn them in or keep the `.srt`.
+- **Studio effects** from what was recorded: **auto-zoom on clicks** (eased in and out), **click rings**, **key captions** — all changeable after recording.
+- **Draw** on the video (each drawing has its own bar on the timeline) and **blur boxes** that hide a region for exactly as long as you choose.
+- Copy, Copy for chat (under 94 MB), GIF, animated WebP, a styled copy on a background, and every social size.
 
-## Screenshots
+![The video editor: captions, effects and a sped-up part](docs/screenshots/video-editor.png)
 
-| | |
-|---|---|
-| ![Hold PrtScn to record](docs/screenshots/hold.png) **Hold PrtScn**: the pill fills; let go early for a screenshot | ![Recording](docs/screenshots/recording.png) **Recording**: the frame and Stop bar stay out of the video |
-| ![Picture editor](docs/screenshots/editor.png) **Picture editor**: Excalidraw with Grabbit's copy, redact and step tools | ![Video editor](docs/screenshots/video-editor.png) **Video editor**: a cut part (hatched), drawings on their own lanes, sound picker |
+**Share and protect**
+- **Share** uploads and copies the link: **OneDrive**, **Immich**, **MEGA**, any **S3-compatible** storage (AWS, Cloudflare R2, Backblaze B2, MinIO — the link is copied before the upload finishes), or **Send to Obsidian** (saved in your vault and linked in today's note).
+- **Logo or watermark** on every picture and/or video.
+- **Invisible watermark:** your name and the capture's id hidden in the pixels. It survives JPEG, re-saving and cropping; **Check image** reads it from a copy found elsewhere and names the original capture.
+- **Metadata:** stripped from everything by default; add author, copyright and your own fields when you want them.
+- **History:** search old captures by the words in them or what they show.
 
-![Drawing on a video](docs/screenshots/video-draw.png)
-*Drawing on a recording. The drawings are burned into the exported video only while their bars are under the playhead.*
+**Make it yours**
+- Every key is configurable; **back up and restore** all settings as one file.
+- `grabbit://capture`, `grabbit://record`, `grabbit://replay`, `grabbit://open/<file>` and the same words on the command line, for launchers and scripts.
 
 ## Install
 
-Needs Windows 10 2004+ / Windows 11, the [.NET 10 SDK](https://dotnet.microsoft.com/download), [Bun](https://bun.sh) (builds the editors) and, for recording, [ffmpeg](https://ffmpeg.org) (`winget install Gyan.FFmpeg`).
+Download from **[Releases](https://github.com/JakeTheRabbit/grabbit/releases/latest)**. The apps aren't signed with a paid certificate yet, so each OS asks once:
+
+| | Download | First launch |
+|---|---|---|
+| **Windows 10/11** | `Grabbit_x64-setup.exe` (or `.msi`) | SmartScreen: **More info → Run anyway** |
+| **macOS 13+** | `Grabbit_aarch64.dmg` (Apple silicon) or `Grabbit_x64.dmg` (Intel) | Drag to Applications, then **right-click → Open → Open**. Allow **Screen Recording** (and **Microphone**; **Accessibility** for scrolling capture and key captions) in System Settings → Privacy & Security. |
+| **Linux** | `.AppImage` (any distro), `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE) | AppImage: `chmod +x Grabbit*.AppImage` then run it. |
+
+**Recording needs ffmpeg** (8.0 or newer for on-computer captions):
+
+```bash
+winget install Gyan.FFmpeg
+```
+
+```bash
+brew install ffmpeg
+```
+
+```bash
+sudo apt install ffmpeg tesseract-ocr
+```
+
+(The `.deb` installs both for you. **tesseract** is what Linux uses to read text; Windows and macOS have their own.)
+
+PrtScn only works when no other screenshot tool has claimed it (Windows: turn off *Settings → Accessibility → Keyboard → Use the Print screen key to open screen capture*). Grabbit's log says which keys were taken, and every key can be changed in **Settings → Keys**. Turn on **Start with your computer** in Settings → General.
+
+## Keys
+
+| Picker | | Picker | |
+|---|---|---|---|
+| <kbd>Enter</kbd> | Copy | <kbd>E</kbd> | Edit |
+| <kbd>Shift</kbd>+<kbd>Enter</kbd> | Copy smaller | <kbd>R</kbd> | Record this area |
+| <kbd>V</kbd> | Talk to AI | <kbd>X</kbd> | Describe with AI |
+| <kbd>N</kbd> | Add another area (up to 4) | <kbd>B</kbd> | Start an AI batch |
+| <kbd>T</kbd> | Copy text | <kbd>Q</kbd> | Read QR code |
+| <kbd>S</kbd> | Scrolling capture | <kbd>I</kbd> | Pin on top |
+| <kbd>P</kbd> | Copy file path | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> | Save as… |
+| <kbd>F</kbd> | Whole screen | <kbd>L</kbd> | Last area again |
+| <kbd>C</kbd> | Copy the colour | <kbd>M</kbd> | Measure |
+| <kbd>A</kbd> | Size presets | <kbd>D</kbd> | Again in 10 s |
+| <kbd>Esc</kbd> | Back / close | Right-click | Back / close |
+
+Holding <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> as you let go of a drag goes straight to the editor / a smaller copy / a chat copy. <kbd>Ctrl</kbd>+click windows to capture several together.
+
+Global keys (all changeable in Settings → Keys):
+
+| | Windows / Linux | macOS |
+|---|---|---|
+| Capture (tap) / record (hold) | <kbd>PrtScn</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd> |
+| Same area as last time | <kbd>Shift</kbd>+<kbd>PrtScn</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>2</kbd> |
+| Whole screen, no picker | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>PrtScn</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>1</kbd> |
+| Record (again to stop) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>PrtScn</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>R</kbd> |
+| Save the replay buffer | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>B</kbd> |
+| Step recorder on / off | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>T</kbd> |
+
+## What differs between platforms
+
+Everything above works on all three, with these exceptions:
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| Reading text (OCR) | Windows OCR | Apple Vision | tesseract |
+| System sound in recordings | ✓ | ✓ (ScreenCaptureKit, macOS 13+) | ✓ (PulseAudio / PipeWire) |
+| Global keys and recording | ✓ | ✓ | X11 sessions. On Wayland, bind `grabbit capture` / `grabbit record` to a desktop shortcut, and log in with an "Xorg" / X11 session to record |
+| Hide desktop icons while recording | ✓ | — (macOS can only do it by restarting Finder) | — |
+| Overlays kept out of recordings | ✓ | ✓ | Placed outside the recorded area |
+| Hardware encoding | NVIDIA, Intel, AMD | Apple | via x264 |
+
+## Privacy
+
+- Nothing leaves your computer unless you press **Share** or an **AI** button. Captions and OCR run on your computer (Linux OCR via tesseract; captions download a 148 MB speech model once, or use OpenAI if you choose).
+- AI features use **your own key** (OpenAI, Google, xAI) or a **local model** — any OpenAI-compatible address works, e.g. Ollama's `http://localhost:11434/v1` with a vision model.
+- Metadata is stripped from everything by default.
+- Settings (including keys you add) live in one file: `%APPDATA%\Grabbit`, `~/Library/Application Support/Grabbit`, or `~/.config/grabbit`. **Back up** leaves keys out unless you tick the box.
+
+## Build from source
+
+Needs [Rust](https://rustup.rs), [Bun](https://bun.sh) and, for recording, ffmpeg. Linux also needs the WebKitGTK and capture libraries listed in [the CI workflow](.github/workflows/build.yml).
 
 ```bash
 git clone https://github.com/JakeTheRabbit/grabbit
-cd grabbit/src/editor-web && bun install && bun run build && cd ../..
-dotnet build src/Grabbit/Grabbit.csproj -c Release
-src/Grabbit/bin/Release/net10.0-windows/Grabbit.exe
+cd grabbit/app
+bun install
+bunx tauri build
 ```
-
-Grabbit sits in the tray. Turn on *Start with Windows* from its menu.
-
-PrtScn only works when no other screenshot tool (Greenshot, or Snipping Tool's "Print Screen opens screen capture" setting) has claimed it. Grabbit tells you at start-up which keys were taken, and **Ctrl+Alt+G** always works.
-
-## Keys and actions
-
-| Do this | Get this |
-|---|---|
-| Tap **PrtScn** (or **Ctrl+Alt+G**, or left-click the tray icon) | Screens freeze with the loupe. Drag a region, click a window, or press **F** for the whole screen. The bar opens at the mouse. Keys: Enter = Copy, E = Edit, S = Scroll, R = Record, Ctrl+S = Save, P = Copy path, Esc = pick again |
-| Hold **Ctrl** / **Shift** / **Alt** as you let go | Straight into the editor / copy smaller / copy chat-sized |
-| **Ctrl+click** windows in the picker | Multi-window capture, laid out as on screen, transparent between windows |
-| **Scroll** on the bar (S) · **Ctrl+Alt+Shift+S** | Scrolling capture. Click a window to get everything you could scroll to; drag an area to scroll down from there |
-| **Ctrl+Shift+PrtScn** | The screen under the cursor, no picker |
-| **Hold PrtScn 2 s** · **Ctrl+Alt+PrtScn** · **Record** on the bar | Pick an area and record it. Hold time: `HoldToRecordMs` in settings (0 = off) |
-| **PrtScn** / **Ctrl+Alt+PrtScn** again · **Stop** · tray icon | Stop: `.mp4` in `Videos\Grabbit`, on the clipboard as a file, open in the video editor |
-| `Grabbit.exe --open <image, .excalidraw or video>` | Open it in the right editor |
-
-### How scrolling capture works
-
-Grabbit asks the app to scroll rather than faking your mouse:
-1. **UI Automation** works in Edge, Chrome, Office, File Explorer and WPF/WinForms apps. It moves by half the visible area each step.
-2. **Posted mouse-wheel messages** are used if the app has no automation scroll.
-3. **Manual:** if neither works, you scroll yourself and Grabbit stitches whatever comes into view.
-
-Frames are matched on a per-row brightness profile, which tolerates the anti-aliasing changes from fractional scrolling at 125/150 % scaling.
-
-### Recording
-
-- **Picture:** ffmpeg's Desktop Duplication (`ddagrab`) of the monitor the area is on, cropped on the GPU and encoded with NVENC. An area spanning two screens is cut to the screen holding its centre.
-- **Sound:** system sound (WASAPI loopback, kept ticking with silence so quiet parts stay in sync) and the microphone go into **separate tracks** named *System sound* and *Microphone*.
-- **Options** (tray → *Recording options*): system sound, microphone, mouse pointer, 60 fps, copy when finished, open the editor when finished. `RecordQuality` (default 23) is in the settings file.
-
-### Video editor
-
-| Do this | Get this |
-|---|---|
-| Click / drag the timeline · ← → (Shift = 1 s) · Space | Scrub · step a frame · play (cut parts are skipped) |
-| **S** · select a part + **Delete** · **I** / **O** · drag a part's edge | Split · cut it out · cut everything before / after the playhead · trim |
-| **Draw** (D) | Excalidraw over the video. New drawings show for 4 s from the playhead; drag a drawing's bar (or its ends) on the timeline to change when |
-| **Sound** | System + mic (mixed into one track, which is what chat apps play) · system only · mic only · no sound |
-| **Copy** · **Copy for chat** · **Copy GIF** · **Save** / **Save as…** / **Copy path** | Clipboard file · ≤ 1920 px under 94 MB · 12 fps GIF · `… edited.mp4` next to the original (never overwrites) |
-
-An untouched video is copied as the original file; cuts, drawings or a sound change are rendered with ffmpeg. Closing with unsaved edits asks whether to keep them as a new video.
-
-### Picture editor
-
-[Excalidraw](https://github.com/excalidraw/excalidraw) (MIT), bundled and offline: shapes, arrows, text, pen, styling, layers, align, group, crop, library and undo. Grabbit adds:
-- **Copy · Smaller · Chat · Copy & close · Save · Copy path · Save as… · Editable** (`.excalidraw`).
-- **Step** adds numbered badges.
-- **Pixelate · Blur · Black out:** these are baked into the pixels. **Spotlight** dims everything else.
-- **Stickers:** 64 emoji and 70 Lucide icons.
-- The **recent strip** of captures and copies, and **tabs**.
-
-Closing with changes keeps them as `<name> edited.png`.
-
-### Files and settings
-
-- **Pictures:** `Pictures\Grabbit`, lossless WebP. PNG is used past WebP's 16,383 px limit, or set `SaveFormat` to `Png`.
-- **Recordings:** `Videos\Grabbit`.
-- **Settings:** tray → *Edit settings file…* (`%APPDATA%\Grabbit\settings.json`).
-- **Log:** `%APPDATA%\Grabbit\log.txt`.
-
-| Lossless format (10 real captures) | Size vs PNG | Pixel-exact |
-|---|---|---|
-| PNG (GDI+) | 100 % | ✅ |
-| PNG, max-optimized | 92 % | ✅ |
-| **WebP lossless** | **~41 %** | ✅ |
-| AVIF "lossless" | 25 % | ❌ changed pixels |
-
-## Development
 
 ```bash
-dotnet build src/Grabbit/Grabbit.csproj
-src/Grabbit/bin/Debug/net10.0-windows/Grabbit.exe --selftest out      # capture, every clipboard size, editor, picker loupe; exit 0 = pass
-src/Grabbit/bin/Debug/net10.0-windows/Grabbit.exe --record-test out   # 4 s recording, sound tracks, overlay not in the video, cut/chat/GIF renders
+bunx tauri build --debug --no-bundle
+./src-tauri/target/debug/grabbit --self-test out
 ```
 
-- **Editor pages:** rebuild after changing `src/editor-web` with `bun run build`; it writes to `src/Grabbit/EditorWeb`.
-- **CDP tests:** the scripts in `spikes/` drive the real editors over DevTools. Run Grabbit with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`. `p9-video-draw.mjs` draws on a video with real mouse input and exports it.
-- **README screenshots:** `docs/demo/` makes them from a made-up demo page. `GRABBIT_DEMO=<folder>` keeps Grabbit's overlays visible to screen capture and its files in that folder.
-- **Design notes and spike results:** [docs/PLAN.md](docs/PLAN.md).
+- `--self-test` captures the screens, round-trips every encoder, metadata and the watermark, reads text, checks the clipboard, records 3 s and renders cuts, speed, GIF and social sizes; CI runs it on Windows, macOS and Linux.
+- `cargo test --lib` (in `app/src-tauri`) covers the watermark, stitching, layouts, captions, studio effects, S3 signing, settings backup and more.
+- `spikes/all.ps1` runs the Windows end-to-end flows (picker, recording, both editors, scrolling, Talk to AI) over DevTools.
+- The original Windows-only WPF version is kept in [`legacy/windows-wpf`](legacy/windows-wpf).
 
 ## Credits
 
-[Excalidraw](https://github.com/excalidraw/excalidraw) (MIT) · [ffmpeg](https://ffmpeg.org) (LGPL/GPL, run as a separate program) · [NAudio](https://github.com/naudio/NAudio) (MIT) · [Imazen.WebP](https://github.com/imazen/libwebp-net) · [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) · [Lucide](https://lucide.dev) icons (ISC).
+[Tauri](https://tauri.app) · [Excalidraw](https://github.com/excalidraw/excalidraw) (MIT) · [ffmpeg](https://ffmpeg.org) (LGPL/GPL, run as a separate program) · [whisper.cpp](https://github.com/ggml-org/whisper.cpp) via ffmpeg · [xcap](https://github.com/nashaofu/xcap) · [cpal](https://github.com/RustAudio/cpal) · [ScreenCaptureKit-rs](https://github.com/doom-fish/screencapturekit-rs) · [Lucide](https://lucide.dev) icons (ISC).
 
 ## Licence
 

@@ -20,7 +20,7 @@ export type EditorOps = {
   size: { width: number; height: number } | null;
 };
 
-const TARGET_LABEL: Record<string, string> = { onedrive: "OneDrive", immich: "Immich", mega: "MEGA", obsidian: "Obsidian" };
+const TARGET_LABEL: Record<string, string> = { onedrive: "OneDrive", immich: "Immich", mega: "MEGA", s3: "S3", obsidian: "Obsidian" };
 
 export function Panel({ which, ops, beauty, setBeauty, onClose }: { which: PanelName; ops: EditorOps; beauty: Beauty; setBeauty: (b: Beauty) => void; onClose: () => void }) {
   return (

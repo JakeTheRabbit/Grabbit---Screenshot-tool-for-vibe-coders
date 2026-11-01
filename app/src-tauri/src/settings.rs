@@ -53,6 +53,15 @@ pub struct Share {
     pub mega_folder: String,
     /// Empty = Grabbit's own Microsoft app registration.
     pub onedrive_client_id: String,
+    /// Any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi…).
+    pub s3_endpoint: String,
+    pub s3_region: String,
+    pub s3_bucket: String,
+    pub s3_access_key: String,
+    pub s3_secret_key: String,
+    /// Public address files are reachable at (e.g. https://cdn.example.com or the bucket's public URL).
+    pub s3_public_url: String,
+    pub s3_prefix: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -198,6 +207,7 @@ impl Settings {
         s.share.onedrive_token.clear();
         s.share.immich_key.clear();
         s.share.mega_password.clear();
+        s.share.s3_secret_key.clear();
         s.ai.openai_key.clear();
         s.ai.xai_key.clear();
         s.ai.google_key.clear();
@@ -214,6 +224,7 @@ impl Settings {
         keep(&mut s.share.onedrive_token, &self.share.onedrive_token);
         keep(&mut s.share.immich_key, &self.share.immich_key);
         keep(&mut s.share.mega_password, &self.share.mega_password);
+        keep(&mut s.share.s3_secret_key, &self.share.s3_secret_key);
         keep(&mut s.ai.openai_key, &self.ai.openai_key);
         keep(&mut s.ai.xai_key, &self.ai.xai_key);
         keep(&mut s.ai.google_key, &self.ai.google_key);

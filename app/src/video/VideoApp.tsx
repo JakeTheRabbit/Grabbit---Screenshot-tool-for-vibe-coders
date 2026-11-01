@@ -10,7 +10,7 @@ type Seg = { s: number; e: number; v?: number };   // v: playback speed of the p
 type Cue = { start: number; end: number; text: string };
 type Social = { name: string; width: number; height: number };
 type Meta = { social?: Social[]; cursor?: { moves: unknown[]; keys: unknown[] } | null; hasCaptions?: boolean; name: string; path?: string; url: string; duration: number; fps: number; width: number; height: number; hasAudio: boolean; bytes: number; hasSystem?: boolean; hasMic?: boolean };
-type Target = "Full" | "Chat" | "Gif" | "Webp" | `Social:${number}x${number}`;
+type Target = "Full" | "Chat" | "Gif" | "Webp" | "Beautify" | `Social:${number}x${number}`;
 type Action = "copy" | "save" | "saveAs" | "copyPath" | "closeSave" | "share";
 type Sound = "All" | "System" | "Mic" | "None";
 type HostMsg =
@@ -480,10 +480,11 @@ export function VideoApp() {
           ]} />
           <Drop label="Save" disabled={!!busy} onMain={() => exportAs("save", "Full")} items={[
             ["Save as…", () => exportAs("saveAs", "Full")],
+            ["Save with a background (styled)", () => exportAs("save", "Beautify")],
             ...(meta.social ?? []).map((x) => [`Save for ${x.name} (${x.width}×${x.height})`, () => exportAs("save", `Social:${x.width}x${x.height}`)] as [string, () => void]),
           ]} />
           <Drop label="Share" disabled={!!busy} items={targets.length ? targets.map((t) => [
-            t === "obsidian" ? "Send to Obsidian" : `Upload to ${({ onedrive: "OneDrive", immich: "Immich", mega: "MEGA" } as Record<string, string>)[t]} and copy link`,
+            t === "obsidian" ? "Send to Obsidian" : `Upload to ${({ onedrive: "OneDrive", immich: "Immich", mega: "MEGA", s3: "S3" } as Record<string, string>)[t]} and copy link`,
             () => { shareTo.current = t; void exportAs("share", "Full").finally(() => { shareTo.current = null; }); },
           ] as [string, () => void]) : [["Set up sharing in Settings…", () => void call("open_settings_at", { section: "Sharing" })]]} />
         </div>

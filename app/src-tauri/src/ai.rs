@@ -155,8 +155,9 @@ pub fn ask(s: &Settings, img: &RgbaImage, question: &str) -> Result<String> {
         }
         _ => {
             let base = match p { "xai" => "https://api.x.ai/v1", _ if !s.ai.openai_base.is_empty() => s.ai.openai_base.trim_end_matches('/'), _ => "https://api.openai.com/v1" };
-            let body = json!({ "model": model, "messages": [{ "role": "user", "content": [{ "type": "text", "text": question }, { "type": "image_url", "image_url": { "url": url } }] }] });
-            let r: Value = c.post(format!("{base}/chat/completions")).bearer_auth(key).json(&body).send()?.json()?;
+            let body = json!({ "model": model, "stream": false, "messages": [{ "role": "user", "content": [{ "type": "text", "text": question }, { "type": "image_url", "image_url": { "url": url } }] }] });
+            let raw = c.post(format!("{base}/chat/completions")).bearer_auth(key).json(&body).send()?.text()?;
+            let r: Value = serde_json::from_str(&raw).with_context(|| format!("unexpected answer: {}", raw.chars().take(300).collect::<String>()))?;
             r["choices"][0]["message"]["content"].as_str().map(String::from)
                 .with_context(|| format!("{}: {}", if p == "xai" { "xAI" } else { "OpenAI" }, r["error"]["message"].as_str().or(r["error"].as_str()).unwrap_or("no answer")))
         }
