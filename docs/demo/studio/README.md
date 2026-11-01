@@ -10,3 +10,5 @@ Every picture in the README is Grabbit's real UI (the app's own pages) running i
 6. `node posters.mjs` frames them with headlines into `docs/screenshots/*.webp` and `social-preview.png`.
 
 Both scripts take names to redo just some, e.g. `node shoot.mjs picker voice` or `node posters.mjs hero`.
+
+`node editor-sweep.mjs` (after steps 1, 2 and 4) clicks through the picture editor's buttons, menus and panels with a faked core and prints PASS/FAIL per check: steps, Hide modes and undo, Spotlight, Copy/Save, stickers, Beautify, AI edits, tabs and the sidebar.
