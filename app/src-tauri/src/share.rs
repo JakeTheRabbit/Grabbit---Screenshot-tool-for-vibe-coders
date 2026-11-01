@@ -12,7 +12,7 @@ use std::{
 use tauri::AppHandle;
 
 /// Grabbit's public Microsoft app registration (personal + work accounts, Files.ReadWrite). Overridable in settings.
-pub const ONEDRIVE_CLIENT_ID: &str = "PENDING-REGISTRATION";
+pub const ONEDRIVE_CLIENT_ID: &str = "baed171b-4194-4719-b402-748672dbf421";
 
 fn http() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder().timeout(Duration::from_secs(600)).user_agent("Grabbit").build().unwrap()

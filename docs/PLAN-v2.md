@@ -67,7 +67,7 @@ Status: ☐ todo · ◐ partial · ☑ done. **W** = clicked through on Windows 
 - ☑ W · CI: invisible watermark (owner + capture id) and Check image
 - ☑ W · CI: metadata strip / custom fields
 ### Share & workflow
-- ◐ W: share → Immich, MEGA, S3 (instant link), Obsidian. **OneDrive needs an Entra app registration** (client id is still `PENDING-REGISTRATION`). No OS share sheet yet: "Show in folder" stands in for it.
+- ◐ W: share → OneDrive (registered app `baed171b-…`, sign-in + upload + link checked 2026-11-01), Immich, MEGA, S3 (instant link), Obsidian. No OS share sheet yet: "Show in folder" stands in for it.
 - ☑ W: searchable history (OCR text + AI description)
 - ☑ W: step recorder → SOP (markdown + .docx)
 - ☑ W: settings backup / restore (secrets optional)
