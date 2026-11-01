@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CaptureUpdateAction, Excalidraw, FONT_FAMILY, convertToExcalidrawElements, exportToBlob,
-  getCommonBounds, getSceneVersion, restoreElements, serializeAsJSON,
+  getCommonBounds, getSceneVersion, newElementWith, restoreElements, serializeAsJSON,
 } from "@excalidraw/excalidraw";
 import type { AppState, BinaryFiles, ExcalidrawImperativeAPI, BinaryFileData, DataURL, NormalizedZoomValue } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement, FileId } from "@excalidraw/excalidraw/element/types";
@@ -229,7 +229,14 @@ export function App() {
     if (d.dirty) { show(d); await exportAs("closeSave", "Full"); }   // never lose edits: saved, then closed
     const i = docs.current.indexOf(d);
     docs.current.splice(i, 1);
-    if (docs.current.length === 0) { active.current = null; post({ type: "close" }); return; }
+    if (docs.current.length === 0) {   // last tab: an empty editor, ready for the next Insert / New tab
+      active.current = null;
+      api!.updateScene({ elements: [], appState: { selectedElementIds: {} }, captureUpdate: CaptureUpdateAction.NEVER });
+      api!.history.clear();
+      setActiveId(""); setName("Grabbit"); document.title = "Grabbit";
+      syncTabs();
+      return;
+    }
     if (active.current === d) { active.current = null; show(docs.current[Math.min(i, docs.current.length - 1)]); }
     syncTabs();
   }
@@ -284,12 +291,18 @@ export function App() {
 
   async function applyRedact(mode: "pixelate" | "blur" | "black") {
     const b = base();
-    const targets = selectedBoxes().filter((e) => e.type === "rectangle" || e.type === "ellipse" || e.type === "diamond");
+    // Boxes, or patches an earlier Pixelate/Blur left (so a hidden area can be switched to another mode).
+    const targets = selectedBoxes().filter((e) => e.type === "rectangle" || e.type === "ellipse" || e.type === "diamond" || (e.type === "image" && (e.customData?.redact || e.customData?.grabbitHidden)));
     if (!b || targets.length === 0) { api!.setToast({ message: "Draw a box over what to hide, select it, then pick Pixelate, Blur or Black out.", duration: 4000 }); return; }
     if (mode === "black") {
       const ids = new Set(targets.map((t) => t.id));
+      const patches = targets.filter((t) => t.type === "image");
+      const black = { backgroundColor: "#000000", strokeColor: "#000000", fillStyle: "solid" } as const;
       api!.updateScene({
-        elements: api!.getSceneElementsIncludingDeleted().map((e) => ids.has(e.id) ?{ ...e, backgroundColor: "#000000", strokeColor: "#000000", fillStyle: "solid", version: e.version + 1 } as ExcalidrawElement : e),
+        elements: [
+          ...api!.getSceneElementsIncludingDeleted().map((e) => !ids.has(e.id) ? e : e.type === "image" ? newElementWith(e, { isDeleted: true }) : newElementWith(e, black)),
+          ...convertToExcalidrawElements(patches.map((p) => ({ type: "rectangle" as const, x: p.x, y: p.y, width: p.width, height: p.height, roughness: 0, ...black }))),
+        ],
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
       return;
@@ -301,11 +314,11 @@ export function App() {
       if (!r) continue;
       const id = fileId();
       api!.addFiles([{ id, dataURL: r.dataURL as DataURL, mimeType: "image/png", created: Date.now() }]);
-      replacements.push(...convertToExcalidrawElements([{ type: "image", fileId: id, ...r.box }], { regenerateIds: false }));
+      replacements.push(...convertToExcalidrawElements([{ type: "image", fileId: id, ...r.box, customData: { redact: true } }], { regenerateIds: false }));
     }
     const gone = new Set(targets.map((t) => t.id));
     api!.updateScene({
-      elements: [...api!.getSceneElementsIncludingDeleted().map((e) => gone.has(e.id) ? { ...e, isDeleted: true, version: e.version + 1 } as ExcalidrawElement : e), ...replacements],
+      elements: [...api!.getSceneElementsIncludingDeleted().map((e) => gone.has(e.id) ? newElementWith(e, { isDeleted: true }) : e), ...replacements],
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     });
   }
@@ -314,11 +327,13 @@ export function App() {
     const b = base();
     const t = selectedBoxes().find((e) => e.type === "rectangle" || e.type === "ellipse");
     if (!b || !t) { api!.setToast({ message: "Draw a box round what to spotlight, select it, then pick Spotlight.", duration: 4000 }); return; }
-    addImage(spotlight(b as Box, t as Box), b.width, b.height, { x: b.x + b.width / 2, y: b.y + b.height / 2 }, { locked: true });
-    api!.updateScene({
-      elements: api!.getSceneElementsIncludingDeleted().map((e) => e.id === t.id ? { ...e, isDeleted: true, version: e.version + 1 } as ExcalidrawElement : e),
-      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-    });
+    const id = fileId();
+    api!.addFiles([{ id, dataURL: spotlight(b as Box, t as Box) as DataURL, mimeType: "image/png", created: Date.now() }]);
+    const [dim] = convertToExcalidrawElements([{ type: "image", fileId: id, x: b.x, y: b.y, width: b.width, height: b.height, locked: true }]);
+    // Right above the picture, so drawings already made stay bright on top of the dimming.
+    const rest = api!.getSceneElementsIncludingDeleted().map((e) => e.id === t.id ? newElementWith(e, { isDeleted: true }) : e);
+    const at = rest.findIndex((e) => e.id === BASE_ID) + 1;
+    api!.updateScene({ elements: [...rest.slice(0, at), dim, ...rest.slice(at)], captureUpdate: CaptureUpdateAction.IMMEDIATELY });
   }
 
   const baseDataURL = () => { const b = base(); return b ? api!.getFiles()[b.fileId!]?.dataURL ?? null : null; };
@@ -333,14 +348,17 @@ export function App() {
     return w > 2 && h > 2 ? { x, y, width: w, height: h } : null;
   };
 
-  /** Swap the picture underneath (AI edits), keeping drawings and undo. */
-  function replaceBase(dataURL: string) {
+  /** Swap the picture underneath (AI edits), keeping drawings and undo. With `dropBox`, the box that marked the area
+   *  goes too (same undo step), so it doesn't sit over the result. */
+  function replaceBase(dataURL: string, dropBox = false) {
     const b = base();
     if (!b) return;
     const id = fileId();
+    const box = dropBox ? selectedBoxes().find((e) => e.type === "rectangle" || e.type === "ellipse" || e.type === "diamond")?.id : undefined;
     api!.addFiles([{ id, dataURL: dataURL as DataURL, mimeType: "image/png", created: Date.now() }]);
     api!.updateScene({
-      elements: api!.getSceneElementsIncludingDeleted().map((e) => e.id === BASE_ID ? { ...e, fileId: id, version: e.version + 1 } as ExcalidrawElement : e),
+      elements: api!.getSceneElementsIncludingDeleted().map((e) => e.id === BASE_ID ? newElementWith(e as ExcalidrawElement & { type: "image" }, { fileId: id })
+        : e.id === box ? newElementWith(e, { isDeleted: true }) : e),
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     });
   }
@@ -384,8 +402,12 @@ export function App() {
 
   /** Voice note + marks over the edited picture, then one paste into ChatGPT / Claude. */
   async function talkToAi() {
-    const path = await send<string>({ type: "exportFile", name: name, dataURL: await render() });
-    await invoke("voice_open", { path, title: name });
+    setBusy("Opening Talk to AI…");
+    try {
+      const path = await send<string>({ type: "exportFile", name: name, dataURL: await render() });
+      await invoke("voice_open", { path, title: name });
+    } catch (e) { api!.setToast({ message: String(e), duration: 4000 }); }
+    finally { setBusy(""); }
   }
 
   async function readQr() {
@@ -403,13 +425,13 @@ export function App() {
   };
 
   function addStep() {
-    const n = api!.getSceneElements().filter((e) => e.customData?.grabbitStep).length + 1;
+    const n = Math.max(0, ...api!.getSceneElements().map((e) => Number(e.customData?.grabbitStep) || 0)) + 1;
     const color = api!.getAppState().currentItemStrokeColor;
-    const c = viewportCenter();
+    const { x, y, size } = stickerSpot(44);
     const els = convertToExcalidrawElements([{
-      type: "ellipse", x: c.x - 22, y: c.y - 22, width: 44, height: 44, backgroundColor: color, strokeColor: "#ffffff", strokeWidth: 2,
+      type: "ellipse", x, y, width: size, height: size, backgroundColor: color, strokeColor: "#ffffff", strokeWidth: 2,
       fillStyle: "solid", roughness: 0, customData: { grabbitStep: n },
-      label: { text: String(n), fontSize: 22, strokeColor: "#ffffff", fontFamily: FONT_FAMILY.Nunito },
+      label: { text: String(n), fontSize: size / 2, strokeColor: "#ffffff", fontFamily: FONT_FAMILY.Nunito },
     }]);
     api!.updateScene({
       elements: [...api!.getSceneElementsIncludingDeleted(), ...els],
@@ -451,6 +473,7 @@ export function App() {
   }
 
   async function insertRecent(item: RecentItem) {
+    if (!active.current) return openAsTab(item);   // nothing open to insert into
     const img = await getImage(item.path);
     const b = base();
     const maxW = (b?.width ?? 1600) * 0.6;
@@ -502,6 +525,7 @@ export function App() {
           <button className={stickers ? "on" : ""} data-stickers onClick={() => setStickers(!stickers)} title="Emoji and icons"><Icon name="smile" />Stickers</button>
         </div>
         <div className="seg">
+          <button onClick={talkToAi} title="Talk over this picture: mark things, say what you want, then paste it all into ChatGPT, Claude or Gemini"><Icon name="mic" />Talk</button>
           {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
             <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)}>
               <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[p]}
@@ -510,7 +534,7 @@ export function App() {
           ))}
         </div>
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
-        <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>
+        {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>
       <div className="body">
         <aside className="strip">
@@ -522,10 +546,11 @@ export function App() {
             {shown.length === 0 && <div className="empty">Nothing yet</div>}
             {shown.map((r) => (
               <div className="thumb" key={r.path} onMouseEnter={(e) => hoverStart(r, e.currentTarget)} onMouseLeave={hoverEnd}>
-                <img src={r.url} loading="lazy" onClick={() => insertRecent(r)} alt={r.name} />
+                <img src={r.url} loading="lazy" onClick={() => insertRecent(r)} alt={r.name} title="Insert into the picture you're editing" />
+                <span className="time">{new Date(r.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 <div className="meta">
-                  <span>{new Date(r.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  <button onClick={() => openAsTab(r)} title="Open this one in a new tab">Open</button>
+                  <button onClick={() => insertRecent(r)} title="Add it on top of the picture you're editing">Insert</button>
+                  <button onClick={() => openAsTab(r)} title="Open it on its own in a new tab">New tab</button>
                 </div>
               </div>
             ))}
@@ -538,12 +563,13 @@ export function App() {
               <strong>{preview.item.name}</strong>
               <span>{new Date(preview.item.time).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
               <span>{[previewSize, preview.item.bytes ? `${(preview.item.bytes / 1024 / 1024).toFixed(preview.item.bytes > 1048576 ? 1 : 2)} MB` : "", { capture: "Capture", edited: "Edited", copied: "Copied to clipboard" }[preview.item.kind]].filter(Boolean).join(" · ")}</span>
-              <em>Click to add on top · Open for a new tab</em>
+              <em>Insert adds it on top · New tab opens it on its own</em>
             </div>
           </div>
         )}
         <main className="canvas">
-          {tabs.length > 1 && (
+          {tabs.length === 0 && api && <div className="blank">No picture open<span>Pick a capture on the left: Insert or New tab.</span></div>}
+          {tabs.length > 0 && (
             <nav className="doctabs" role="tablist">
               {tabs.map((t) => (
                 <div key={t.id} role="tab" aria-selected={t.id === activeId} className={`doctab${t.id === activeId ? " on" : ""}`} onClick={() => switchTo(t.id)} title={t.name}>
@@ -557,6 +583,7 @@ export function App() {
           <Excalidraw
             excalidrawAPI={(a) => { setApi(a); Object.assign(((window as unknown as { grabbit: object }).grabbit ??= {}), { api: a, convert: convertToExcalidrawElements }); }}   // test hook (CDP checks)
             theme={dark ? "dark" : "light"}
+            handleKeyboardGlobally   // Ctrl+Z, Delete and tool keys work right after clicking a toolbar button
             name={name}
             initialData={{
               appState: {

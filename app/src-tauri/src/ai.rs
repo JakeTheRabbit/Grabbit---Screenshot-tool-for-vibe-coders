@@ -107,7 +107,11 @@ pub fn edit(s: &Settings, img: &RgbaImage, op: &Op) -> Result<RgbaImage> {
             if matches!(op, Op::RemoveBackground) { form = form.text("background", "transparent"); }
             if !model.contains("mini") { form = form.text("input_fidelity", "high"); }
             let r: Value = c.post(format!("{base}/images/edits")).bearer_auth(key).multipart(form).send()?.json()?;
-            let b = r["data"][0]["b64_json"].as_str().with_context(|| format!("OpenAI: {}", r["error"]["message"].as_str().unwrap_or("no image returned")))?;
+            let b = r["data"][0]["b64_json"].as_str().with_context(|| match r["error"]["type"].as_str() {
+                // The common surprise: a ChatGPT plan doesn't pay for the API.
+                Some("insufficient_quota") => "OpenAI: this API key has no credits left. API credits are billed separately from ChatGPT Plus/Pro; add some at platform.openai.com/settings/organization/billing or pick another provider in Settings → AI.".to_string(),
+                _ => format!("OpenAI: {}", r["error"]["message"].as_str().unwrap_or("no image returned")),
+            })?;
             B64.decode(b)?
         }
         "google" => {

@@ -13,7 +13,7 @@ export type EditorOps = {
   render: () => Promise<string>;            // the drawing as a PNG data URL (beautify applied when on)
   baseDataURL: () => string | null;         // the picture underneath, without drawings
   selectedRegion: () => Region | null;      // selected box, in picture pixels
-  replaceBase: (dataURL: string) => void;   // swap the picture (undoable)
+  replaceBase: (dataURL: string, dropBox?: boolean) => void;   // swap the picture (undoable), optionally removing the marking box
   toast: (t: string) => void;
   setBusy: (t: string) => void;
   name: string;
@@ -26,7 +26,7 @@ export function Panel({ which, ops, beauty, setBeauty, onClose }: { which: Panel
   return (
     <aside className="panel">
       <header><b>{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[which]}</b><button className="x" onClick={onClose} title="Close">×</button></header>
-      {which === "beautify" && <BeautifyPanel beauty={beauty} setBeauty={setBeauty} />}
+      {which === "beautify" && <BeautifyPanel beauty={beauty} setBeauty={setBeauty} ops={ops} />}
       {which === "share" && <SharePanel ops={ops} />}
       {which === "ai" && <AiPanel ops={ops} />}
       {which === "info" && <InfoPanel ops={ops} />}
@@ -34,11 +34,21 @@ export function Panel({ which, ops, beauty, setBeauty, onClose }: { which: Panel
   );
 }
 
-function BeautifyPanel({ beauty: b, setBeauty }: { beauty: Beauty; setBeauty: (b: Beauty) => void }) {
+function BeautifyPanel({ beauty: b, setBeauty, ops }: { beauty: Beauty; setBeauty: (b: Beauty) => void; ops: EditorOps }) {
   const set = (p: Partial<Beauty>) => setBeauty({ ...b, ...p, on: true });
+  // The look only applies to copies and saves, so show what they'll be (debounced; sliders fire fast).
+  const [preview, setPreview] = useState("");
+  useEffect(() => {
+    if (!b.on) { setPreview(""); return; }
+    let live = true;
+    const t = setTimeout(() => void ops.render().then((u) => { if (live) setPreview(u); }), 200);
+    return () => { live = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b]);
   return (
     <div className="pbody">
       <label className="line"><input type="checkbox" checked={b.on} onChange={(e) => setBeauty({ ...b, on: e.target.checked })} /> Apply to copies and saves</label>
+      {preview ? <img className="bpreview" src={preview} alt="How copies will look" /> : <p className="hint">Pick a background to turn it on and see a preview.</p>}
       <h4>Background</h4>
       <div className="swatches">
         {Object.entries(BACKGROUNDS).map(([n, [a, z]]) => (
@@ -96,7 +106,7 @@ function AiPanel({ ops }: { ops: EditorOps }) {
     const src = ops.baseDataURL();
     if (!src) return;
     ops.setBusy(label);
-    try { ops.replaceBase(await invoke<string>("ai_edit", { dataUrl: src, op })); ops.toast("Done. Ctrl+Z undoes it."); }
+    try { ops.replaceBase(await invoke<string>("ai_edit", { dataUrl: src, op }), "region" in op); ops.toast("Done. Ctrl+Z undoes it."); }
     catch (e) { ops.toast(String(e)); }
     ops.setBusy("");
   };
