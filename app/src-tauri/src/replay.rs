@@ -62,6 +62,8 @@ fn start_buffer(s: &Settings) -> Result<Buffer> {
     std::fs::create_dir_all(&dir)?;
     let wrap = secs / SEG + 3;
     let m = xcap::Monitor::all()?.into_iter().find(|m| m.is_primary().unwrap_or(false)).or_else(|| xcap::Monitor::all().ok()?.into_iter().next()).context("no screen")?;
+    #[cfg(target_os = "macos")]
+    let _ = &m; // AVFoundation names the screen instead of using its position
     let mut a: Vec<String> = vec!["-hide_banner".into(), "-loglevel".into(), "error".into(), "-y".into()];
     let fps = "30".to_string();
     #[cfg(windows)]

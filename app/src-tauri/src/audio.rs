@@ -12,6 +12,7 @@ use std::{
 };
 
 /// Plays silence on an output device: loopback only delivers while something plays.
+#[cfg(windows)]
 pub fn silence_stream(d: &cpal::Device, cfg: &cpal::SupportedStreamConfig) -> Result<cpal::Stream> {
     let s = d.build_output_stream_raw(cfg.config(), cfg.sample_format(), |data: &mut Data, _| {
         match data.sample_format() {
