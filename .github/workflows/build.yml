@@ -64,7 +64,10 @@ jobs:
           free -m
           # A runaway process must fail with an error, not take the runner down.
           ulimit -v 8000000
-          GRABBIT_VERBOSE=1 timeout 600 ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
+          GRABBIT_VERBOSE=1 timeout 600 ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest" || {
+            ffprobe -v error -count_packets -show_entries stream=index,codec_type,start_time,duration,nb_read_packets,sample_rate,channels -of compact "$RUNNER_TEMP/selftest/selftest.mp4"
+            exit 1
+          }
       - name: Self-test (macOS)
         if: runner.os == 'macOS'
         run: ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
@@ -79,7 +82,7 @@ jobs:
         if: always()
         with:
           name: selftest-${{ matrix.os }}
-          path: ${{ runner.temp }}/selftest/selftest.json
+          path: ${{ runner.temp }}/selftest/
 
   release:
     name: Installers (${{ matrix.name }})
