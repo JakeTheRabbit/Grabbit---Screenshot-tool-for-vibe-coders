@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key><true/>
+  <key>NSMicrophoneUsageDescription</key><string>Grabbit records your microphone when you turn it on for a screen recording.</string>
+  <key>NSCameraUsageDescription</key><string>Grabbit shows your webcam in a corner of a recording when you turn it on.</string>
+  <key>NSScreenCaptureUsageDescription</key><string>Grabbit needs to see the screen to take screenshots and recordings.</string>
+</dict>
+</plist>

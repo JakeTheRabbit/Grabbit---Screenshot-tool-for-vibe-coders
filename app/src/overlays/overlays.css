@@ -1,0 +1,34 @@
+html, body { background: transparent; overflow: hidden; user-select: none; height: 100%; }
+#root { height: 100%; }
+.ic { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; }
+.ic:hover { background: var(--hover); }
+.ic svg { width: 16px; height: 16px; }
+
+/* hold-to-record pill */
+.pill { display: flex; align-items: center; gap: 10px; margin: 6px; padding: 9px 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.9); color: #fff; box-shadow: var(--shadow); font-size: 13px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; flex: none; }
+.track { margin-top: 5px; height: 4px; width: 150px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+.fill { height: 100%; width: 0; background: #ff3b30; transition: width 40ms linear; }
+
+/* quick access */
+.card { margin: 6px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); overflow: hidden; animation: up 160ms ease-out; }
+@keyframes up { from { transform: translateY(14px); opacity: 0; } }
+.thumb { height: 160px; background: repeating-conic-gradient(#8881 0 25%, transparent 0 50%) 0 0 / 16px 16px; display: grid; place-items: center; cursor: grab; }
+.thumb img, .thumb video { max-width: 100%; max-height: 160px; display: block; pointer-events: none; }
+.row { display: flex; align-items: center; gap: 2px; padding: 6px 6px 6px 12px; }
+.msg { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* pinned picture */
+body.pin #root { cursor: move; }
+body.pin img { width: 100%; height: 100%; display: block; object-fit: contain; }
+
+/* recording frame + bar */
+.frame { position: fixed; inset: 0; border: 3px solid #ff3b30; border-radius: 2px; }
+.rec { display: flex; align-items: center; gap: 6px; height: 40px; margin: 2px; padding: 0 6px 0 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.92); color: #fff; box-shadow: var(--shadow); cursor: move; }
+.rec .ic:hover { background: rgba(255, 255, 255, 0.12); }
+.live { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; animation: pulse 1.2s ease-in-out infinite; }
+.paused .live { animation: none; background: #ffb340; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.time { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 44px; }
+.stop { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: #ff3b30; color: #fff; font-weight: 600; }
+.stop svg { width: 12px; height: 12px; fill: currentColor; }

@@ -15,3 +15,10 @@ docs/demo/out/
 spikes/*
 !spikes/*.mjs
 !spikes/*.ps1
+
+# Grabbit 2 (Tauri)
+app/node_modules/
+app/dist/
+app/src-tauri/target/
+app/src-tauri/gen/
+__pycache__/

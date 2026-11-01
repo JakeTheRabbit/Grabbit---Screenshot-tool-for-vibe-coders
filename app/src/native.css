@@ -1,0 +1,34 @@
+/* Native look per OS: system font, the OS's light/dark, accent-coloured focus. data-os is set by bridge.ts. */
+:root {
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --radius: 8px;
+  --accent: #0a64d8;
+  --bg: #f3f3f3;
+  --panel: rgba(255, 255, 255, 0.92);
+  --fg: #1b1b1b;
+  --muted: #5f5f5f;
+  --line: rgba(0, 0, 0, 0.1);
+  --hover: rgba(0, 0, 0, 0.05);
+  --danger: #c42b1c;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+  color-scheme: light dark;
+}
+:root[data-os="macos"] { --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; --radius: 10px; --accent: #007aff; }
+:root[data-os="linux"] { --font: "Cantarell", "Ubuntu", "Noto Sans", system-ui, sans-serif; --radius: 9px; --accent: #3584e4; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #202020; --panel: rgba(40, 40, 40, 0.92); --fg: #f2f2f2; --muted: #ababab; --line: rgba(255, 255, 255, 0.1); --hover: rgba(255, 255, 255, 0.07); --accent: #4cc2ff; --danger: #ff6b5e; }
+  :root[data-os="macos"] { --accent: #0a84ff; }
+  :root[data-os="linux"] { --accent: #78aeed; --bg: #242424; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; font-family: var(--font); font-size: 14px; color: var(--fg); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Buttons that look like the OS's. */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: calc(var(--radius) - 2px); border: 1px solid var(--line); background: var(--panel); cursor: default; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn svg { width: 16px; height: 16px; flex: none; }
+kbd { font: 11px var(--font); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }

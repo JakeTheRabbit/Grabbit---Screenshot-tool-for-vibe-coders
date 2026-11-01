@@ -1,0 +1,31 @@
+// Lucide icons (ISC) for the small vanilla pages (picker, bars, quick access, settings).
+import copy from "lucide-static/icons/copy.svg?raw";
+import smaller from "lucide-static/icons/minimize-2.svg?raw";
+import chat from "lucide-static/icons/message-circle.svg?raw";
+import edit from "lucide-static/icons/pen-line.svg?raw";
+import save from "lucide-static/icons/save.svg?raw";
+import link from "lucide-static/icons/link.svg?raw";
+import text from "lucide-static/icons/scan-text.svg?raw";
+import qr from "lucide-static/icons/qr-code.svg?raw";
+import pin from "lucide-static/icons/pin.svg?raw";
+import share from "lucide-static/icons/share-2.svg?raw";
+import ruler from "lucide-static/icons/ruler.svg?raw";
+import timer from "lucide-static/icons/timer.svg?raw";
+import record from "lucide-static/icons/video.svg?raw";
+import more from "lucide-static/icons/ellipsis.svg?raw";
+import mic from "lucide-static/icons/mic.svg?raw";
+import sound from "lucide-static/icons/volume-2.svg?raw";
+import stop from "lucide-static/icons/square.svg?raw";
+import pause from "lucide-static/icons/pause.svg?raw";
+import play from "lucide-static/icons/play.svg?raw";
+import close from "lucide-static/icons/x.svg?raw";
+import ratio from "lucide-static/icons/ratio.svg?raw";
+import palette from "lucide-static/icons/palette.svg?raw";
+import folder from "lucide-static/icons/folder-open.svg?raw";
+import shield from "lucide-static/icons/shield-check.svg?raw";
+import search from "lucide-static/icons/search.svg?raw";
+import sparkles from "lucide-static/icons/sparkles.svg?raw";
+
+const all = { copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
+export type Icon = keyof typeof all;
+export const icon = (n: Icon) => all[n];
