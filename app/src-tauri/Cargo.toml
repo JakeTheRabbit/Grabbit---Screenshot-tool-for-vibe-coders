@@ -61,3 +61,6 @@ objc2-core-foundation = { version = "0.3", features = ["CFData"] }
 # Pixel loops (capture, crop, encode) are unusable unoptimised; keep our own crate quick to rebuild.
 [profile.dev.package."*"]
 opt-level = 3
+
+[profile.dev]
+opt-level = 1

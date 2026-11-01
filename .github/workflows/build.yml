@@ -1,0 +1,119 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main, v2]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri
+
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
+            libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libwayland-dev libegl-dev libgbm-dev libasound2-dev libx11-dev \
+            ffmpeg tesseract-ocr xvfb pulseaudio xfce4 dbus-x11
+      - name: macOS packages
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Windows packages
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run build
+      - name: Unit tests
+        run: cargo test --lib --manifest-path src-tauri/Cargo.toml
+      - name: Build app
+        run: bunx tauri build --debug --no-bundle
+
+      - name: Self-test (Linux, on a virtual X11 desktop)
+        if: runner.os == 'Linux'
+        run: |
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1920x1080x24 &
+          sleep 2
+          dbus-launch startxfce4 >/dev/null 2>&1 &
+          pulseaudio --start --exit-idle-time=-1 || true
+          sleep 5
+          ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
+      - name: Self-test (macOS)
+        if: runner.os == 'macOS'
+        run: ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
+      - name: Self-test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:Path = "C:\ProgramData\chocolatey\bin;$env:Path"
+          & .\src-tauri\target\debug\grabbit.exe --self-test "$env:RUNNER_TEMP\selftest" | Out-Host
+          exit $LASTEXITCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-${{ matrix.os }}
+          path: ${{ runner.temp }}/selftest/selftest.json
+
+  release:
+    name: Installers (${{ matrix.name }})
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, os: windows-latest, args: "" }
+          - { name: macOS Apple silicon, os: macos-latest, args: "--target aarch64-apple-darwin" }
+          - { name: macOS Intel, os: macos-latest, args: "--target x86_64-apple-darwin" }
+          - { name: Linux, os: ubuntu-22.04, args: "" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
+            libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libwayland-dev libegl-dev libgbm-dev libasound2-dev libx11-dev
+      - run: bun install --frozen-lockfile
+        working-directory: app
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          tauriScript: bunx tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: Grabbit ${{ github.ref_name }}
+          releaseBody: "Install steps for each OS: https://github.com/JakeTheRabbit/grabbit#install"
+          releaseDraft: true
+          prerelease: false

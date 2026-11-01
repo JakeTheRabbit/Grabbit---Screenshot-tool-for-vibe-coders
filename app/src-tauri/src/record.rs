@@ -62,6 +62,28 @@ fn screens(app: &AppHandle) -> Vec<Screen> {
         .map(|(i, m)| Screen { x: m.position().x, y: m.position().y, width: m.size().width, height: m.size().height, index: i }).collect()
 }
 
+/// Headless recording for `--self-test`: the middle of the first screen, `secs` long, muxed like a real recording.
+pub fn selftest(s: &Settings, dir: &Path, secs: u64) -> Result<PathBuf> {
+    #[cfg(windows)]
+    let scr = dxgi_outputs().into_iter().next().context("no screens")?;
+    #[cfg(not(windows))]
+    let scr = {
+        let m = xcap::Monitor::all()?.into_iter().next().context("no screens")?;
+        let k = if cfg!(target_os = "macos") { m.scale_factor().unwrap_or(1.0) } else { 1.0 };
+        Screen { x: (m.x()? as f32 * k) as i32, y: (m.y()? as f32 * k) as i32, width: (m.width()? as f32 * k) as u32, height: (m.height()? as f32 * k) as u32, index: 0 }
+    };
+    let (w, h) = (640.min(scr.width) & !1, 360.min(scr.height) & !1);
+    let area = Area { x: scr.x + (scr.width - w) as i32 / 2, y: scr.y + (scr.height - h) as i32 / 2, width: w, height: h };
+    let tmp = dir.join("rec-parts");
+    std::fs::create_dir_all(&tmp)?;
+    let seg = start_segment(s, area, &scr, &tmp, 0)?;
+    std::thread::sleep(Duration::from_secs(secs));
+    let done = stop_segment(seg);
+    let out = dir.join("selftest.mp4");
+    mux(s, &done, &out)?;
+    Ok(out)
+}
+
 /// ddagrab numbers outputs in DXGI order, which needn't match the OS's monitor order.
 #[cfg(windows)]
 fn dxgi_outputs() -> Vec<Screen> {
@@ -99,6 +121,13 @@ fn fit(app: &AppHandle, x: i32, y: i32, w: u32, h: u32) -> Result<(Area, Screen)
     let a = Area { x: x0, y: y0, width: ((x1 - x0).max(0) as u32) & !1, height: ((y1 - y0).max(0) as u32) & !1 };
     if a.width < 16 || a.height < 16 { bail!("That area is too small to record.") }
     Ok((a, s))
+}
+
+/// Linux system sound comes from PulseAudio / PipeWire's monitor source; without a sound server, record picture only.
+#[cfg(target_os = "linux")]
+fn pulse_ok() -> bool {
+    static OK: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *OK.get_or_init(|| Command::new("pactl").arg("info").stdout(Stdio::null()).stderr(Stdio::null()).status().map(|s| s.success()).unwrap_or(false))
 }
 
 fn wayland_only() -> bool {
@@ -148,10 +177,11 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool) -> Vec<
         v.extend(["-f", "x11grab", "-framerate"].map(String::from));
         v.push(fps.clone());
         v.extend(["-draw_mouse".into(), (s.record_cursor as u8).to_string(), "-video_size".into(), format!("{}x{}", a.width, a.height), "-i".into(), format!("{display}+{},{}", a.x, a.y)]);
-        if s.record_system_audio { v.extend(["-f", "pulse", "-i", "@DEFAULT_MONITOR@"].map(String::from)); }
+        let sys = s.record_system_audio && pulse_ok();
+        if sys { v.extend(["-f", "pulse", "-i", "@DEFAULT_MONITOR@"].map(String::from)); }
         v.extend(["-pix_fmt".into(), "yuv420p".into()]);
         v.extend(video::h264(s, q, 0));
-        if s.record_system_audio { v.extend(["-c:a", "flac", "-metadata:s:a:0", "title=System sound"].map(String::from)); }
+        if sys { v.extend(["-c:a", "flac", "-metadata:s:a:0", "title=System sound"].map(String::from)); }
     }
     let _ = enc;
     v.extend(["-g".into(), (s.record_fps * 2).to_string(), out.to_string_lossy().into()]);
@@ -237,7 +267,11 @@ fn mux(s: &Settings, d: &Done, out: &Path) -> Result<()> {
     a.extend(["-map", "0:v", "-c:v", "copy"].map(String::from));
     // Linux records system sound inside the .mkv already.
     let mut n = 0;
-    if cfg!(target_os = "linux") && s.record_system_audio {
+    #[cfg(target_os = "linux")]
+    let linux_sys = s.record_system_audio && pulse_ok();
+    #[cfg(not(target_os = "linux"))]
+    let linux_sys = false;
+    if linux_sys {
         a.extend(["-map".into(), "0:a?".into(), format!("-metadata:s:a:{n}"), format!("handler_name={}", video::SYSTEM_TRACK)]);
         n += 1;
     }

@@ -13,6 +13,7 @@ mod ocr;
 mod picker;
 mod record;
 mod settings;
+mod selftest;
 mod share;
 mod studio;
 mod video;
@@ -93,6 +94,11 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(i) = args.iter().position(|a| a == "--self-test") {
+        let dir = args.get(i + 1).cloned().unwrap_or_else(|| std::env::temp_dir().join("grabbit-selftest").to_string_lossy().into());
+        std::process::exit(selftest::run(std::path::Path::new(&dir)));
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _| editor::handle_args(app, &args)))
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(hotkey::on_event).build())

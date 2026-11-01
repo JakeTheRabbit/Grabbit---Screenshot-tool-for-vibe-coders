@@ -147,8 +147,8 @@ mod imp {
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg_attr(target_os = "linux", ignore = "needs tesseract installed")]
     fn reads_fixture() {
+        if cfg!(target_os = "linux") && std::process::Command::new("tesseract").arg("--version").output().is_err() { eprintln!("tesseract not installed, skipped"); return; }
         let img = image::open(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/ocr.png")).unwrap().to_rgba8();
         let w = tauri::async_runtime::block_on(super::words(&img)).unwrap();
         let text: Vec<String> = w.iter().map(|x| x.text.to_lowercase()).collect();
