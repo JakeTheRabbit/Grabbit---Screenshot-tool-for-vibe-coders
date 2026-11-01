@@ -347,6 +347,7 @@ pub fn render(s: &Settings, input: &Path, keep: &[Part], target: &Target, output
     let logo = (s.branding.on_videos && Path::new(&s.branding.logo_path).exists()).then(|| PathBuf::from(&s.branding.logo_path));
     let args = render_args(s, input, &info, keep, target, output, sound, overlays, logo.as_deref(), extras);
     log::info!("render: {}", args.join(" "));
+    if std::env::var("GRABBIT_VERBOSE").is_ok() { eprintln!("render: {}", args.join(" ")); }
     // Safety net: no render may run far longer than its video could need.
     let k = key.map(String::from).unwrap_or_else(|| format!("render-{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)));
     let limit = std::time::Duration::from_secs_f64((total * 20.0).max(120.0));

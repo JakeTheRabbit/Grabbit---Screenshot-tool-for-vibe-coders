@@ -60,8 +60,11 @@ jobs:
           sleep 2
           dbus-launch startxfce4 >/dev/null 2>&1 &
           pulseaudio --start --exit-idle-time=-1 || true
-          sleep 5
-          ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
+          sleep 12
+          free -m
+          # A runaway process must fail with an error, not take the runner down.
+          ulimit -v 8000000
+          GRABBIT_VERBOSE=1 timeout 600 ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
       - name: Self-test (macOS)
         if: runner.os == 'macOS'
         run: ./src-tauri/target/debug/grabbit --self-test "$RUNNER_TEMP/selftest"
