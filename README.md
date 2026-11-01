@@ -99,7 +99,7 @@ Download from **[Releases](https://github.com/JakeTheRabbit/grabbit/releases/lat
 |---|---|---|
 | **Windows 10/11** | `Grabbit_x64-setup.exe` (or `.msi`) | SmartScreen: **More info → Run anyway** |
 | **macOS 13+** | `Grabbit_aarch64.dmg` (Apple silicon) or `Grabbit_x64.dmg` (Intel) | Drag to Applications, then **right-click → Open → Open**. Allow **Screen Recording** (and **Microphone**; **Accessibility** for scrolling capture and key captions) in System Settings → Privacy & Security. |
-| **Linux** | `.AppImage` (any distro), `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE) | AppImage: `chmod +x Grabbit*.AppImage` then run it. |
+| **Linux** | `.AppImage`, `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE). Needs a 2024-or-newer distro (glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40) | AppImage: `chmod +x Grabbit*.AppImage` then run it. |
 
 **Recording needs ffmpeg** (8.0 or newer for on-computer captions):
 

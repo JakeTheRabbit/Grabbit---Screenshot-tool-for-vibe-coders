@@ -101,7 +101,7 @@ jobs:
           - { name: Windows, os: windows-latest, args: "" }
           - { name: macOS Apple silicon, os: macos-latest, args: "--target aarch64-apple-darwin" }
           - { name: macOS Intel, os: macos-latest, args: "--target x86_64-apple-darwin" }
-          - { name: Linux, os: ubuntu-22.04, args: "" }
+          - { name: Linux, os: ubuntu-24.04, args: "" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
