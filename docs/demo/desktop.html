@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Demo desktop</title>
+<!-- Made-up desktop (wallpaper, a dashboard window, a chat window) that the studio freezes as the "screen" behind
+     Grabbit's picker and overlays in the README shots. Nothing here is real data. Laid out for 1600×900. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #1b1d22;
+    background:
+      radial-gradient(900px 600px at 12% 18%, #5b7cfa 0, transparent 60%),
+      radial-gradient(800px 700px at 88% 80%, #c157f5 0, transparent 62%),
+      radial-gradient(700px 500px at 70% 10%, #2ec5ce 0, transparent 60%),
+      linear-gradient(135deg, #1b2350, #2b1a4f 60%, #3a1846);
+  }
+  .win { position: absolute; background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 30px 80px rgb(8 10 30 / .45), 0 0 0 1px rgb(255 255 255 / .08); display: flex; flex-direction: column; }
+  .bar { height: 38px; flex: none; display: flex; align-items: center; padding: 0 6px 0 14px; gap: 10px; font-size: 12.5px; color: #3c4150; background: #f1f3f6; border-bottom: 1px solid #e3e6eb; }
+  .bar .ico { width: 16px; height: 16px; border-radius: 4px; }
+  .bar .t { flex: 1; }
+  .bar .ctl { display: flex; }
+  .bar .ctl i { width: 40px; height: 30px; display: grid; place-items: center; font-style: normal; color: #5b6070; font-size: 13px; }
+  .url { flex: 1; max-width: 520px; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 4px 14px; color: #6b7080; font-size: 12px; }
+  #dash { left: 70px; top: 64px; width: 1010px; height: 660px; }
+  #dash iframe { flex: none; border: 0; width: 1600px; height: 986px; transform: scale(.63125); transform-origin: 0 0; }
+  #chat { left: 1110px; top: 150px; width: 420px; height: 640px; background: #fbfbfd; }
+  .msgs { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .m { display: flex; gap: 10px; align-items: flex-start; }
+  .av { width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .m b { font-size: 13px; } .m small { color: #8a8f9c; margin-left: 6px; font-size: 11.5px; }
+  .m p { margin: 2px 0 0; }
+  .shot { margin-top: 6px; border-radius: 10px; overflow: hidden; border: 1px solid #e3e6eb; width: 300px; height: 170px; position: relative; background: #fff; }
+  .shot iframe { border: 0; width: 1600px; height: 1000px; transform: translate(-97px, -84px) scale(.37); transform-origin: 0 0; pointer-events: none; }
+  .compose { margin: 0 14px 14px; border: 1px solid #e3e6eb; border-radius: 12px; background: #fff; padding: 12px 14px; color: #9aa0ad; }
+  .dock { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 10px; padding: 8px 12px;
+    background: rgb(255 255 255 / .16); border: 1px solid rgb(255 255 255 / .2); border-radius: 18px; backdrop-filter: blur(20px); }
+  .dock i { width: 40px; height: 40px; border-radius: 11px; display: block; }
+</style>
+</head>
+<body>
+  <div class="win" id="dash">
+    <div class="bar"><span class="ico" style="background:linear-gradient(135deg,#f08a24,#e5484d)"></span><span class="url">fernhill.example/overview</span><span class="t"></span><span class="ctl"><i>&#x2212;</i><i>&#x25A1;</i><i>&#x2715;</i></span></div>
+    <iframe src="demo.html" scrolling="no"></iframe>
+  </div>
+  <div class="win" id="chat">
+    <div class="bar"><span class="ico" style="background:#6c5ce7"></span><span class="t"># team-fernhill</span><span class="ctl"><i>&#x2212;</i><i>&#x2715;</i></span></div>
+    <div class="msgs">
+      <div class="m"><span class="av" style="background:#16a37f">AR</span><div><b>Aroha</b><small>9:12</small><p>Anyone know why Saturday spiked?</p></div></div>
+      <div class="m"><span class="av" style="background:#3884ff">SK</span><div><b>Sam</b><small>9:14</small><p>Here's the chart, look at the jump 👇</p><div class="shot"><iframe src="demo.html" scrolling="no"></iframe></div></div></div>
+      <div class="m"><span class="av" style="background:#e5484d">MJ</span><div><b>Mia</b><small>9:15</small><p>Farmers market + the new Ridgeline bags. Nice.</p></div></div>
+    </div>
+    <div class="compose">Message #team-fernhill</div>
+  </div>
+  <div class="dock">
+    <i style="background:linear-gradient(135deg,#3884ff,#2ec5ce)"></i><i style="background:linear-gradient(135deg,#f08a24,#e5484d)"></i>
+    <i style="background:linear-gradient(135deg,#6c5ce7,#c157f5)"></i><i style="background:linear-gradient(135deg,#16a37f,#9be15d)"></i>
+    <i style="background:linear-gradient(135deg,#ffb84d,#ff7a59)"></i>
+  </div>
+</body>
+</html>
