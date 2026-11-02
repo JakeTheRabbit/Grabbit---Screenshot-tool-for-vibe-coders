@@ -16,7 +16,7 @@ import { findPrivate, type Word } from "./private";
 import { Panel, type EditorOps, type PanelName } from "./Panel";
 
 /** A button that opens a small menu of related actions. */
-function Menu({ label, icon, primary, onMain, items }: { label: string; icon: Parameters<typeof Icon>[0]["name"]; primary?: boolean; onMain?: () => void; items: [string, () => void, string?][] }) {
+function Menu({ label, icon, primary, onMain, items, title }: { label: string; icon: Parameters<typeof Icon>[0]["name"]; primary?: boolean; onMain?: () => void; items: [string, () => void, string?][]; title?: string }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -27,7 +27,7 @@ function Menu({ label, icon, primary, onMain, items }: { label: string; icon: Pa
   return (
     <div className="menuwrap">
       <div className={`split${primary ? " primary" : ""}`}>
-        <button className={primary ? "primary" : ""} onClick={onMain ?? (() => setOpen(!open))}><Icon name={icon} />{label}</button>
+        <button className={primary ? "primary" : ""} onClick={onMain ?? (() => setOpen(!open))} title={title}><Icon name={icon} />{label}</button>
         {onMain && <button className={`caret${primary ? " primary" : ""}`} onClick={() => setOpen(!open)} aria-label={`More ${label} options`}>▾</button>}
       </div>
       {open && <div className="dropdown">{items.map(([t, f, k]) => <button key={t} onClick={() => { setOpen(false); f(); }}><span>{t}</span>{k && <kbd>{k}</kbd>}</button>)}</div>}
@@ -36,6 +36,13 @@ function Menu({ label, icon, primary, onMain, items }: { label: string; icon: Pa
 }
 
 const BASE_ID = "grabbit-base";
+
+/** Distance from (px,py) to the segment (ax,ay)–(bx,by). */
+function segDist(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+  const dx = bx - ax, dy = by - ay, len = dx * dx + dy * dy;
+  const t = len ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len)) : 0;
+  return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
 
 function blobToDataURL(blob: Blob) {
   return new Promise<string>((resolve) => {
@@ -59,6 +66,10 @@ export function App() {
   const [panel, setPanel] = useState<PanelName | null>(null);
   const [beauty, setBeautyState] = useState<Beauty>(() => { try { return { ...DEFAULT_BEAUTY, ...JSON.parse(localStorage.getItem("beauty") ?? "{}"), on: false }; } catch { return DEFAULT_BEAUTY; } });
   const setBeauty = (b: Beauty) => { setBeautyState(b); try { localStorage.setItem("beauty", JSON.stringify(b)); } catch { /* private mode */ } };
+  // Which side of the window the toolbar sits on (remembered per computer).
+  type BarPos = "top" | "bottom" | "left" | "right";
+  const [barPos, setBarPosState] = useState<BarPos>(() => { try { return (localStorage.getItem("barPos") as BarPos) || "top"; } catch { return "top"; } });
+  const setBarPos = (p: BarPos) => { setBarPosState(p); try { localStorage.setItem("barPos", p); } catch { /* private mode */ } };
   const [tabs, setTabs] = useState<{ id: string; name: string; dirty: boolean }[]>([]);
   const [activeId, setActiveId] = useState("");
   const [dark, setDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
@@ -452,6 +463,38 @@ export function App() {
     return { x, y, size };
   }
 
+  // Arrows, lines and pen strokes are a pixel or two wide on a zoomed-out capture and Excalidraw only catches clicks a
+  // few px from them. A click 4–12 px off one selects it (closer than that Excalidraw takes it, and can drag at once).
+  useEffect(() => {
+    if (!api) return;
+    const host = document.querySelector<HTMLElement>(".excal-host");
+    const down = (e: PointerEvent) => {
+      if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.altKey || (e.target as Element).tagName !== "CANVAS") return;
+      const s = api.getAppState();
+      if (s.activeTool.type !== "selection") return;
+      const z = s.zoom.value, px = (e.clientX - s.offsetLeft) / z - s.scrollX, py = (e.clientY - s.offsetTop) / z - s.scrollY;
+      let best: { id: string; d: number } | null = null;
+      for (const el of api.getSceneElements()) {
+        if (el.locked || !("points" in el) || s.selectedElementIds[el.id]) continue;
+        const pts = el.points, xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+        // Undo the element's rotation about its centre, then measure in its own coordinates.
+        const cx = el.x + (Math.min(...xs) + Math.max(...xs)) / 2, cy = el.y + (Math.min(...ys) + Math.max(...ys)) / 2;
+        const c = Math.cos(-el.angle), sn = Math.sin(-el.angle);
+        const qx = cx + (px - cx) * c - (py - cy) * sn - el.x, qy = cy + (px - cx) * sn + (py - cy) * c - el.y;
+        for (let i = 1; i < pts.length; i++) {
+          const d = segDist(qx, qy, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
+          if (!best || d < best.d) best = { id: el.id, d };
+        }
+      }
+      if (best && best.d * z > 4 && best.d * z <= 12) {
+        e.stopPropagation();
+        api.updateScene({ appState: { selectedElementIds: { [best.id]: true } } });
+      }
+    };
+    host?.addEventListener("pointerdown", down, true);
+    return () => host?.removeEventListener("pointerdown", down, true);
+  }, [api]);
+
   // The sticker picker closes on Esc or a click anywhere outside it (its own header button toggles it).
   useEffect(() => {
     if (!stickers) return;
@@ -495,7 +538,7 @@ export function App() {
   const shown = recent.filter((r) => tab === "copied" ? r.kind === "copied" : r.kind !== "copied");
 
   return (
-    <div className="shell">
+    <div className={`shell bar-${barPos}`}>
       <header className="bar">
         <div className="seg">
           <Menu label="Copy" icon="copy" primary onMain={() => exportAs("copy", "Full")} items={[
@@ -534,6 +577,7 @@ export function App() {
           ))}
         </div>
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
+        <Menu label="" icon="layout" title="Move the toolbar" items={(["top", "bottom", "left", "right"] as BarPos[]).map((p) => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)])} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>
       <div className="body">
@@ -580,6 +624,7 @@ export function App() {
               ))}
             </nav>
           )}
+          <div className="excal-host">
           <Excalidraw
             excalidrawAPI={(a) => { setApi(a); Object.assign(((window as unknown as { grabbit: object }).grabbit ??= {}), { api: a, convert: convertToExcalidrawElements }); }}   // test hook (CDP checks)
             theme={dark ? "dark" : "light"}
@@ -601,6 +646,7 @@ export function App() {
               tools: { image: true },
             }}
           />
+          </div>
           {panel && <Panel which={panel} ops={ops} beauty={beauty} setBeauty={setBeauty} onClose={() => setPanel(null)} />}
           {stickers && (
             <div className="stickers">

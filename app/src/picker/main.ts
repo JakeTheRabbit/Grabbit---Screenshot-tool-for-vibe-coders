@@ -263,13 +263,23 @@ async function showBar() {
   placeBar();
 }
 
+/** Bar under (or over) the area with its main button (Copy / Record) right by the pointer, which is where the drag
+ *  ended. Too close to the screen's right edge for that, the bar runs leftwards instead (main button last). */
 function placeBar() {
   if (!sel || bar.hidden) return;
+  bar.classList.remove("rev");
   const r = bar.getBoundingClientRect();
-  let x = Math.min(innerWidth - r.width - 8, Math.max(8, sel.x + sel.w - r.width));
-  let y = sel.y + sel.h + 10;
-  if (y + r.height > innerHeight - 8) y = sel.y - r.height - 10;
-  if (y < 8) { y = sel.y + sel.h - r.height - 10; x = Math.min(innerWidth - r.width - 8, Math.max(8, sel.x + sel.w - r.width - 10)); }
+  const main = bar.querySelector(".btn.primary") as HTMLElement | null;
+  const off = main ? main.offsetLeft + main.offsetWidth / 2 : 0;   // main button's centre from the bar's left
+  const px = Math.min(sel.x + sel.w, Math.max(sel.x, mouse.x));
+  let x = px - off;
+  if (x + r.width > innerWidth - 8) { bar.classList.add("rev"); x = px - (r.width - off); }
+  x = Math.min(innerWidth - r.width - 8, Math.max(8, x));
+  // Below the area, or above it when the drag ended at its top; whichever fits, else just inside the bottom.
+  const below = sel.y + sel.h + 10, above = sel.y - r.height - 10;
+  const fitsBelow = below + r.height <= innerHeight - 8, fitsAbove = above >= 8;
+  const nearTop = Math.abs(mouse.y - sel.y) < Math.abs(mouse.y - sel.y - sel.h);
+  const y = nearTop ? (fitsAbove ? above : fitsBelow ? below : sel.y + 10) : (fitsBelow ? below : fitsAbove ? above : sel.y + sel.h - r.height - 10);
   bar.style.left = `${x}px`; bar.style.top = `${y}px`;
   const menu = bar.querySelector(".menu") as HTMLElement | null;
   if (menu) menu.classList.toggle("up", y + r.height + 280 > innerHeight);

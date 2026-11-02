@@ -73,7 +73,7 @@ button.icon-only:hover { color: var(--text); }
 .tabs button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
 .thumbs { flex: 1; overflow-y: auto; padding: 2px 8px 10px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; }
 .thumb {
-  position: relative; border-radius: 10px; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line);
+  flex: none; position: relative; border-radius: 10px; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line);
   transition: transform 160ms var(--ease), box-shadow 160ms var(--ease), border-color 160ms var(--ease);
 }
 .thumb:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
@@ -108,7 +108,9 @@ button.icon-only:hover { color: var(--text); }
 .doctab .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .doctab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; box-shadow: 0 0 0 3px var(--accent-soft); }
 .doctab .x { width: 22px; height: 22px; padding: 0; justify-content: center; font-size: 15px; color: var(--muted); }
-.canvas:has(.doctabs) .excalidraw { padding-top: 36px; }
+/* Excalidraw fills this box; the tab strip sits above it (padding on .excalidraw pushed its bottom bar out of view). */
+.excal-host { position: absolute; inset: 0; }
+.canvas:has(.doctabs) .excal-host { top: 36px; }
 .blank { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   background: var(--panel-2); color: var(--text); font-size: 16px; font-weight: 600; }
 .blank span { color: var(--muted); font-size: 13px; font-weight: 400; }
@@ -149,6 +151,26 @@ button.icon-only:hover { color: var(--text); }
 }
 @keyframes drop { from { transform: translateY(-4px); opacity: 0; } }
 .dropdown button { justify-content: space-between; height: 32px; font-weight: 500; }
+
+/* ---------- toolbar on another side ---------- */
+.shell.bar-bottom { flex-direction: column-reverse; }
+.shell.bar-bottom .bar { margin: 0 8px 8px; }
+.shell.bar-bottom .dropdown { top: auto; bottom: calc(100% + 6px); }
+.shell.bar-left { flex-direction: row; }
+.shell.bar-right { flex-direction: row-reverse; }
+.shell.bar-left .bar, .shell.bar-right .bar {
+  flex-direction: column; align-items: stretch; flex-wrap: nowrap; width: 148px; margin: 8px 0 8px 8px;
+}
+.shell.bar-right .bar { margin: 8px 8px 8px 0; }
+.shell.bar-left .seg, .shell.bar-right .seg { flex-direction: column; }
+.shell.bar-left .bar button, .shell.bar-right .bar button { justify-content: flex-start; }
+.shell.bar-left .split > button:first-child, .shell.bar-right .split > button:first-child { flex: 1; }
+.shell.bar-left .bar .name, .shell.bar-right .bar .name { margin: auto 0 0; max-width: none; white-space: normal; }
+.shell.bar-left .dropdown { top: 0; left: calc(100% + 6px); }
+.shell.bar-right .dropdown { top: 0; left: auto; right: calc(100% + 6px); }
+/* The toolbar-position menu sits at the bar's far end: open it inwards. */
+.shell.bar-top .bar .name + .menuwrap .dropdown, .shell.bar-bottom .bar .name + .menuwrap .dropdown { left: auto; right: 0; }
+.shell.bar-left .bar .name + .menuwrap .dropdown, .shell.bar-right .bar .name + .menuwrap .dropdown { top: auto; bottom: 0; }
 .dropdown kbd { font: 11px inherit; color: var(--muted); }
 .bar button .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 2px; }
 

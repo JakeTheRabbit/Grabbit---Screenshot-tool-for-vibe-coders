@@ -17,6 +17,8 @@ body.leaving { opacity: 0; transition: opacity 60ms; }
 #hint kbd { color: #ddd; border-color: rgba(255, 255, 255, 0.3); }
 
 #bar { position: fixed; display: flex; gap: 4px; padding: 5px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); }
+#bar.rev { flex-direction: row-reverse; }
+#bar.rev .menu { right: auto; left: 0; }
 #bar .btn { border-color: transparent; background: transparent; height: 34px; }
 #bar .btn:hover { background: var(--hover); }
 #bar .btn.primary { background: var(--accent); color: #fff; }
