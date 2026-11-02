@@ -111,6 +111,26 @@ button.icon-only:hover { color: var(--text); }
 /* Excalidraw fills this box; the tab strip sits above it (padding on .excalidraw pushed its bottom bar out of view). */
 .excal-host { position: absolute; inset: 0; }
 .canvas:has(.doctabs) .excal-host { top: 36px; }
+/* ---------- new editor (markup) ---------- */
+.canvas.mk { display: flex; flex-direction: column; background: var(--panel-2); }
+.canvas.mk .doctabs { position: static; flex: none; }
+.mk-tools { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.mk-group { display: flex; align-items: center; gap: 1px; padding: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
+.mk-group button { height: 30px; min-width: 30px; padding: 0 7px; justify-content: center; }
+.mk-group button:disabled { opacity: 0.4; cursor: default; }
+.mk-end { margin-left: auto; }
+.mk-tools .zoom { min-width: 52px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.mk-colors { gap: 4px; padding: 4px 6px; }
+.mk-colors .sw { width: 20px; min-width: 20px; height: 20px; padding: 0; border-radius: 50%; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18); }
+.mk-colors .sw.on { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mk-colors .custom { display: block; position: relative; cursor: pointer; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.mk-colors .custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.wdot { display: block; border-radius: 50%; background: currentColor; }
+.fill { display: block; width: 14px; height: 14px; border: 2px solid currentColor; border-radius: 3px; }
+.fill.soft { background: color-mix(in srgb, currentColor 30%, transparent); }
+.fill.solid { background: currentColor; }
+.mk-stage { flex: 1; position: relative; min-height: 0; overflow: hidden; background: repeating-conic-gradient(rgb(128 128 128 / 0.08) 0 25%, transparent 0 50%) 0 0 / 18px 18px; }
+.mk-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px; background: rgb(20 22 28 / 0.82); color: #fff; font-size: 12px; pointer-events: none; }
 .blank { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   background: var(--panel-2); color: var(--text); font-size: 16px; font-weight: 600; }
 .blank span { color: var(--muted); font-size: 13px; font-weight: 400; }

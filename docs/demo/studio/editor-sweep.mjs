@@ -8,6 +8,7 @@ const asset = (f) => `http://studio.local/asset/${encodeURIComponent(f)}`;
 
 // Fake core: OCR finds one email at picture px (200,100); exports/AI recorded; AI edit returns a solid red picture.
 const setup = `
+  localStorage.setItem("editor", "classic");
   window.__red = (() => { const c = document.createElement("canvas"); c.width = 2560; c.height = 1440; const g = c.getContext("2d"); g.fillStyle = "#f00"; g.fillRect(0, 0, 2560, 1440); return c.toDataURL(); });
   __studio.handlers = {
     editor_msg: ({ msg }) => ({

@@ -14,26 +14,8 @@ import { send } from "./bridge";
 import { beautify, DEFAULT_BEAUTY, type Beauty } from "./beautify";
 import { findPrivate, type Word } from "./private";
 import { Panel, type EditorOps, type PanelName } from "./Panel";
-
-/** A button that opens a small menu of related actions. */
-function Menu({ label, icon, primary, onMain, items, title }: { label: string; icon: Parameters<typeof Icon>[0]["name"]; primary?: boolean; onMain?: () => void; items: [string, () => void, string?][]; title?: string }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = () => setOpen(false);
-    setTimeout(() => addEventListener("click", close, { once: true }));
-    return () => removeEventListener("click", close);
-  }, [open]);
-  return (
-    <div className="menuwrap">
-      <div className={`split${primary ? " primary" : ""}`}>
-        <button className={primary ? "primary" : ""} onClick={onMain ?? (() => setOpen(!open))} title={title}><Icon name={icon} />{label}</button>
-        {onMain && <button className={`caret${primary ? " primary" : ""}`} onClick={() => setOpen(!open)} aria-label={`More ${label} options`}>▾</button>}
-      </div>
-      {open && <div className="dropdown">{items.map(([t, f, k]) => <button key={t} onClick={() => { setOpen(false); f(); }}><span>{t}</span>{k && <kbd>{k}</kbd>}</button>)}</div>}
-    </div>
-  );
-}
+import { Menu } from "./Menu";
+import { switchEditor } from "./carry";
 
 const BASE_ID = "grabbit-base";
 
@@ -287,6 +269,20 @@ export function App() {
         syncTabs();
       }
     } finally { setBusy(""); }
+  }
+
+  /** Switch to the new editor; open tabs come along as pictures (drawings flattened in, no Beautify). */
+  async function toMarkup() {
+    const list: { name: string; dataURL: string }[] = [];
+    const look = beautyRef.current;
+    beautyRef.current = { ...look, on: false };
+    for (const d of [...docs.current]) {
+      show(d);
+      await new Promise((r) => requestAnimationFrame(r));
+      list.push({ name: d.name, dataURL: await render() });
+    }
+    beautyRef.current = look;
+    await switchEditor("markup", list);
   }
 
   function saveProject() {
@@ -577,7 +573,10 @@ export function App() {
           ))}
         </div>
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
-        <Menu label="" icon="layout" title="Move the toolbar" items={(["top", "bottom", "left", "right"] as BarPos[]).map((p) => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)])} />
+        <Menu label="" icon="layout" title="Move the toolbar" items={[
+          ...(["top", "bottom", "left", "right"] as BarPos[]).map((p): [string, () => void] => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)]),
+          ["Try the new editor (beta)", toMarkup],
+        ]} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>
       <div className="body">
