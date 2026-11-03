@@ -26,6 +26,9 @@
     "targets": ["nsis", "msi", "dmg", "app", "appimage", "deb", "rpm"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "category": "Utility",
+    "publisher": "JakeTheRabbit",
+    "copyright": "Copyright (c) 2026 JakeTheRabbit. MIT licence.",
+    "homepage": "https://github.com/JakeTheRabbit/grabbit",
     "shortDescription": "Screenshots and screen recordings, straight to the clipboard",
     "macOS": { "minimumSystemVersion": "13.0", "entitlements": null, "infoPlist": "Info.plist" },
     "linux": { "deb": { "depends": ["ffmpeg"], "recommends": ["tesseract-ocr"] } }

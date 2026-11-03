@@ -211,7 +211,9 @@ pub fn run() {
             // grabbit://capture, grabbit://record, grabbit://open/<path>… from scripts, launchers and shortcuts.
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
-                #[cfg(any(windows, target_os = "linux"))]
+                // The Windows installers register the scheme; rewriting HKCU\Software\Classes on every start looks like
+                // persistence to Defender. Linux keeps it for AppImages, which have no installer.
+                #[cfg(target_os = "linux")]
                 let _ = app.deep_link().register_all();
                 let h = app.handle().clone();
                 app.deep_link().on_open_url(move |e| {
