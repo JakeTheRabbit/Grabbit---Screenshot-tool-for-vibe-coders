@@ -33,7 +33,7 @@
 
 - **One key does it all.** Tap PrtScn for a screenshot, hold it for a recording. No mode switching, no setup.
 - **Built for pasting into AI.** Point at things, say what you mean, and one paste gives the AI the picture, your words, numbered marks and every word of text on the screen.
-- **A real editor for pictures and video.** The full Excalidraw whiteboard for markup, and a timeline that cuts silences, adds captions and zooms on your clicks.
+- **A real editor for pictures and video.** A markup editor built for screenshots (the Excalidraw whiteboard is still a click away), and a timeline that cuts silences, adds captions and zooms on your clicks.
 - **Lands ready to use.** Every capture is on the clipboard as a picture *and* a file, saved as lossless WebP, with a card you can drag into any app.
 - **Private by default.** Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a local model.
 - **Everywhere you work.** Windows, macOS and Linux, from one codebase, all free.
@@ -72,7 +72,7 @@ Every capture lands on the clipboard as a picture **and** a named file (so chat 
 
 <img src="docs/screenshots/editor.webp" alt="The picture editor: hand-drawn annotations, a numbered step, and the Beautify panel">
 
-The [Excalidraw](https://github.com/excalidraw/excalidraw) editor, fully offline: arrows, boxes, text, pen, highlighter, numbered **steps**, emoji and icons, tabs, and a strip of recent captures.
+Built for screenshots and fully offline: the capture is the canvas. Arrows, lines, boxes, ellipses, text, pen, highlighter, numbered **steps**, pixelate, blur, black out, spotlight, magnifier, crop, emoji and icons, tabs, and a strip of recent captures; every tool has a key ([docs/markup-editor.md](docs/markup-editor.md)). The classic [Excalidraw](https://github.com/excalidraw/excalidraw) whiteboard is in the layout menu, and `.excalidraw` projects open there.
 
 - **Hide** private details in one click: finds and pixelates **emails, IP addresses, phone and card numbers, API keys and tokens**. Or pixelate, blur, black out or spotlight any box.
 - **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes.

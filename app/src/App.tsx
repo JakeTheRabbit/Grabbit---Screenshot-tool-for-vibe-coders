@@ -575,7 +575,7 @@ export function App() {
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
         <Menu label="" icon="layout" title="Move the toolbar" items={[
           ...(["top", "bottom", "left", "right"] as BarPos[]).map((p): [string, () => void] => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)]),
-          ["Try the new editor (beta)", toMarkup],
+          ["Switch to the new editor", toMarkup],
         ]} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>

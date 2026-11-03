@@ -1,4 +1,4 @@
-# New picture editor (beta)
+# Picture editor
 
 What someone who has just taken a screenshot wants to do, and what the new editor does about it. Built on
 [Fabric.js](https://fabricjs.com) (MIT). The capture *is* the canvas: no endless whiteboard, no panels over the picture.

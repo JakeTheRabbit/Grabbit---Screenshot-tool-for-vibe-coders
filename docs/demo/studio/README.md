@@ -11,6 +11,6 @@ Every picture in the README is Grabbit's real UI (the app's own pages) running i
 
 Both scripts take names to redo just some, e.g. `node shoot.mjs picker voice` or `node posters.mjs hero`.
 
-`node markup-sweep.mjs` does the same for the new editor (beta, [../../markup-editor.md](../../markup-editor.md)): every tool, Hide modes, crop, undo, export size, panels and tabs.
+`node markup-sweep.mjs` does the same for the new editor (the default, [../../markup-editor.md](../../markup-editor.md)): every tool, Hide modes, crop, undo, export size, panels and tabs.
 
 `node editor-sweep.mjs` (after steps 1, 2 and 4) clicks through the picture editor's buttons, menus and panels with a faked core and prints PASS/FAIL per check: steps, Hide modes and undo, Spotlight, Copy/Save, stickers, Beautify, AI edits, tabs and the sidebar.

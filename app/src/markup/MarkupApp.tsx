@@ -1,4 +1,4 @@
-// The new picture editor (beta): the capture is the canvas, tools are made for screenshots. Fabric.js does the
+// The picture editor (the default): the capture is the canvas, tools are made for screenshots. Fabric.js does the
 // drawing; scene units are the capture's own pixels with the picture at 0,0. Spec: docs/markup-editor.md.
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -816,7 +816,7 @@ export function MarkupApp() {
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
         <Menu label="" icon="layout" title="Move the toolbar" items={[
           ...(["top", "bottom", "left", "right"] as BarPos[]).map((p): [string, () => void] => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)]),
-          ["Back to the classic editor", toClassic],
+          ["Use the classic editor", toClassic],
         ]} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>

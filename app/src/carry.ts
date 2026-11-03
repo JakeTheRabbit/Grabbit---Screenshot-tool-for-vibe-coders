@@ -5,7 +5,11 @@ import { getImage } from "./host";
 import { send } from "./bridge";
 
 export type EditorKind = "classic" | "markup";
-export const editorKind = (): EditorKind => { try { return localStorage.getItem("editor") === "markup" ? "markup" : "classic"; } catch { return "classic"; } };
+// The new editor is the default. .excalidraw projects open as index.html#classic: only the classic editor reads them.
+export const editorKind = (): EditorKind => {
+  if (location.hash === "#classic") return "classic";
+  try { return localStorage.getItem("editor") === "classic" ? "classic" : "markup"; } catch { return "markup"; }
+};
 
 export async function switchEditor(to: EditorKind, tabs: { name: string; dataURL: string }[]) {
   const carry: { name: string; path: string }[] = [];
@@ -14,6 +18,7 @@ export async function switchEditor(to: EditorKind, tabs: { name: string; dataURL
     if (path) carry.push({ name: t.name, path });
   }
   try { sessionStorage.setItem("carry", JSON.stringify(carry)); localStorage.setItem("editor", to); } catch { /* private mode */ }
+  history.replaceState(null, "", location.pathname);
   location.reload();
 }
 

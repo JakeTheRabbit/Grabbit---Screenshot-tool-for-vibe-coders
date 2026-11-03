@@ -50,7 +50,7 @@ pub fn open_path(app: &AppHandle, p: &Path) {
     let name = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     match ext.as_str() {
         "mp4" | "mkv" | "mov" | "webm" | "avi" | "m4v" => open_window(app, "video.html", &name, Job::Video { path: p.into() }),
-        "excalidraw" => open_window(app, "index.html", &name, Job::Project { path: p.into() }),
+        "excalidraw" => open_window(app, "index.html#classic", &name, Job::Project { path: p.into() }),
         _ => open_window(app, "index.html", &name.clone(), Job::Image { path: p.into(), name, panel: None }),
     }
 }
