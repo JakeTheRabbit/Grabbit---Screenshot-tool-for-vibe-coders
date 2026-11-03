@@ -70,7 +70,7 @@ Every capture lands on the clipboard as a picture **and** a named file (so chat 
 
 ### Mark it up
 
-<img src="docs/screenshots/editor.webp" alt="The picture editor: hand-drawn annotations, a numbered step, and the Beautify panel">
+<img src="docs/screenshots/editor.webp" alt="The picture editor: an arrow, a circled peak, a heading, a boxed row and a numbered step on a dashboard, with the Beautify panel open">
 
 Built for screenshots and fully offline: the capture is the canvas. Arrows, lines, boxes, ellipses, text, pen, highlighter, numbered **steps**, pixelate, blur, black out, spotlight, magnifier, crop, emoji and icons, tabs, and a strip of recent captures; every tool has a key ([docs/markup-editor.md](docs/markup-editor.md)). The classic [Excalidraw](https://github.com/excalidraw/excalidraw) whiteboard is in the layout menu, and `.excalidraw` projects open there.
 

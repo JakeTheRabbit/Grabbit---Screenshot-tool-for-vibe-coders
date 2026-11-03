@@ -63,8 +63,8 @@ const posters = {
     "Start a batch and keep talking while you capture. Every picture keeps its own explanation, and they all go to the AI together.")
     + frame({ base: join(raw, "ai-batch.png"), bw: 1180, bh: 640, x: 0, y: 0, w: 1180 }, BOX)),
 
-  editor: () => page(W, H, head("Picture editor", "Mark it up like a <em>whiteboard.</em>",
-    "The full Excalidraw editor, offline: arrows, numbered steps, text, blur, stickers, and one-click Beautify backgrounds.")
+  editor: () => page(W, H, head("Picture editor", "Mark it up. <em>Paste it.</em>",
+    "Built for screenshots, offline: arrows, numbered steps, text, highlighter, blur, spotlight, magnifier, stickers, and one-click Beautify backgrounds.")
     + frame({ base: join(raw, "editor.png"), bw: 1360, bh: 860, x: 0, y: 0, w: 1360 }, BOX)),
 
   ai: () => page(W, H, head("AI in the editor", "Ask your screenshot <em>anything.</em>",

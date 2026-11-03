@@ -98,37 +98,40 @@ await run("batch", async () => {
   await p.close();
 });
 
-// The picture editor (Excalidraw) on the hero capture, with annotations and Beautify on.
+// The picture editor (the new markup editor) on the hero capture, drawn with real mouse and keys, Beautify on.
 await run("editor", async () => {
-  const recent = [["charts", 16], ["blends", 15], ["dash", 14], ["chart", 12]].map(([n, m]) => ({ path: cap[n], url: "", name: n, time: `2026-11-02T09:${m}:00`, kind: "capture" }));
-  const p = await open("index.html", { width: 1360, height: 860, dpr: 1.6 });
-  await p.waitFor(`window.grabbit?.api && window.grabbit.receive`);
+  const recent = [["charts", 16], ["blends", 15], ["dash", 14], ["chart", 12]].map(([n, m]) => ({ path: cap[n], url: `http://studio.local/asset/${encodeURIComponent(cap[n])}`, name: n, time: `2026-11-02T09:${m}:00`, kind: "capture" }));
+  const setup = `localStorage.setItem("editor", "markup"); localStorage.removeItem("markupStyle"); localStorage.removeItem("barPos");`;
+  const p = await open("index.html", { width: 1360, height: 860, dpr: 1.6, setup });
+  await p.waitFor(`!!window.grabbit?.fabric && !!window.grabbit.receive`);
   await p.ev(`(async () => { const b = await (await fetch(${JSON.stringify(`http://studio.local/asset/${encodeURIComponent(cap.charts)}`)})).blob();
     const d = await new Promise((ok) => { const f = new FileReader(); f.onload = () => ok(f.result); f.readAsDataURL(b); });
     window.grabbit.receive({ type: "load", name: "Weekly overview", dataURL: d, width: 1344, height: 736, recent: ${JSON.stringify(recent)} }); })()`);
-  await p.waitFor(`window.grabbit.api.getSceneElements().length > 0`);
-  await p.ev(`Promise.all([document.fonts.load("64px Excalifont"), document.fonts.load("48px Nunito")]).then(() => true)`);
-  await p.ev(`(() => {
-    const api = window.grabbit.api, conv = window.grabbit.convert, img = api.getSceneElements()[0], X = img.x, Y = img.y;
-    api.updateScene({ elements: [...api.getSceneElements(), ...conv([
-      { type: "ellipse", x: X + 600, y: Y + 118, width: 150, height: 110, strokeColor: "#e03131", strokeWidth: 6, roughness: 1, backgroundColor: "transparent" },
-      { type: "text", x: X + 230, y: Y + 66, text: "Best Saturday since June!", fontSize: 44, fontFamily: 5, strokeColor: "#e03131" },
-      { type: "arrow", x: X + 560, y: Y + 125, width: 60, height: 45, strokeColor: "#e03131", strokeWidth: 5, roughness: 1 },
-      { type: "rectangle", x: X + 858, y: Y + 60, width: 470, height: 58, strokeColor: "#1971c2", strokeWidth: 5, roughness: 0, backgroundColor: "transparent" },
-      { type: "ellipse", x: X + 1300, y: Y + 34, width: 56, height: 56, backgroundColor: "#1971c2", strokeColor: "#fff", fillStyle: "solid", roughness: 0, label: { text: "1", fontSize: 30, strokeColor: "#fff" } },
-    ])] });
-  })()`);
-  const tab = (name) => p.ev(`[...document.querySelectorAll("header button")].find((b) => b.textContent.trim().startsWith(${JSON.stringify(name)})).click()`);
-  await tab("Beautify");
-  await sleep(300);
-  // Fit the picture into the canvas left of the side panel.
-  await p.ev(`(() => { const api = window.grabbit.api, st = api.getAppState(), img = api.getSceneElements()[0];
-    const right = document.querySelector(".panel").getBoundingClientRect().left - st.offsetLeft - 24, z = 0.62;
-    api.updateScene({ appState: { zoom: { value: z }, scrollX: right / 2 / z - (img.x + img.width / 2), scrollY: (st.height / 2 + 40) / z - (img.y + img.height / 2) } }); })()`);
+  await p.waitFor(`!!window.grabbit.fabric.backgroundImage`);
+  await sleep(400);
+  // Scene units are the capture's own pixels.
+  const scr = async (x, y) => JSON.parse(await p.ev(`JSON.stringify((() => { const c = window.grabbit.fabric, v = c.viewportTransform, r = c.upperCanvasEl.getBoundingClientRect(); return [r.left + v[4] + ${x} * v[0], r.top + v[5] + ${y} * v[3]]; })())`));
+  const drag = async (x0, y0, x1, y1) => { const a = await scr(x0, y0), b = await scr(x1, y1); await p.drag(a[0], a[1], b[0], b[1]); await sleep(250); };
+  const at = async (x, y) => { const a = await scr(x, y); await p.click(a[0], a[1]); await sleep(250); };
+  const key = async (k, code, vk) => { for (const type of ["keyDown", "keyUp"]) await p.send("Input.dispatchKeyEvent", { type, key: k, code, windowsVirtualKeyCode: vk }); await sleep(200); };
+  const tool = (k) => key(k, "Key" + k.toUpperCase(), k.toUpperCase().charCodeAt(0));
+  const colour = (c) => p.ev(`document.querySelector(".mk-colors button[title='${c}'], .mk-colors button[style*='${c}']")?.click()`);
+  const btn = (text, scope) => p.ev(`[...document.querySelectorAll(${JSON.stringify(scope + " button")})].find((b) => (b.textContent.trim() || b.title).startsWith(${JSON.stringify(text)})).click()`);
+  await tool("o"); await drag(600, 118, 750, 228);
+  await tool("a"); await drag(520, 108, 610, 150);
+  await tool("t"); await at(150, 66);
+  await p.send("Input.insertText", { text: "Best Saturday since June!" }); await sleep(150);
+  await key("Escape", "Escape", 27);
+  await colour("#1971c2");
+  await tool("r"); await drag(858, 60, 1328, 118);
+  await tool("n"); await at(1300, 40); await key("Escape", "Escape", 27);
+  await p.ev(`(() => { const c = window.grabbit.fabric; c.discardActiveObject(); c.requestRenderAll(); })()`);
+  await btn("Beautify", "header.bar"); await sleep(300);
   await p.ev(`(() => { const c = document.querySelector(".panel input[type=checkbox]"); if (!c.checked) c.click(); })()`);
-  await sleep(500);
+  await p.waitFor(`!!document.querySelector(".bpreview")?.naturalWidth`, 8000).catch(() => {});
+  await p.mouse("mouseMoved", 5, 5); await sleep(500);
   await p.shot(join(raw, "editor.png"));
-  await tab("AI");
+  await btn("AI", "header.bar"); await sleep(400);
   await p.shot(join(raw, "editor-ai.png"));
   console.log(p.errors.join("\n"));
   await p.close();
