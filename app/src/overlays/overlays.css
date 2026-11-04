@@ -4,12 +4,6 @@ html, body { background: transparent; overflow: hidden; user-select: none; heigh
 .ic:hover { background: var(--hover); }
 .ic svg { width: 16px; height: 16px; }
 
-/* hold-to-record pill */
-.pill { display: flex; align-items: center; gap: 10px; margin: 6px; padding: 9px 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.9); color: #fff; box-shadow: var(--shadow); font-size: 13px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; flex: none; }
-.track { margin-top: 5px; height: 4px; width: 150px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
-.fill { height: 100%; width: 0; background: #ff3b30; transition: width 40ms linear; }
-
 /* quick access */
 .card { margin: 6px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); overflow: hidden; animation: up 160ms ease-out; }
 @keyframes up { from { transform: translateY(14px); opacity: 0; } }

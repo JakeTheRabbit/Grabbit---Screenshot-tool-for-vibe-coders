@@ -1,4 +1,4 @@
-// Small always-on-top windows: the hold-to-record pill, the quick-access card, pinned pictures, and the recording
+// Small always-on-top windows: the quick-access card, pinned pictures, and the recording
 // frame + bar. One bundle; the page's file name picks which one runs.
 
 import { invoke } from "@tauri-apps/api/core";
@@ -14,12 +14,6 @@ const q = new URLSearchParams(location.search);
 const win = getCurrentWebviewWindow();
 const root = document.getElementById("root")!;
 document.body.className = page;
-
-function hint() {
-  root.innerHTML = `<div class="pill"><div class="dot"></div><div><b>Keep holding to record</b><div class="track"><div class="fill"></div></div></div></div>`;
-  const fill = root.querySelector(".fill") as HTMLElement;
-  void listen<number>("progress", (e) => { fill.style.width = `${Math.min(100, e.payload * 100)}%`; });
-}
 
 /** AI description of a capture: readable, copyable. */
 function describe() {
@@ -145,4 +139,4 @@ function recbar() {
   setInterval(tick, 500);
 }
 
-({ hint, quick, pin, recframe, recbar } as Record<string, () => void>)[page]?.();
+({ quick, pin, recframe, recbar } as Record<string, () => void>)[page]?.();

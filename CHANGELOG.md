@@ -6,6 +6,15 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+### Changed
+
+- **The screens freeze as soon as you press the capture key**, not when you let go of it, which saved the time your finger is on the key (about 0.1 s) on every capture. Keep holding and a "Keep holding to record" pill fills in the capture screen; at the end it becomes the recording capture screen, ready for you to pick the area.
+- **The frozen picture is ready sooner on Windows.** Memory for each screen is set up while the screens are being grabbed, and all screens are copied into it at once instead of one after another.
+
+### Removed
+
+- The separate hold-to-record pill window by the mouse; the pill is now part of the capture screen.
+
 ## [2.0.14] - 2026-11-05
 
 ### Changed

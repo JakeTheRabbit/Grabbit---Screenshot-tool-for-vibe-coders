@@ -16,3 +16,5 @@ Both scripts take names to redo just some, e.g. `node shoot.mjs picker voice` or
 `node editor-sweep.mjs` (after steps 1, 2 and 4) clicks through the picture editor's buttons, menus and panels with a faked core and prints PASS/FAIL per check: steps, Hide modes and undo, Spotlight, Copy/Save, stickers, Beautify, AI edits, tabs and the sidebar.
 
 `node loupe-check.mjs` hands the picker its frame the way WebView2 does on Windows (shared memory, with the picker details) and checks the loupe, the colour read and that the frame is released when the picker closes.
+
+`node hold-check.mjs` checks holding the capture key: the "Keep holding to record" pill, letting go in time, and the picker turning into the recording picker.

@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // One page per Grabbit window. Built into dist/, which Tauri bundles and serves offline.
-const pages = ["index", "video", "picker", "hint", "quick", "pin", "recframe", "recbar", "settings", "voice"].filter((p) => existsSync(`${p}.html`));
+const pages = ["index", "video", "picker", "quick", "pin", "recframe", "recbar", "settings", "voice"].filter((p) => existsSync(`${p}.html`));
 
 export default defineConfig({
   base: "./",

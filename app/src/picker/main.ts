@@ -83,7 +83,7 @@ async function start(given?: { info: Info; buf: ArrayBuffer }) {
   raw = new Uint8ClampedArray(buf);
   img = await createImageBitmap(new ImageData(raw, info.width, info.height));
   resize();
-  if (info.mode === "Record") hint.innerHTML = `Drag the area to record, click a window, or press <kbd>F</kbd> for the whole screen`;
+  if (info.mode === "Record") hint.innerHTML = REC_HINT;
   document.body.classList.add("ready");
   requestAnimationFrame(() => void invoke("picker_shown"));
 }
@@ -514,6 +514,20 @@ function reset() {
   document.body.className = "";
 }
 const HINT = hint.innerHTML;
+const REC_HINT = `Drag the area to record, click a window, or press <kbd>F</kbd> for the whole screen`;
+// The capture key opens the picker as it goes down; held on, a progress pill fills (`hold` 0–1, or -1 when it was let
+// go in time), and at the end the picker turns into the recording picker (`picker-mode`).
+void listen<number>("hold", (e) => {
+  if (!info || sel || keptP.length) return;
+  if (e.payload < 0) { hint.innerHTML = info.mode === "Record" ? REC_HINT : HINT; return; }
+  hint.hidden = false;
+  hint.innerHTML = `<span class="hold"><span class="dot"></span><b>Keep holding to record</b><span class="track"><span class="fill" style="width:${Math.min(100, e.payload * 100)}%"></span></span></span>`;
+});
+void listen<"Pick" | "Record">("picker-mode", (e) => {
+  if (!info) return;
+  info.mode = e.payload;
+  if (sel) void showBar(); else if (!keptP.length) { hint.hidden = false; hint.innerHTML = e.payload === "Record" ? REC_HINT : HINT; }
+});
 // This window's events only: a global listen() would hear every monitor's "open" and show the last frame everywhere.
 const me = getCurrentWebviewWindow();
 function open(frame: number, given?: { info: Info; buf: ArrayBuffer }) {

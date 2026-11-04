@@ -15,6 +15,10 @@ body.leaving { opacity: 0; transition: opacity 60ms; }
 
 #hint { position: fixed; left: 50%; top: 28px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.86); color: #fff; font-size: 13px; box-shadow: var(--shadow); pointer-events: none; }
 #hint kbd { color: #ddd; border-color: rgba(255, 255, 255, 0.3); }
+#hint .hold { display: flex; align-items: center; gap: 10px; }
+#hint .dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; flex: none; }
+#hint .track { height: 4px; width: 150px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
+#hint .fill { display: block; height: 100%; background: #ff3b30; transition: width 40ms linear; }
 
 #bar { position: fixed; display: flex; flex-wrap: wrap; max-width: calc(100vw - 16px); gap: 4px; padding: 5px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); }
 #bar.rev { flex-direction: row-reverse; }

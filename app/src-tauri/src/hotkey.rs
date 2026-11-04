@@ -1,12 +1,12 @@
-// Global keys. The capture key is tap-or-hold: let go quickly → screenshot; keep holding → a pill fills up near the
-// mouse, and at `hold_to_record_ms` a recording starts. While recording, the same key stops it.
+// Global keys. The capture key is tap-or-hold: pressing it opens the picker at once; keep holding → a pill fills up
+// in the picker, and at `hold_to_record_ms` it becomes the recording picker. While recording, the same key stops it.
 
 use crate::{picker, settings::HotkeyAction, state};
 use std::{
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, ShortcutState};
 
 static DOWN: AtomicBool = AtomicBool::new(false);
@@ -44,56 +44,35 @@ pub fn on_event(app: &AppHandle, sc: &Shortcut, ev: ShortcutEvent) {
     }
 }
 
+/// The screens freeze as the key goes down, like a camera shutter, instead of when it comes back up (that waited for
+/// the finger, ~0.1 s on every capture). Held on, the open picker shows a filling pill and then turns into the
+/// recording picker.
 fn tap_or_hold(app: &AppHandle, pressed: bool) {
     if !pressed {
-        // Released: a tap if the hold timer hasn't fired yet.
-        if DOWN.swap(false, Ordering::SeqCst) { close_hint(app); picker::start(app, picker::Mode::Pick); }
+        // Let go before the hold timer fired: the picker stays open for a screenshot.
+        if DOWN.swap(false, Ordering::SeqCst) { let _ = app.emit("hold", -1.0); }
         return;
     }
     if DOWN.swap(true, Ordering::SeqCst) { return; }   // key auto-repeat
+    // While recording the key stops it, and that's all it does.
+    if crate::record::is_recording(app) { DOWN.store(false, Ordering::SeqCst); picker::start(app, picker::Mode::Pick); return; }
+    picker::start(app, picker::Mode::Pick);
     let hold = state(app).settings.lock().unwrap().hold_to_record_ms;
-    if hold == 0 { DOWN.store(false, Ordering::SeqCst); picker::start(app, picker::Mode::Pick); return; }
+    if hold == 0 { DOWN.store(false, Ordering::SeqCst); return; }
     let me = PRESS.fetch_add(1, Ordering::SeqCst) + 1;
     let app = app.clone();
     std::thread::spawn(move || {
         let t0 = Instant::now();
-        let mut shown = false;
         loop {
             std::thread::sleep(Duration::from_millis(25));
             if !DOWN.load(Ordering::SeqCst) || PRESS.load(Ordering::SeqCst) != me { return; }
             let ms = t0.elapsed().as_millis() as u64;
-            if ms >= HINT_AFTER_MS {
-                if !shown { show_hint(&app); shown = true; }
-                let _ = app.emit_to("hint", "progress", (ms - HINT_AFTER_MS) as f64 / (hold - HINT_AFTER_MS).max(1) as f64);
-            }
+            if ms >= HINT_AFTER_MS { let _ = app.emit("hold", (ms - HINT_AFTER_MS) as f64 / (hold - HINT_AFTER_MS).max(1) as f64); }
             if ms >= hold {
-                // Claim the press so the release doesn't also take a screenshot.
-                if DOWN.swap(false, Ordering::SeqCst) {
-                    close_hint(&app);
-                    let a = app.clone();
-                    let _ = std::thread::spawn(move || picker::start(&a, picker::Mode::Record));
-                }
+                // Claim the press, so letting go doesn't undo it.
+                if DOWN.swap(false, Ordering::SeqCst) { picker::set_mode(&app, picker::Mode::Record); }
                 return;
             }
         }
     });
-}
-
-fn show_hint(app: &AppHandle) {
-    let a = app.clone();
-    let _ = std::thread::spawn(move || {
-        let pos = a.cursor_position().unwrap_or_default();
-        let _ = WebviewWindowBuilder::new(&a, "hint", WebviewUrl::App("hint.html".into()))
-            .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true)
-            .focused(false).resizable(false).inner_size(240.0, 56.0)
-            .position(pos.x / a.primary_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0) + 18.0,
-                      pos.y / a.primary_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0) + 22.0)
-            .build()
-            .map(|w| { let _ = w.set_ignore_cursor_events(true); });
-    });
-}
-
-fn close_hint(app: &AppHandle) {
-    let a = app.clone();
-    let _ = std::thread::spawn(move || { if let Some(w) = a.get_webview_window("hint") { let _ = w.close(); } });
 }
