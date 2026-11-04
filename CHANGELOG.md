@@ -6,6 +6,18 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.14] - 2026-11-05
+
+### Changed
+
+- **Captures open about 4× faster.** On a PC with four screens (two of them 4K), the screens now freeze 0.13–0.22 s after you press the key, down from about 0.5 s, and the first capture after starting or a pause no longer takes 1.5–3 s.
+  - Windows grabs the screens straight from the graphics card (DXGI), about 3× faster than before. It falls back to the old way per screen when that doesn't work, for example over Remote Desktop.
+  - The frozen picture reaches the capture screen through shared memory instead of being copied, which saved up to half a second per 4K screen.
+  - The capture screens no longer wait to be resized when they're already the right size.
+- **Instant capture** (Settings → General) replaces *Keep the capture screen ready* and is on by default. Between captures the capture screens sleep and give their memory back (about 80 MB in Task Manager with four screens). Turn it off for under 10 MB while idle, with a slower first capture.
+- **Copy is ready sooner.** Saving the file and copying to the clipboard now happen at the same time, the picture is compressed once instead of twice, and the clipboard is no longer held open while it's compressed.
+- Release builds are optimised for speed instead of size.
+
 ## [2.0.13] - 2026-11-04
 
 ### Added
@@ -173,7 +185,8 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.13...HEAD
+[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...HEAD
+[2.0.14]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.13...v2.0.14
 [2.0.13]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.12...v2.0.13
 [2.0.12]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.11...v2.0.12
 [2.0.11]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.10...v2.0.11

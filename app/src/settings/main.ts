@@ -128,7 +128,7 @@ function field(f: Field): HTMLElement {
 const SECTIONS: Record<string, () => Field[]> = {
   General: () => [
     { kind: "custom", render: themeRow },
-    { kind: "toggle", key: "keep_picker_ready", label: "Keep the capture screen ready", help: "Captures open a little faster, but Grabbit holds 50–100 MB more memory per screen all the time" },
+    { kind: "toggle", key: "instant_capture", label: "Instant capture", help: "The capture screen opens the moment you press the key. Off: Grabbit uses almost no memory between captures, but the first capture after a minute takes about 2 seconds" },
     { kind: "select", key: "after_capture", label: "After picking an area", options: [["Ask", "Show the action bar"], ["Copy", "Copy straight away"], ["Edit", "Open the editor"]] },
     { kind: "toggle", key: "auto_save", label: "Keep a copy of every capture", help: "Full size, in the Grabbit folder below" },
     { kind: "folder", key: "save_folder", label: "Grabbit folder" },

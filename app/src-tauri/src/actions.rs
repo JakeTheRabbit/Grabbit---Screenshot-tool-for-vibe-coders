@@ -102,17 +102,20 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
     match action {
         "copy" | "reduced" | "chat" | "path" | "pin" | "share" => {
             let out = mark::apply(&s, &img, id);
-            let saved = if s.auto_save || action == "path" { Some(export::save_full(&s, &out, &name)?) } else { None };
+            let size = match action { "reduced" => export::Size::Reduced, "chat" => export::Size::Chat, _ => export::Size::Full };
+            // Saving and copying run side by side, so a copy is ready as soon as the slower of the two is.
+            let (saved, copied) = std::thread::scope(|sc| {
+                let save = (s.auto_save || action == "path").then(|| sc.spawn(|| export::save_full(&s, &out, &name)));
+                let copied = matches!(action, "copy" | "reduced" | "chat").then(|| export::copy(&s, &out, size, &name));
+                (save.map(|j| j.join().unwrap_or_else(|_| Err(anyhow::anyhow!("saving failed")))).transpose(), copied.transpose())
+            });
+            let (saved, copied) = (saved?, copied?);
             crate::history::add(app, saved.as_deref(), &img, id);
             match action {
                 "path" => export::copy_text(&saved.as_ref().unwrap().to_string_lossy())?,
                 "pin" => pin(app, &out)?,
                 "share" => editor::open_image(app, &img, &name, Some("share")),
-                _ => {
-                    let size = match action { "reduced" => export::Size::Reduced, "chat" => export::Size::Chat, _ => export::Size::Full };
-                    let file = export::copy(&s, &out, size, &name)?;
-                    quick_show(app, Some(saved.as_deref().unwrap_or(&file)), "Copied");
-                }
+                _ => quick_show(app, saved.as_deref().or(copied.as_deref()), "Copied"),
             }
         }
         "edit" => editor::open_image(app, &img, &name, None),

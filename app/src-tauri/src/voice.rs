@@ -111,7 +111,7 @@ pub fn copy_for_ai(images: Vec<String>, text: String, files: Vec<String>) -> Res
         let mut html = format!("<div>{}</div>", esc(&text).replace('\n', "<br>"));
         for p in &pngs { html += &format!("<p><img src=\"data:image/png;base64,{}\"></p>", B64.encode(std::fs::read(p)?)); }
         let first = first.map(|i| i.to_rgba8());
-        export::set_clipboard(export::Clip { image: first.as_ref(), files: &all, text: Some(&text), html: Some(&html) })?;
+        export::set_clipboard(export::Clip { image: first.as_ref(), png: None, files: &all, text: Some(&text), html: Some(&html) })?;
         Ok(all)
     })().map_err(|e| e.to_string())
 }

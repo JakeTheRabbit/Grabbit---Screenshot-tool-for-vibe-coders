@@ -2320,7 +2320,7 @@ dependencies = [
 
 [[package]]
 name = "grabbit"
-version = "2.0.13"
+version = "2.0.14"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -2363,7 +2363,9 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tokio",
+ "webview2-com",
  "windows 0.61.3",
+ "windows-core 0.62.2",
  "xcap",
 ]
 

@@ -42,8 +42,9 @@ const hint = document.getElementById("hint")!;
 let info!: Info;
 let k = 1; // physical pixels per CSS pixel
 let img: ImageBitmap | null = null;
-const px = document.createElement("canvas"); // frame at 1:1 for the loupe and colour reads
-const pctx = px.getContext("2d", { willReadFrequently: true })!;
+let raw: Uint8ClampedArray<ArrayBuffer> | null = null; // the frame's RGBA pixels, for colour reads
+let shared: ArrayBuffer | null = null; // Windows: the frame arrives in shared memory, released when the picker closes
+const webview = (window as any).chrome?.webview;
 let mouse = { x: -1, y: -1 };
 let sel: R | null = null;
 let hoverWin: Win | null = null;
@@ -73,15 +74,14 @@ function winAt(x: number, y: number) {
   return info.windows.find((w) => gx >= w.x && gy >= w.y && gx < w.x + w.width && gy < w.y + w.height) ?? null;
 }
 
-async function start() {
-  info = (await invoke<Info>("picker_info", { frame: frameIdx }))!;
+/** `given`: the frame and its details already here (Windows posts them in shared memory); otherwise they're fetched. */
+async function start(given?: { info: Info; buf: ArrayBuffer }) {
+  info = given?.info ?? (await invoke<Info>("picker_info", { frame: frameIdx }))!;
   if (!info) return;
   k = info.width / innerWidth;
-  const buf = await (await fetch(convertFileSrc(`frame/${frameIdx}`, "grabbit"))).arrayBuffer();
-  const data = new ImageData(new Uint8ClampedArray(buf), info.width, info.height);
-  img = await createImageBitmap(data);
-  px.width = info.width; px.height = info.height;
-  pctx.putImageData(data, 0, 0);
+  const buf = given?.buf ?? await (await fetch(convertFileSrc(`frame/${frameIdx}`, "grabbit"))).arrayBuffer();
+  raw = new Uint8ClampedArray(buf);
+  img = await createImageBitmap(new ImageData(raw, info.width, info.height));
   resize();
   if (info.mode === "Record") hint.innerHTML = `Drag the area to record, click a window, or press <kbd>F</kbd> for the whole screen`;
   document.body.classList.add("ready");
@@ -146,8 +146,9 @@ function handles(r: R): [number, number, string][] {
 }
 
 function hex(x: number, y: number) {
-  const d = pctx.getImageData(Math.min(px.width - 1, Math.max(0, Math.floor(x * k))), Math.min(px.height - 1, Math.max(0, Math.floor(y * k))), 1, 1).data;
-  return "#" + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+  if (!raw) return "#000000";
+  const i = (Math.min(info.height - 1, Math.max(0, Math.floor(y * k))) * info.width + Math.min(info.width - 1, Math.max(0, Math.floor(x * k)))) * 4;
+  return "#" + [raw[i], raw[i + 1], raw[i + 2]].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
 function drawLoupe() {
@@ -160,7 +161,7 @@ function drawLoupe() {
   lctx.imageSmoothingEnabled = false;
   const cx = Math.floor(mouse.x * k), cy = Math.floor(mouse.y * k);
   lctx.fillStyle = "#000"; lctx.fillRect(0, 0, loupe.width, loupe.height);
-  lctx.drawImage(px, cx - (N >> 1), cy - (N >> 1), N, N, 0, 0, loupe.width, loupe.height);
+  if (img) lctx.drawImage(img, cx - (N >> 1), cy - (N >> 1), N, N, 0, 0, loupe.width, loupe.height);
   lctx.strokeStyle = "rgba(255,255,255,0.9)"; lctx.lineWidth = dpr;
   const c0 = (N >> 1) * CELL * dpr;
   lctx.strokeRect(c0 + 0.5, c0 + 0.5, CELL * dpr - 1, CELL * dpr - 1);
@@ -504,8 +505,9 @@ addEventListener("contextmenu", (e) => e.preventDefault());
 // The window stays loaded between captures; "open" brings a fresh frame, "reset" clears it for next time.
 function reset() {
   // A closed picker stays loaded for speed, but lets go of its copies of the screen (a 4K frame is ~33 MB each).
-  img?.close(); img = null;
-  px.width = px.height = 1; canvas.width = canvas.height = 1;
+  img?.close(); img = null; raw = null;
+  if (shared) { webview?.releaseBuffer(shared); shared = null; }
+  canvas.width = canvas.height = 1;
   sel = null; hoverWin = null; picked = []; drag = null; measuring = false; fromWindow = null; preset = PRESETS[0]; keptP = []; layout = "separate";
   bar.hidden = true; sizeTag.hidden = true; loupeBox.hidden = true;
   hint.hidden = false; hint.innerHTML = HINT;
@@ -514,14 +516,16 @@ function reset() {
 const HINT = hint.innerHTML;
 // This window's events only: a global listen() would hear every monitor's "open" and show the last frame everywhere.
 const me = getCurrentWebviewWindow();
-function open(frame: number) {
+function open(frame: number, given?: { info: Info; buf: ArrayBuffer }) {
   reset();
   frameIdx = frame;
-  start().catch((err) => { document.body.classList.add("ready"); hint.hidden = false; hint.textContent = "Couldn't open the picker: " + err; void invoke("picker_shown"); });
+  if (given) shared = given.buf;
+  start(given).catch((err) => { document.body.classList.add("ready"); hint.hidden = false; hint.textContent = "Couldn't open the picker: " + err; void invoke("picker_shown"); });
 }
 // Windows are made when a capture starts, so a new one may load after its "open" was sent: once listening, it asks.
 void me.listen<number>("open", (e) => open(e.payload)).then(() => invoke<number | null>("picker_pending")).then((f) => { if (f != null) open(f); });
 void me.listen("reset", reset);
+webview?.addEventListener("sharedbufferreceived", (e: { additionalData: Info; getBuffer(): ArrayBuffer }) => open(e.additionalData.frame, { info: e.additionalData, buf: e.getBuffer() }));
 // A multi-area capture can span screens: every picker shares the kept areas, and a new drag on one screen clears the
 // selection on the others (Ctrl+drag keeps it instead).
 void listen<[number, number, number, number][]>("picker-kept", (e) => { if (!info) return; keptP = e.payload; if (!sel && keptP.length && !drag) showKeptHint(); draw(); });

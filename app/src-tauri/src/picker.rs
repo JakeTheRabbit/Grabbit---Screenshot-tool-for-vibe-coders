@@ -47,19 +47,41 @@ fn pickers(app: &AppHandle) -> Vec<tauri::WebviewWindow> {
     app.webview_windows().into_iter().filter(|(l, _)| l.starts_with("picker-")).map(|(_, w)| w).collect()
 }
 
-/// Pickers are hidden, not destroyed: a capture soon after reuses the warm windows and opens instantly. A minute
-/// after the last one they're closed for good (a picker per screen holds 50–100 MB, more on 4K screens), unless
-/// Settings → General → "Keep the capture screen ready" is on. (Shrinking them while hidden saved GPU memory but made
-/// every capture ~0.5 s slower on mixed-DPI screens, so they keep their size.)
+/// Pickers are hidden, not destroyed: the next capture reuses the warm windows and opens at once. Hidden, they tell
+/// WebView2 to use little memory, and Grabbit hands back its own idle memory a few seconds later. With Settings →
+/// General → "Instant capture" off they're closed for good a minute after the last capture instead. (Shrinking them
+/// while hidden saved nothing and made every capture slower, so they keep their size.)
 pub fn close_pickers(app: &AppHandle) {
     OPEN.store(false, SeqCst);
-    for w in pickers(app) { let _ = w.hide(); let _ = w.emit_to(w.label(), "reset", ()); }
+    for w in pickers(app) { let _ = w.hide(); awake(&w, false); let _ = w.emit_to(w.label(), "reset", ()); }
     let gen = GEN.fetch_add(1, SeqCst) + 1;
     let app = app.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(60));
-        if GEN.load(SeqCst) == gen && !OPEN.load(SeqCst) && !state(&app).settings.lock().unwrap().keep_picker_ready { drop_pickers(&app); }
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        if GEN.load(SeqCst) != gen || OPEN.load(SeqCst) { return; }
+        trim_memory();
+        std::thread::sleep(std::time::Duration::from_secs(57));
+        if GEN.load(SeqCst) == gen && !OPEN.load(SeqCst) && !state(&app).settings.lock().unwrap().instant_capture { drop_pickers(&app); }
     });
+}
+
+/// Instant capture at start-up: the hidden pickers and the GPU capture are made ready, then idle memory is handed back.
+pub fn prepare(app: &AppHandle) {
+    warm(app);
+    for w in pickers(app) { awake(&w, false); }
+    capture::prepare();
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    if !OPEN.load(SeqCst) { trim_memory(); }
+}
+
+/// Lets Windows take back the memory Grabbit isn't using between captures (mostly the graphics driver's, ~100 MB);
+/// it comes back in a few milliseconds when it's needed.
+fn trim_memory() {
+    #[cfg(windows)]
+    unsafe {
+        use windows::Win32::System::Threading::{GetCurrentProcess, SetProcessWorkingSetSize};
+        let _ = SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+    }
 }
 
 /// Every start and close bumps this, so a pending clean-up knows a newer capture has happened since.
@@ -78,6 +100,7 @@ static STARTED: Mutex<Option<std::time::Instant>> = Mutex::new(None);
 
 fn drop_pickers(app: &AppHandle) {
     for w in pickers(app) { let _ = w.destroy(); }
+    capture::release();
     EPOCH.fetch_add(1, SeqCst);
     *READY.lock().unwrap() = (Vec::new(), Vec::new());
 }
@@ -99,12 +122,15 @@ static OPEN: AtomicBool = AtomicBool::new(false);
 /// the move, so the size is re-applied until it sticks.
 pub fn cover(w: &tauri::WebviewWindow, m: &tauri::Monitor) {
     let (pos, size) = (*m.position(), *m.size());
+    let fits = || w.outer_size().map(|s| s == size).unwrap_or(false) && w.outer_position().map(|p| p == pos).unwrap_or(false);
+    // Already in place (every capture after the first): nothing to wait for.
+    if fits() { return; }
     let _ = w.set_position(PhysicalPosition::new(pos.x, pos.y));
     for _ in 0..5 {
         let _ = w.set_size(PhysicalSize::new(size.width, size.height));
         let _ = w.set_position(PhysicalPosition::new(pos.x, pos.y));
         std::thread::sleep(std::time::Duration::from_millis(15));
-        if w.outer_size().map(|s| s == size).unwrap_or(false) && w.outer_position().map(|p| p == pos).unwrap_or(false) { return; }
+        if fits() { return; }
     }
     log::warn!("picker window didn't fit monitor at {pos:?}: {:?}", w.outer_size());
 }
@@ -157,12 +183,14 @@ fn start_now(app: &AppHandle, mode: Mode) {
     let builder = (mode != Mode::Screen && pickers(app).len() != app.available_monitors().map(|m| m.len()).unwrap_or(0))
         .then(|| { let a = app.clone(); std::thread::spawn(move || warm(&a)) });
     let t0 = std::time::Instant::now();
+    // The window list (for snapping) is read while the screens are grabbed.
+    let windows = (mode != Mode::Screen).then(|| std::thread::spawn(capture::windows));
     let frames = match capture::freeze_all() {
         Ok(f) => f,
         Err(e) => return actions::notify(app, &format!("Couldn't capture the screen: {e}")),
     };
     let t1 = t0.elapsed();
-    *state(app).windows.lock().unwrap() = capture::windows();
+    if let Some(w) = windows { *state(app).windows.lock().unwrap() = w.join().unwrap_or_default(); }
     log::info!("picker: frames {t1:?}, windows {:?}", t0.elapsed() - t1);
     *state(app).frames.lock().unwrap() = frames;
     *MODE.lock().unwrap() = mode;
@@ -194,7 +222,7 @@ fn start_now(app: &AppHandle, mode: Mode) {
         if let Some(w) = app.get_webview_window(&format!("picker-{e}-{i}")) {
             cover(&w, m);
             let mut r = READY.lock().unwrap();
-            if r.0.iter().any(|l| l == w.label()) { let _ = w.emit_to(w.label(), "open", frame); }
+            if r.0.iter().any(|l| l == w.label()) { send_frame(app, &w, frame); }
             else { r.1.retain(|(l, _)| l != w.label()); r.1.push((w.label().to_string(), frame)); }
         }
     }
@@ -210,6 +238,60 @@ fn start_now(app: &AppHandle, mode: Mode) {
             else { REPAIRS.store(0, SeqCst); actions::notify(&app, "The capture screen didn't open. Try again; if it keeps happening, restart Grabbit."); }
         }
     });
+}
+
+/// Hands a loaded picker page its frame. On Windows the pixels go into memory shared with the page, together with
+/// the picker details: no copying through the page's network stack, which took 0.2–0.5 s for a 4K screen.
+fn send_frame(app: &AppHandle, w: &tauri::WebviewWindow, frame: usize) {
+    #[cfg(windows)]
+    {
+        let (app2, label) = (app.clone(), w.label().to_string());
+        let Some(info) = info(app, frame).and_then(|i| serde_json::to_string(&i).ok()) else { return };
+        let sent = w.with_webview(move |pv| unsafe {
+            use webview2_com::Microsoft::Web::WebView2::Win32::*;
+            use windows_core::Interface;
+            let res = (|| -> windows_core::Result<()> {
+                set_awake(&pv, true);
+                let wv = pv.controller().CoreWebView2()?;
+                let frames = state(&app2).frames.lock().unwrap();
+                let Some(f) = frames.get(frame) else { return Ok(()) };
+                let raw = f.image.as_raw();
+                let buf = pv.environment().cast::<ICoreWebView2Environment12>()?.CreateSharedBuffer(raw.len() as u64)?;
+                let mut p = std::ptr::null_mut();
+                buf.Buffer(&mut p)?;
+                std::ptr::copy_nonoverlapping(raw.as_ptr(), p, raw.len());
+                drop(frames);
+                wv.cast::<ICoreWebView2_17>()?.PostSharedBufferToScript(&buf, COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE, &windows_core::HSTRING::from(info))
+            })();
+            if let Err(e) = res { log::warn!("shared frame failed ({e}); sending it the slow way"); let _ = app2.emit_to(&label, "open", frame); }
+        });
+        if sent.is_ok() { return; }
+    }
+    awake(w, true);
+    let _ = w.emit_to(w.label(), "open", frame);
+}
+
+/// A hidden picker tells WebView2 it's not on screen and may use little memory, so its processes give most of their
+/// memory back while the page stays loaded; it's woken when the next frame arrives. (Hiding the window alone doesn't
+/// do this: four hidden pickers held ~500 MB.)
+fn awake(w: &tauri::WebviewWindow, on: bool) {
+    #[cfg(windows)]
+    let _ = w.with_webview(move |pv| set_awake(&pv, on));
+    #[cfg(not(windows))]
+    let _ = (w, on);
+}
+
+#[cfg(windows)]
+fn set_awake(pv: &tauri::webview::PlatformWebview, on: bool) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::*;
+    use windows_core::Interface;
+    unsafe {
+        let c = pv.controller();
+        let _ = c.SetIsVisible(on);
+        if let Ok(wv) = c.CoreWebView2().and_then(|w| w.cast::<ICoreWebView2_19>()) {
+            let _ = wv.SetMemoryUsageTargetLevel(if on { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW });
+        }
+    }
 }
 
 /// Shift+capture key: the same rectangle as last time, straight to the default action.
@@ -237,14 +319,16 @@ pub fn picker_shown(app: AppHandle, window: tauri::WebviewWindow) {
 }
 
 #[tauri::command]
-pub fn picker_info(app: AppHandle, frame: usize) -> Option<PickerInfo> {
-    let frames = state(&app).frames.lock().unwrap();
+pub fn picker_info(app: AppHandle, frame: usize) -> Option<PickerInfo> { info(&app, frame) }
+
+fn info(app: &AppHandle, frame: usize) -> Option<PickerInfo> {
+    let frames = state(app).frames.lock().unwrap();
     let f = frames.get(frame)?;
     Some(PickerInfo {
         frame, x: f.x, y: f.y, width: f.image.width(), height: f.image.height(),
         mode: *MODE.lock().unwrap(),
-        windows: state(&app).windows.lock().unwrap().clone(),
-        last_rect: *state(&app).last_rect.lock().unwrap(),
+        windows: state(app).windows.lock().unwrap().clone(),
+        last_rect: *state(app).last_rect.lock().unwrap(),
         os: std::env::consts::OS,
     })
 }

@@ -39,8 +39,13 @@ pub fn freeze_all() -> Result<Vec<Frame>> {
             Ok(Frame { x: m.x()?, y: m.y()?, scale: m.scale_factor().unwrap_or(1.0), image: pic.resize_to_fill(pw, ph, image::imageops::FilterType::Lanczos3).to_rgba8() })
         }).collect();
     }
-    // xcap's Monitor can't cross threads, so each thread looks its monitor up again.
     let n = Monitor::all().context("listing monitors")?.len();
+    #[cfg(windows)]
+    match dxgi::freeze(n) {
+        Ok(f) => return Ok(f),
+        Err(e) => log::warn!("fast capture unavailable ({e:#}); using GDI"),
+    }
+    // xcap's Monitor can't cross threads, so each thread looks its monitor up again.
     std::thread::scope(|sc| {
         let jobs: Vec<_> = (0..n).map(|i| sc.spawn(move || -> Result<Frame> {
             let m = Monitor::all()?.into_iter().nth(i).context("monitor went away")?;
@@ -49,6 +54,148 @@ pub fn freeze_all() -> Result<Vec<Frame>> {
         })).collect();
         jobs.into_iter().map(|j| j.join().map_err(|_| anyhow::anyhow!("capture thread panicked"))?).collect()
     })
+}
+
+/// Frees what fast capture keeps between captures (called when the capture screens are closed for good).
+pub fn release() {
+    #[cfg(windows)]
+    dxgi::release();
+}
+
+/// Makes fast capture ready ahead of the first capture (the GPU devices take ~150 ms).
+pub fn prepare() {
+    #[cfg(windows)]
+    dxgi::prepare();
+}
+
+/// Windows: the screens straight from the GPU (DXGI desktop duplication), about 5× faster than GDI. The GPU device
+/// takes ~150 ms to make, so it's kept; it holds no pictures between captures. Anything unusual (a remote session,
+/// an HDR screen, the screens changing) fails here and the capture falls back to GDI.
+#[cfg(windows)]
+mod dxgi {
+    use super::Frame;
+    use anyhow::{Context, Result};
+    use std::sync::Mutex;
+    use windows::core::Interface;
+    use windows::Win32::Graphics::{Direct3D::*, Direct3D11::*, Dxgi::{Common::*, *}};
+    use windows::Win32::{Foundation::HMODULE, UI::HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI}};
+
+    struct Gpu { dev: ID3D11Device, ctx: ID3D11DeviceContext, outputs: Vec<IDXGIOutput1> }
+    // D3D11 devices are free-threaded and the context is made multithread-protected below.
+    unsafe impl Send for Gpu {}
+    unsafe impl Sync for Gpu {}
+    static GPUS: Mutex<Vec<Gpu>> = Mutex::new(Vec::new());
+
+    fn gpus() -> Result<Vec<Gpu>> {
+        let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1()? };
+        let mut out = Vec::new();
+        for a in (0..).map_while(|i| unsafe { factory.EnumAdapters1(i) }.ok()) {
+            let outputs: Vec<IDXGIOutput1> = (0..).map_while(|i| unsafe { a.EnumOutputs(i) }.ok()).filter_map(|o| o.cast().ok()).collect();
+            if outputs.is_empty() { continue; }
+            let (mut dev, mut ctx) = (None, None);
+            unsafe { D3D11CreateDevice(&a, D3D_DRIVER_TYPE_UNKNOWN, HMODULE::default(), D3D11_CREATE_DEVICE_BGRA_SUPPORT, None, D3D11_SDK_VERSION, Some(&mut dev), None, Some(&mut ctx))?; }
+            let ctx = ctx.context("no device context")?;
+            if let Ok(mt) = ctx.cast::<ID3D11Multithread>() { unsafe { let _ = mt.SetMultithreadProtected(true); } }
+            out.push(Gpu { dev: dev.context("no device")?, ctx, outputs });
+        }
+        Ok(out)
+    }
+
+    /// Lets go of the GPU devices (the graphics driver holds ~130 MB for them); the next capture makes them again.
+    pub fn release() { GPUS.lock().unwrap().clear(); }
+
+    pub fn prepare() {
+        let mut cache = GPUS.lock().unwrap();
+        if cache.is_empty() { *cache = gpus().unwrap_or_default(); }
+    }
+
+    pub fn freeze(monitors: usize) -> Result<Vec<Frame>> {
+        let mut cache = GPUS.lock().unwrap();
+        if cache.iter().map(|g| g.outputs.len()).sum::<usize>() != monitors { *cache = gpus()?; }
+        let results: Vec<(Option<(i32, i32)>, Result<Frame>)> = std::thread::scope(|sc| {
+            let jobs: Vec<_> = cache.iter().flat_map(|g| g.outputs.iter().map(move |o| sc.spawn(move || {
+                let at = unsafe { o.GetDesc() }.ok().map(|d| (d.DesktopCoordinates.left, d.DesktopCoordinates.top));
+                (at, grab(g, o))
+            }))).collect();
+            jobs.into_iter().map(|j| j.join().unwrap_or((None, Err(anyhow::anyhow!("capture thread panicked"))))).collect()
+        });
+        let mut frames = Vec::new();
+        for (at, r) in results {
+            match r {
+                Ok(f) => frames.push(f),
+                // A screen that showed nothing new in time (or can't be duplicated) is grabbed with GDI instead.
+                Err(e) => {
+                    log::warn!("fast capture of the screen at {at:?} failed ({e:#}); using GDI for it");
+                    if !e.to_string().contains("no desktop frame") { cache.clear(); }
+                    let (x, y) = at.context("screen gone")?;
+                    let m = xcap::Monitor::all()?.into_iter().find(|m| m.x().ok() == Some(x) && m.y().ok() == Some(y)).context("screen gone")?;
+                    frames.push(Frame { x, y, scale: m.scale_factor().unwrap_or(1.0), image: m.capture_image()? });
+                }
+            }
+        }
+        Ok(frames)
+    }
+
+    fn grab(g: &Gpu, out: &IDXGIOutput1) -> Result<Frame> {
+        unsafe {
+            let od = out.GetDesc()?;
+            let dup = out.DuplicateOutput(&g.dev)?;
+            let (mut info, mut res) = (DXGI_OUTDUPL_FRAME_INFO::default(), None);
+            // The first frame after duplicating is often empty, and moving the mouse sends pointer-only ones; the
+            // desktop's picture follows within a frame or two.
+            let until = std::time::Instant::now() + std::time::Duration::from_millis(300);
+            while std::time::Instant::now() < until {
+                match dup.AcquireNextFrame(50, &mut info, &mut res) {
+                    Ok(()) if info.LastPresentTime != 0 => break,
+                    Ok(()) => { res = None; dup.ReleaseFrame()?; }
+                    Err(e) if e.code() == DXGI_ERROR_WAIT_TIMEOUT => {}
+                    Err(e) => return Err(e.into()),
+                }
+            }
+            anyhow::ensure!(info.LastPresentTime != 0, "no desktop frame");
+            let tex: ID3D11Texture2D = res.context("no frame")?.cast()?;
+            let mut desc = D3D11_TEXTURE2D_DESC::default();
+            tex.GetDesc(&mut desc);
+            anyhow::ensure!(desc.Format == DXGI_FORMAT_B8G8R8A8_UNORM, "screen format {:?}", desc.Format);
+            desc.Usage = D3D11_USAGE_STAGING; desc.BindFlags = 0; desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ.0 as u32; desc.MiscFlags = 0;
+            let mut staging = None;
+            g.dev.CreateTexture2D(&desc, None, Some(&mut staging))?;
+            let staging = staging.context("no staging texture")?;
+            g.ctx.CopyResource(&staging, &tex);
+            drop(tex);
+            dup.ReleaseFrame()?;
+            let mut map = D3D11_MAPPED_SUBRESOURCE::default();
+            g.ctx.Map(&staging, 0, D3D11_MAP_READ, 0, Some(&mut map))?;
+            let (tw, th, pitch) = (desc.Width as usize, desc.Height as usize, map.RowPitch as usize);
+            let src = std::slice::from_raw_parts(map.pData as *const u8, pitch * th);
+            let (rgba, w, h) = super::from_bgra(src, pitch, tw, th, dup.GetDesc().Rotation.0);
+            g.ctx.Unmap(&staging, 0);
+            let (mut dx, mut dy) = (96, 96);
+            let _ = GetDpiForMonitor(od.Monitor, MDT_EFFECTIVE_DPI, &mut dx, &mut dy);
+            let r = od.DesktopCoordinates;
+            Ok(Frame { x: r.left, y: r.top, scale: dx as f32 / 96.0, image: image::RgbaImage::from_raw(w as u32, h as u32, rgba).context("frame size")? })
+        }
+    }
+}
+
+/// BGRA rows `pitch` bytes apart (`tw`×`th`, as the screen's panel sees them) → RGBA the way the desktop shows them,
+/// undoing a rotated screen (DXGI_MODE_ROTATION: 2 = 90°, 3 = 180°, 4 = 270°).
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn from_bgra(src: &[u8], pitch: usize, tw: usize, th: usize, rot: i32) -> (Vec<u8>, usize, usize) {
+    let (dw, dh) = if rot == 2 || rot == 4 { (th, tw) } else { (tw, th) };
+    let mut out = vec![0u8; dw * dh * 4];
+    for (dy, row) in out.chunks_exact_mut(dw * 4).enumerate() {
+        if !(2..=4).contains(&rot) {
+            for (d, s) in row.chunks_exact_mut(4).zip(src[dy * pitch..dy * pitch + tw * 4].chunks_exact(4)) { d.copy_from_slice(&[s[2], s[1], s[0], 255]); }
+            continue;
+        }
+        for (dx, d) in row.chunks_exact_mut(4).enumerate() {
+            let (sx, sy) = match rot { 2 => (dy, th - 1 - dx), 3 => (tw - 1 - dx, th - 1 - dy), _ => (tw - 1 - dy, dx) };
+            let s = &src[sy * pitch + sx * 4..sy * pitch + sx * 4 + 4];
+            d.copy_from_slice(&[s[2], s[1], s[0], 255]);
+        }
+    }
+    (out, dw, dh)
 }
 
 /// Visible, normal windows, front-most first. Our own windows (picker, bars) are left out.
@@ -140,6 +287,23 @@ pub fn combine(parts: &[(RgbaImage, i32, i32)], layout: &str) -> RgbaImage {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bgra_rotations() {
+        // A 3×2 panel, BGRA, rows padded to 16 bytes; each pixel's blue byte is its index.
+        let mut src = vec![0u8; 32];
+        for i in 0..6u8 { let (x, y) = (i as usize % 3, i as usize / 3); src[y * 16 + x * 4] = i; }
+        let blue = |v: &[u8]| v.chunks(4).map(|p| p[2]).collect::<Vec<_>>();
+        let (o, w, h) = from_bgra(&src, 16, 3, 2, 1);
+        assert_eq!((w, h, blue(&o)), (3, 2, vec![0, 1, 2, 3, 4, 5]));
+        let (o, w, h) = from_bgra(&src, 16, 3, 2, 3);
+        assert_eq!((w, h, blue(&o)), (3, 2, vec![5, 4, 3, 2, 1, 0]));
+        let (o, w, h) = from_bgra(&src, 16, 3, 2, 2);
+        assert_eq!((w, h, blue(&o)), (2, 3, vec![3, 0, 4, 1, 5, 2]));
+        let (o, w, h) = from_bgra(&src, 16, 3, 2, 4);
+        assert_eq!((w, h, blue(&o)), (2, 3, vec![2, 5, 1, 4, 0, 3]));
+        assert_eq!(o[3], 255);
+    }
 
     #[test]
     fn combine_layouts() {

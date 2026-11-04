@@ -260,8 +260,8 @@ pub fn run() {
             tray(app.handle())?;
             hotkey::register_all(app.handle());
             let h = app.handle().clone();
-            // Pickers are made when a capture starts, unless the user keeps them ready (faster, uses more memory).
-            if state(&h).settings.lock().unwrap().keep_picker_ready { std::thread::spawn(move || picker::warm(&h)); }
+            // With instant capture the capture screens are made now, so even the first capture opens at once.
+            if state(&h).settings.lock().unwrap().instant_capture { std::thread::spawn(move || picker::prepare(&h)); }
             replay::sync(app.handle());
             let args: Vec<String> = std::env::args().collect();
             editor::handle_args(app.handle(), &args);

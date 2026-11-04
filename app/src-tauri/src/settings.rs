@@ -85,8 +85,10 @@ pub struct Ai {
 #[serde(default)]
 pub struct Settings {
     pub after_capture: AfterCapture,
-    /// Keep the picker windows loaded between captures: opens faster, holds 50–100 MB per screen.
-    pub keep_picker_ready: bool,
+    /// Keep the capture screens loaded (hidden, trimmed) between captures, so the key freezes the screens at once.
+    /// Off: they're closed a minute after the last capture and the next one takes about 2 s. (A new name, so
+    /// everyone gets the new default instead of the old "off".)
+    pub instant_capture: bool,
     pub auto_save: bool,
     pub save_format: SaveFormat,
     pub save_folder: String,
@@ -145,7 +147,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             after_capture: AfterCapture::Ask,
-            keep_picker_ready: false,
+            instant_capture: true,
             auto_save: true,
             save_format: SaveFormat::WebpLossless,
             save_folder: folder(dirs::picture_dir()),

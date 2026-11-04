@@ -103,9 +103,9 @@ pub fn save_full(s: &Settings, img: &RgbaImage, name: &str) -> Result<PathBuf> {
 
 /// Put a picture on the clipboard: the pixels, plus (optionally) a named file so chat apps attach it.
 pub fn copy(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<PathBuf> {
-    let (file, pixels) = copy_file_for(s, img, size, name)?;
+    let (file, pixels, png) = copy_file_for(s, img, size, name)?;
     let files = if s.copy_as_file { vec![file.to_string_lossy().into_owned()] } else { vec![] };
-    set_clipboard(Clip { image: Some(&pixels), files: &files, text: None, html: None })?;
+    set_clipboard(Clip { image: Some(&pixels), png: png.as_deref(), files: &files, text: None, html: None })?;
     Ok(file)
 }
 
@@ -114,17 +114,18 @@ pub fn copy_many(s: &Settings, imgs: &[(RgbaImage, String)], size: Size) -> Resu
     let mut out = Vec::new();
     let mut first = None;
     for (img, name) in imgs {
-        let (f, px) = copy_file_for(s, img, size, name)?;
-        first.get_or_insert(px);
+        let (f, px, png) = copy_file_for(s, img, size, name)?;
+        first.get_or_insert((px, png));
         out.push(f);
     }
     let files: Vec<String> = out.iter().map(|f| f.to_string_lossy().into_owned()).collect();
-    set_clipboard(Clip { image: first.as_ref(), files: &files, text: None, html: None })?;
+    set_clipboard(Clip { image: first.as_ref().map(|f| &f.0), png: first.as_ref().and_then(|f| f.1.as_deref()), files: &files, text: None, html: None })?;
     Ok(out)
 }
 
-/// The file a copy puts on the clipboard (in the temp Grabbit folder), and the pixels that go with it.
-fn copy_file_for(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<(PathBuf, RgbaImage)> {
+/// The file a copy puts on the clipboard (in the temp Grabbit folder), the pixels that go with it, and the file's
+/// bytes when it's a PNG (the clipboard's PNG copy reuses them instead of encoding the picture again).
+fn copy_file_for(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<(PathBuf, RgbaImage, Option<Vec<u8>>)> {
     let tmp = std::env::temp_dir().join("Grabbit");
     std::fs::create_dir_all(&tmp)?;
     let x = xmp(s);
@@ -139,7 +140,7 @@ fn copy_file_for(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Resul
     };
     let file = tmp.join(format!("{name}.{ext}"));
     std::fs::write(&file, &bytes)?;
-    Ok((file, pixels))
+    Ok((file, pixels, (ext == "png").then_some(bytes)))
 }
 
 pub fn copy_text(t: &str) -> Result<()> {
@@ -152,17 +153,20 @@ pub fn copy_file(p: &Path) -> Result<()> {
 
 /// Everything that goes on the clipboard in one go. Windows gets one clipboard session for all formats (clipboard-rs
 /// closes the clipboard after an image, which silently drops the formats after it).
-pub struct Clip<'a> { pub image: Option<&'a RgbaImage>, pub files: &'a [String], pub text: Option<&'a str>, pub html: Option<&'a str> }
+pub struct Clip<'a> { pub image: Option<&'a RgbaImage>, pub png: Option<&'a [u8]>, pub files: &'a [String], pub text: Option<&'a str>, pub html: Option<&'a str> }
 
 pub fn set_clipboard(c: Clip) -> Result<()> {
     #[cfg(windows)]
     {
         use clipboard_win::{formats, options, raw};
+        // Encoded before the clipboard is opened, so other apps aren't kept waiting.
+        let png = match (c.png, c.image) { (Some(p), _) => Some(std::borrow::Cow::Borrowed(p)), (None, Some(i)) => Some(png_bytes(i, None)?.into()), _ => None };
+        let dib = c.image.map(dib);
         let _open = clipboard_win::Clipboard::new_attempts(10).map_err(|e| anyhow::anyhow!("clipboard busy: {e}"))?;
         raw::empty().map_err(|e| anyhow::anyhow!("clipboard: {e}"))?;
-        if let Some(img) = c.image {
-            raw::set_without_clear(formats::CF_DIB, &dib(img)).map_err(|e| anyhow::anyhow!("clipboard picture: {e}"))?;
-            if let Some(png) = raw::register_format("PNG") { let _ = raw::set_without_clear(png.get(), &png_bytes(img, None)?); }
+        if let Some(d) = &dib {
+            raw::set_without_clear(formats::CF_DIB, d).map_err(|e| anyhow::anyhow!("clipboard picture: {e}"))?;
+            if let (Some(f), Some(p)) = (raw::register_format("PNG"), &png) { let _ = raw::set_without_clear(f.get(), p); }
         }
         if !c.files.is_empty() { raw::set_file_list_with(c.files, options::NoClear).map_err(|e| anyhow::anyhow!("clipboard files: {e}"))?; }
         if let Some(t) = c.text { raw::set_string_with(t, options::NoClear).map_err(|e| anyhow::anyhow!("clipboard text: {e}"))?; }
