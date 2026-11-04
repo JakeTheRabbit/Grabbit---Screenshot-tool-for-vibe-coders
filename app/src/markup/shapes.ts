@@ -7,12 +7,14 @@ import {
 } from "fabric";
 
 export type Meta = { kind: "arrow" | "line" | "rect" | "ellipse" | "pen" | "highlight" | "text" | "step" | "redact" | "spot" | "magnify" | "sticker" | "image"; mode?: "pixelate" | "blur" | "black"; n?: number };
-export type Style = { color: string; width: number; fill: "none" | "soft" | "solid"; font: number; textBg: boolean; shadow: boolean };
+export type Style = { color: string; width: number; fill: "none" | "soft" | "solid"; font: number; family: string; textBg: boolean; shadow: boolean };
 
 export const COLORS = ["#e03131", "#f08c00", "#ffd43b", "#2f9e44", "#1971c2", "#7048e8", "#000000", "#ffffff"];
 export const WIDTHS = [1, 2, 3.5, 6];         // × unit
 export const FONTS = [10, 14, 20, 30];        // × unit
-export const DEFAULT_STYLE: Style = { color: "#e03131", width: 1, fill: "none", font: 1, textBg: false, shadow: true };
+export const DEFAULT_STYLE: Style = { color: "#e03131", width: 1, fill: "none", font: 1, family: "", textBg: false, shadow: true };
+/** The text font: one picked from the computer's fonts, or the system UI font. */
+export const fontOf = (s: Style) => (s.family ? `"${s.family}", ` : "") + "Segoe UI, system-ui, sans-serif";
 
 /** One size step for a picture w×h: ~2.5 px on a 2560-wide capture, never under 1.5. */
 export const unit = (w: number, h: number) => Math.max(1.5, Math.max(w, h) / 1000);
@@ -95,7 +97,7 @@ export function makeBox(kind: "rect" | "ellipse", x: number, y: number, w: numbe
 export function makeText(x: number, y: number, s: Style, u: number, text = "") {
   const size = FONTS[s.font] * u;
   const o = new IText(text, {
-    fontFamily: "Segoe UI, system-ui, sans-serif", fontWeight: 600, fontSize: size, fill: s.textBg ? contrast(s.color) : s.color,
+    fontFamily: fontOf(s), fontWeight: 600, fontSize: size, fill: s.textBg ? contrast(s.color) : s.color,
     backgroundColor: s.textBg ? s.color : "", padding: s.textBg ? size * 0.25 : 0, shadow: s.textBg ? null : shadowFor(s.shadow, u * 0.6),
     editingBorderColor: "#3884ff", cursorColor: s.textBg ? contrast(s.color) : s.color,
   });
@@ -105,7 +107,7 @@ export function makeText(x: number, y: number, s: Style, u: number, text = "") {
 export function makeStep(n: number, cx: number, cy: number, s: Style, u: number) {
   const r = FONTS[s.font] * u * 0.85;
   const disc = new Circle({ radius: r, fill: s.color, stroke: "#ffffff", strokeWidth: Math.max(1.5, u * 0.8), originX: "center", originY: "center", shadow: shadowFor(s.shadow, u) });
-  const label = new FabricText(String(n), { fontFamily: "Segoe UI, system-ui, sans-serif", fontWeight: 700, fontSize: r * 1.15, fill: contrast(s.color), originX: "center", originY: "center" });
+  const label = new FabricText(String(n), { fontFamily: fontOf(s), fontWeight: 700, fontSize: r * 1.15, fill: contrast(s.color), originX: "center", originY: "center" });
   const g = new Group([disc, label]);
   g.setPositionByOrigin(new Point(cx, cy), "center", "center");
   g.setCoords();
@@ -132,11 +134,11 @@ export function restyle(o: FabricObject, s: Style, u: number) {
   else if (k === "highlight") o.set({ stroke: s.color + "66" });
   else if (k === "text" && o instanceof IText) {
     const size = FONTS[s.font] * u;
-    o.set({ fontSize: size, fill: s.textBg ? contrast(s.color) : s.color, backgroundColor: s.textBg ? s.color : "", padding: s.textBg ? size * 0.25 : 0, shadow: s.textBg ? null : shadowFor(s.shadow, u * 0.6) });
+    o.set({ fontSize: size, fontFamily: fontOf(s), fill: s.textBg ? contrast(s.color) : s.color, backgroundColor: s.textBg ? s.color : "", padding: s.textBg ? size * 0.25 : 0, shadow: s.textBg ? null : shadowFor(s.shadow, u * 0.6) });
   } else if (k === "step" && o instanceof Group) {
     const [disc, label] = o.getObjects();
     disc.set({ fill: s.color, shadow: sh });
-    label.set({ fill: contrast(s.color) });
+    label.set({ fill: contrast(s.color), fontFamily: fontOf(s) });
   } else return false;
   o.setCoords();
   return true;

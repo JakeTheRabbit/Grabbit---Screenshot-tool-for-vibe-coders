@@ -306,3 +306,19 @@ pub fn settings_import(app: AppHandle, path: String) -> Result<Settings, String>
     set_settings(app, next.clone())?;
     Ok(next)
 }
+
+/// Font families installed on this computer, for the editor's text tools (scanned once, then kept).
+#[tauri::command]
+pub async fn system_fonts() -> Vec<String> {
+    static FONTS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+    if let Some(f) = FONTS.get() { return f.clone(); }
+    let list = tauri::async_runtime::spawn_blocking(|| {
+        let mut db = fontdb::Database::new();
+        db.load_system_fonts();
+        let mut names: Vec<String> = db.faces().filter_map(|f| f.families.first().map(|(n, _)| n.clone())).filter(|n| !n.starts_with('.') && !n.starts_with('@')).collect();
+        names.sort_by_key(|n| n.to_lowercase());
+        names.dedup();
+        names
+    }).await.unwrap_or_default();
+    FONTS.get_or_init(|| list).clone()
+}

@@ -17,7 +17,7 @@ import { switchEditor, takeCarried } from "../carry";
 import { Library, type Dock } from "./Library";
 import { getTheme, setTheme, type Theme } from "../ui/theme";
 import {
-  COLORS, DEFAULT_STYLE, FONTS, PROPS, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
+  COLORS, DEFAULT_STYLE, FONTS, PROPS, fontOf, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
   restoreControls, restyle, setMeta, unit, type Style,
 } from "./shapes";
 
@@ -100,6 +100,9 @@ export function MarkupApp() {
   const [tabsAt, setTabsAtState] = useState<TabsAt>(() => pref<TabsAt>("tabsAt", "side"));
   const setTabsAt = (t: TabsAt) => { setTabsAtState(t); keep("tabsAt", t); };
   const [look, setLook] = useState<Theme>(getTheme);
+  // The computer's fonts, asked for the first time the font menu opens.
+  const [fonts, setFonts] = useState<string[]>([]);
+  const loadFonts = () => { if (!fonts.length) void invoke<string[]>("system_fonts").then((f) => setFonts(f ?? [])).catch(() => {}); };
   const [tabsSlim, setTabsSlimState] = useState(() => pref<string>("tabsSlim", "") === "1");
   const setTabsSlim = (v: boolean) => { setTabsSlimState(v); keep("tabsSlim", v ? "1" : ""); };
 
@@ -723,6 +726,20 @@ export function MarkupApp() {
       commitBase(key, { url: dataURL, w: b.w, h: b.h });
       void restore(d.hist[d.at], d);
     },
+    applyBeauty: async () => {
+      const d = active.current;
+      if (!d) return;
+      const url = await render(true);
+      const img = await new Promise<HTMLImageElement>((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = url; });
+      const c = fc();
+      c.discardActiveObject();
+      c.remove(...c.getObjects());   // the drawings are in the new picture now
+      commitBase(`b${d.bases.size}`, { url, w: img.naturalWidth, h: img.naturalHeight });
+      await restore(d.hist[d.at], d);
+      fit();
+      setBeauty({ ...beautyRef.current, on: false });
+      toast("Beautify is now part of the picture (Ctrl+Z to undo).");
+    },
     toast, setBusy, name,
     size: (() => { const b = active.current ? base() : null; return b ? { width: b.w, height: b.h } : null; })(),
   };
@@ -925,7 +942,11 @@ export function MarkupApp() {
                 )}
                 {showText && (
                   <div className="mk-group">
-                    {FONTS.map((_, i) => <button key={i} className={style.font === i ? "on" : ""} onClick={() => setStyle({ font: i })} title="Text size">{["S", "M", "L", "XL"][i]}</button>)}
+                    <select className="mk-font" value={style.family} onFocus={loadFonts} onPointerDown={loadFonts} onChange={(e) => setStyle({ family: e.target.value })} title="Font for text and numbered steps (any font installed on this computer)" style={{ fontFamily: fontOf(style) }}>
+                      <option value="">System font</option>
+                      {(fonts.length ? fonts : style.family ? [style.family] : []).map((f) => <option key={f} value={f} style={{ fontFamily: `"${f}"` }}>{f}</option>)}
+                    </select>
+                    {FONTS.map((_, i) => <button key={i} className={style.font === i ? "on" : ""} onClick={() => setStyle({ font: i })} title={`Text size: ${["small", "medium", "large", "extra large"][i]}`}>{["S", "M", "L", "XL"][i]}</button>)}
                     <button className={style.textBg ? "on" : ""} onClick={() => setStyle({ textBg: !style.textBg })} title="Text on a coloured background">Aa</button>
                   </div>
                 )}

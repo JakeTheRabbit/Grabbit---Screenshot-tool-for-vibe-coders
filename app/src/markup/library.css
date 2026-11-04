@@ -108,3 +108,4 @@
 .view-small .lib-acts .lib-fbtn, .view-large .lib-acts .lib-fbtn { color: #fff; }
 .view-small .lib-acts .lib-menu, .view-large .lib-acts .lib-menu { top: auto; bottom: calc(100% - 12px); }
 .vtab-ph { flex: none; width: 46px; height: 32px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
+.mk-font { height: 30px; max-width: 150px; padding: 0 26px 0 8px; border: 0; box-shadow: none; background-color: transparent; }

@@ -207,6 +207,7 @@ pub fn run() {
             picker::picker_cancel,
             editor::editor_msg,
             editor::get_settings,
+            editor::system_fonts,
             editor::set_settings,
             editor::open_settings_at,
             editor::settings_export,

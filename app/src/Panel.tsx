@@ -14,6 +14,7 @@ export type EditorOps = {
   baseDataURL: () => string | null;         // the picture underneath, without drawings
   selectedRegion: () => Region | null;      // selected box, in picture pixels
   replaceBase: (dataURL: string, dropBox?: boolean) => void;   // swap the picture (undoable), optionally removing the marking box
+  applyBeauty?: () => Promise<void>;        // make the Beautify look part of the picture itself (undoable)
   toast: (t: string) => void;
   setBusy: (t: string) => void;
   name: string;
@@ -47,8 +48,9 @@ function BeautifyPanel({ beauty: b, setBeauty, ops }: { beauty: Beauty; setBeaut
   }, [b]);
   return (
     <div className="pbody">
-      <label className="line"><input type="checkbox" checked={b.on} onChange={(e) => setBeauty({ ...b, on: e.target.checked })} /> Apply to copies and saves</label>
+      <label className="line" title="While this is on, Copy, Save and Share add the background, padding, corners and shadow"><input type="checkbox" checked={b.on} onChange={(e) => setBeauty({ ...b, on: e.target.checked })} /> Use this look on copies and saves</label>
       {preview ? <img className="bpreview" src={preview} alt="How copies will look" /> : <p className="hint">Pick a background to turn it on and see a preview.</p>}
+      {b.on && ops.applyBeauty && <button className="wide primary" onClick={() => void ops.applyBeauty!()} title="Put the background, padding, corners and shadow into the picture you're editing, with your drawings (Ctrl+Z undoes it)">Apply to the picture</button>}
       <h4>Background</h4>
       <div className="swatches">
         {Object.entries(BACKGROUNDS).map(([n, [a, z]]) => (

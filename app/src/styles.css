@@ -204,3 +204,5 @@ button.icon-only:hover { color: var(--text); }
   .shell.bar-top header.bar button:not(.caret), .shell.bar-bottom header.bar button:not(.caret) { font-size: 0; gap: 0; padding: 0 8px; }
   .shell.bar-top header.bar .name, .shell.bar-bottom header.bar .name { max-width: 16ch; }
 }
+.pbody button.wide.primary { background: var(--accent); border-color: transparent; color: var(--accent-fg); }
+.pbody button.wide.primary:hover { background: var(--accent-2); }
