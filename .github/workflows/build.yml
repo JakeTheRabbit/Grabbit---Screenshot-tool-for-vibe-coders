@@ -27,7 +27,7 @@ jobs:
       run:
         working-directory: app
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -82,7 +82,7 @@ jobs:
           $env:Path = "C:\ProgramData\chocolatey\bin;$env:Path"
           & .\src-tauri\target\debug\grabbit.exe --self-test "$env:RUNNER_TEMP\selftest" | Out-Host
           exit $LASTEXITCODE
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: selftest-${{ matrix.os }}
@@ -104,7 +104,7 @@ jobs:
           - { name: Linux, os: ubuntu-24.04, args: "" }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -117,7 +117,7 @@ jobs:
             libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libwayland-dev libegl-dev libgbm-dev libasound2-dev libx11-dev
       - run: bun install --frozen-lockfile
         working-directory: app
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
