@@ -1,0 +1,109 @@
+/* The new editor's library (docks on any side, resizes by its inner edge) and its vertical tabs. */
+.body.lib-at-right { flex-direction: row-reverse; }
+.body.lib-at-top { flex-direction: column; }
+.body.lib-at-bottom { flex-direction: column-reverse; }
+.work { flex: 1; display: flex; gap: 8px; min-width: 0; min-height: 0; }
+.lib { position: relative; flex: none; display: flex; flex-direction: column; min-width: 0; min-height: 0; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.lib-head { display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; }
+.lib-head .tabs { flex: 1; margin: 0; }
+.lib button { height: 26px; padding: 0 7px; font-size: 12px; }
+.lib .lib-icon, .lib-seg button { width: 28px; padding: 0; justify-content: center; color: var(--muted); }
+.lib .lib-icon:hover, .lib-seg button:hover { color: var(--text); }
+.lib-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 8px 0; }
+.lib-seg { display: flex; gap: 1px; padding: 1px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.lib-seg button { height: 24px; width: 26px; }
+.lib-seg button.on { color: var(--accent); background: var(--accent-soft); }
+.lib-tools select { height: 26px; min-width: 0; flex: 1 1 90px; padding: 0 4px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; font-size: 12px; }
+.lib-day { position: relative; display: inline-flex; align-items: center; gap: 2px; height: 26px; padding: 0 4px 0 6px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); cursor: pointer; }
+.lib-day.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.lib-day input { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.lib-day.on input { position: static; width: 106px; opacity: 1; background: transparent; color: inherit; font: inherit; font-size: 12px; }
+.lib-day button { position: relative; z-index: 1; width: 18px; height: 18px; padding: 0; justify-content: center; font-size: 14px; }
+.lib-folders { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 8px 2px; }
+.lib-folders .chip { height: 24px; padding: 0 8px; gap: 4px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+.lib-folders .chip .ico, .lib-folders .chip .ico svg { width: 13px; height: 13px; }
+.lib-folders .chip em { font-style: normal; font-size: 10.5px; opacity: 0.75; }
+.lib-folders .chip.on { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.lib-folders .chip.drop { outline: 2px dashed var(--accent); outline-offset: 1px; color: var(--accent); }
+.lib-folders .chip.add, .lib-folders .chip.x { width: 26px; padding: 0; justify-content: center; }
+.lib-items { flex: 1; min-height: 0; overflow: auto; padding: 4px 8px 10px; scrollbar-width: thin; }
+.lib-group h4 { margin: 10px 2px 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.lib-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--thumb)), 1fr)); }
+.lib-item { position: relative; display: flex; flex-direction: column; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); transition: box-shadow 160ms var(--ease), border-color 160ms var(--ease); }
+.lib-item:hover { box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.lib-pic { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 9px 9px 0 0; background: var(--bg); cursor: copy; }
+.lib-item.video .lib-pic { cursor: pointer; }
+.lib-pic img, .lib-pic video { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.lib-time { position: absolute; left: 5px; top: 5px; padding: 1px 5px; border-radius: 5px; font-size: 10.5px; color: #fff; background: rgb(0 0 0 / .55); pointer-events: none; }
+.lib-badge { position: absolute; right: 5px; top: 5px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 5px; color: #fff; background: rgb(0 0 0 / .55); }
+.lib-badge .ico, .lib-badge svg { width: 12px; height: 12px; }
+.lib-meta { display: flex; flex-direction: column; min-width: 0; }
+.lib-acts { display: flex; gap: 2px; padding: 3px; }
+.lib-acts > button { flex: 1; min-width: 0; height: 22px; padding: 0 4px; justify-content: center; font-size: 11px; color: var(--accent); }
+.lib-acts > button:hover { background: var(--accent-soft); }
+.lib-acts .lib-fbtn { width: 24px; height: 22px; padding: 0; justify-content: center; color: var(--muted); }
+.lib-acts .lib-fbtn.on { color: var(--accent); }
+.lib-acts .ico, .lib-acts .ico svg { width: 14px; height: 14px; }
+.lib-menu { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; min-width: 180px; padding: 4px; display: flex; flex-direction: column; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-lg); }
+.lib-menu.end, .lib-acts .lib-menu { left: auto; right: 0; }
+.lib-menu button { justify-content: flex-start; height: 28px; font-weight: 500; }
+/* List view: picture on the left, name, date and size beside it. */
+.view-list .lib-grid { grid-template-columns: 1fr; gap: 4px; }
+.view-list .lib-item { flex-direction: row; align-items: center; }
+.view-list .lib-pic { flex: none; width: 76px; aspect-ratio: 4 / 3; border-radius: 9px 0 0 9px; }
+.view-list .lib-pic .lib-time { display: none; }
+.view-list .lib-meta { flex: 1; padding: 0 2px 0 6px; }
+.lib-text { display: flex; flex-direction: column; gap: 1px; padding-top: 3px; font-size: 11.5px; min-width: 0; }
+.lib-text b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-text span { color: var(--muted); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-list .lib-acts { padding: 2px 0; justify-content: flex-start; }
+.view-list .lib-acts > button { flex: none; }
+/* The drag handle on the edge facing the picture. */
+.lib-resize { position: absolute; z-index: 3; touch-action: none; }
+.lib-left .lib-resize { top: 10px; bottom: 10px; right: -7px; width: 8px; cursor: ew-resize; }
+.lib-right .lib-resize { top: 10px; bottom: 10px; left: -7px; width: 8px; cursor: ew-resize; }
+.lib-top .lib-resize { left: 10px; right: 10px; bottom: -7px; height: 8px; cursor: ns-resize; }
+.lib-bottom .lib-resize { left: 10px; right: 10px; top: -7px; height: 8px; cursor: ns-resize; }
+.lib-resize:hover, .lib-resize:active { background: color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 4px; }
+/* Across the top or bottom: the controls in a column on the left, then one scrolling row of pictures. */
+.lib-top, .lib-bottom { flex-direction: row; }
+.lib-side { display: flex; flex-direction: column; min-width: 0; }
+.lib-top .lib-side, .lib-bottom .lib-side { flex: none; width: 196px; overflow-y: auto; padding-bottom: 8px; border-right: 1px solid var(--line); scrollbar-width: thin; }
+.lib-top .lib-items, .lib-bottom .lib-items { display: flex; gap: 10px; padding: 8px; overflow-x: auto; overflow-y: hidden; }
+.lib-top .lib-group, .lib-bottom .lib-group { display: flex; gap: 6px; flex: none; }
+.lib-top .lib-group h4, .lib-bottom .lib-group h4 { margin: 0; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; white-space: nowrap; overflow: hidden; }
+.lib-top .lib-grid, .lib-bottom .lib-grid { display: flex; gap: 8px; height: 100%; }
+.lib-top .lib-item, .lib-bottom .lib-item { flex: none; align-self: flex-start; width: calc((var(--h) - 18px) * 1.6); }
+.lib-top .lib-text, .lib-bottom .lib-text { display: none; }
+.lib-hidden { width: auto; background: transparent; border: 0; box-shadow: none; }
+.lib-show { height: 100%; min-height: 34px; padding: 8px 6px; flex-direction: column; gap: 6px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 11.5px; }
+.lib-left .lib-show span, .lib-right .lib-show span { writing-mode: vertical-rl; }
+.lib-top .lib-show, .lib-bottom .lib-show { height: auto; flex-direction: row; }
+.lib .preview video { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #000; }
+.lib .preview .info span { color: var(--muted); }
+
+/* ---------- vertical tabs (Edge style) ---------- */
+.vtabs { flex: none; width: 190px; display: flex; flex-direction: column; gap: 3px; padding: 6px; overflow-y: auto; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); scrollbar-width: thin; }
+.vtabs.slim { width: 66px; }
+.vtabs-head { display: flex; align-items: center; justify-content: space-between; min-height: 26px; padding: 0 0 2px 6px; font-size: 11.5px; color: var(--muted); }
+.vtabs-head button { height: 26px; width: 26px; }
+.vtabs.slim .vtabs-head { justify-content: center; padding-left: 0; }
+.vtab { position: relative; flex: none; display: flex; align-items: center; gap: 8px; padding: 5px; border-radius: 8px; cursor: pointer; color: var(--muted); font-size: 12px; transition: background 120ms var(--ease); }
+.vtab:hover { background: var(--hover); color: var(--text); }
+.vtab.on { background: var(--accent-soft); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
+.vtab img { flex: none; width: 46px; height: 32px; object-fit: cover; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
+.vtab .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.vtab .x { flex: none; width: 20px; height: 20px; padding: 0; justify-content: center; font-size: 14px; color: var(--muted); opacity: 0; }
+.vtab:hover .x, .vtab.on .x { opacity: 1; }
+.vtabs.slim .vtab { justify-content: center; }
+.vtabs.slim .vtab .x { position: absolute; top: 0; right: 0; width: 16px; height: 16px; font-size: 12px; background: var(--panel); border-radius: 50%; }
+.vtabs.slim .vtab .dot { position: absolute; left: 3px; top: 3px; }
+/* Picture views: the buttons sit over the bottom of the picture while the mouse is on it. */
+.view-small .lib-pic, .view-large .lib-pic { border-radius: 9px; }
+.view-small .lib-acts, .view-large .lib-acts { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 3px 3px; border-radius: 0 0 9px 9px; background: linear-gradient(transparent, rgb(0 0 0 / 0.72)); opacity: 0; transition: opacity 120ms var(--ease); }
+.lib-item:hover .lib-acts, .lib-acts:has(.lib-menu) { opacity: 1; }
+.view-small .lib-acts > button, .view-large .lib-acts > button { color: #fff; background: rgb(255 255 255 / 0.14); }
+.view-small .lib-acts > button:hover, .view-large .lib-acts > button:hover { background: var(--accent); }
+.view-small .lib-acts .lib-fbtn, .view-large .lib-acts .lib-fbtn { color: #fff; }
+.view-small .lib-acts .lib-menu, .view-large .lib-acts .lib-menu { top: auto; bottom: calc(100% - 12px); }

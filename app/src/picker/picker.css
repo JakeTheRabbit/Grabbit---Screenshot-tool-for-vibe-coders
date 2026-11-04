@@ -16,13 +16,13 @@ body.leaving { opacity: 0; transition: opacity 60ms; }
 #hint { position: fixed; left: 50%; top: 28px; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgba(24, 24, 24, 0.86); color: #fff; font-size: 13px; box-shadow: var(--shadow); pointer-events: none; }
 #hint kbd { color: #ddd; border-color: rgba(255, 255, 255, 0.3); }
 
-#bar { position: fixed; display: flex; gap: 4px; padding: 5px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); }
+#bar { position: fixed; display: flex; flex-wrap: wrap; max-width: calc(100vw - 16px); gap: 4px; padding: 5px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); }
 #bar.rev { flex-direction: row-reverse; }
 #bar.rev .menu { right: auto; left: 0; }
 #bar .btn { border-color: transparent; background: transparent; height: 34px; }
 #bar .btn:hover { background: var(--hover); }
 #bar .btn.primary { background: var(--accent); color: #fff; }
-#bar select.btn { appearance: none; padding-right: 10px; max-width: 130px; border-color: var(--line); background: transparent; }
+#bar select.btn { appearance: none; padding-right: 10px; max-width: 170px; border-color: var(--line); background: transparent; color: var(--fg); }
 #bar .toggle { padding: 0 9px; opacity: 0.45; }
 #bar .toggle.on { opacity: 1; color: var(--accent); }
 .menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; padding: 5px; border-radius: calc(var(--radius) + 2px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); display: flex; flex-direction: column; }

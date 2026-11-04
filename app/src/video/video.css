@@ -167,3 +167,6 @@ button.on { background: rgb(56 132 255 / 0.2); color: var(--accent-2); border-co
 .cue input { flex: 1; min-width: 0; height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text); font: inherit; }
 .cue input:focus { border-color: var(--accent); background: var(--panel-2); outline: none; }
 .captions .hint { padding: 8px 14px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+
+/* A select's list takes its background; keep the list readable in light and dark. */
+select option { background-color: Canvas; color: CanvasText; }

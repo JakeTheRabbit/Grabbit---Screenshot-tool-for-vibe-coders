@@ -8,7 +8,7 @@ export type Size = "Full" | "Reduced" | "Chat";
  *  copyPath → saveQuick, then the file's path on the clipboard; closeSave → keep edits of a closing tab; pin → float on screen. */
 export type ExportAction = "copy" | "copyClose" | "save" | "saveQuick" | "copyPath" | "closeSave" | "pin";
 
-export type RecentItem = { path: string; url: string; name: string; time: string; kind: "capture" | "edited" | "copied"; bytes?: number };
+export type RecentItem = { path: string; url: string; name: string; time: string; kind: "capture" | "edited" | "copied" | "video"; bytes?: number };
 
 export type HostMessage =
   | { type: "load"; name: string; dataURL?: string; width?: number; height?: number; scene?: string; recent: RecentItem[]; panel?: string }

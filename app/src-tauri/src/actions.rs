@@ -26,6 +26,44 @@ fn grab(st: &AppState, p: &Picked) -> anyhow::Result<RgbaImage> {
     Ok(img)
 }
 
+/// A multi-area capture with the areas kept apart: Mark up opens one tab each, Save saves each to the Grabbit folder,
+/// and the copy actions put every picture on the clipboard as files (the first also as pixels). The bar's other
+/// actions join the areas side by side instead (see run_inner).
+fn separate(app: &AppHandle, st: &AppState, p: &Picked) -> anyhow::Result<()> {
+    let imgs: Vec<RgbaImage> = {
+        let frames = st.frames.lock().unwrap();
+        p.extra.iter().chain(std::iter::once(&(p.x, p.y, p.width, p.height))).map(|&(x, y, w, h)| capture::crop(&frames, x, y, w, h)).collect()
+    };
+    *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
+    st.frames.lock().unwrap().clear();
+    let s = st.settings.lock().unwrap().clone();
+    let stamp = export::stamp_name("Grabbit");
+    let names: Vec<String> = (1..=imgs.len()).map(|i| format!("{stamp} ({i})")).collect();
+    let action = match p.action.as_str() {
+        "default" => match s.after_capture { crate::settings::AfterCapture::Edit => "edit", _ => "copy" },
+        a => a,
+    };
+    if action == "edit" { editor::open_images(app, &imgs, &names); return Ok(()); }
+    let mut outs = Vec::new();
+    let mut saved = Vec::new();
+    for (img, name) in imgs.iter().zip(&names) {
+        let id = mark::capture_id();
+        let out = mark::apply(&s, img, id);
+        let file = if s.auto_save || action == "save" { Some(export::save_full(&s, &out, name)?) } else { None };
+        crate::history::add(app, file.as_deref(), img, id);
+        saved.extend(file);
+        outs.push((out, name.clone()));
+    }
+    if action == "save" {
+        notify(app, &format!("Saved {} pictures in {}", saved.len(), s.save_folder));
+        return Ok(());
+    }
+    let size = match action { "reduced" => export::Size::Reduced, "chat" => export::Size::Chat, _ => export::Size::Full };
+    let files = export::copy_many(&s, &outs, size)?;
+    quick_show(app, saved.first().or(files.first()).map(|f| f.as_path()), &format!("Copied {} pictures", outs.len()));
+    Ok(())
+}
+
 pub async fn run(app: &AppHandle, p: Picked) {
     if let Err(e) = run_inner(app, p).await { notify(app, &format!("{e}")); }
 }
@@ -41,6 +79,9 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
         *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
         crate::scroll::start(app, (p.x, p.y, p.width, p.height));
         return Ok(());
+    }
+    if p.layout.as_deref() == Some("separate") && !p.extra.is_empty() && matches!(p.action.as_str(), "default" | "copy" | "reduced" | "chat" | "edit" | "save") {
+        return separate(app, st, &p);
     }
     let mut img = grab(&st, &p)?;
     if crate::batch::narrating() {
@@ -158,20 +199,34 @@ pub fn urlencode(s: &str) -> String {
     s.bytes().map(|b| match b { b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(), _ => format!("%{b:02X}") }).collect()
 }
 
+/// Load `url` into the window `label` when it's already open. Destroying it and building a new one with the same label
+/// straight after fails ("a webview with label … already exists"): the old one only goes once the event loop has run.
+pub fn reuse_window(app: &AppHandle, label: &str, url: &str) -> Option<tauri::WebviewWindow> {
+    let w = app.get_webview_window(label)?;
+    w.eval(&format!("location.replace({})", serde_json::to_string(url).unwrap_or_default())).ok()?;
+    let _ = w.show();
+    Some(w)
+}
+
 /// The quick-access card in the corner after a capture: thumbnail you can drag into other apps, plus edit / pin / share.
 pub fn quick_show(app: &AppHandle, file: Option<&std::path::Path>, text: &str) {
     let url = format!("quick.html?t={}{}", urlencode(text), file.map(|f| format!("&p={}", urlencode(&f.to_string_lossy()))).unwrap_or_default());
     let a = app.clone();
     let h = if file.is_some() { 230.0 } else { 64.0 };
     let _ = std::thread::spawn(move || {
-        if let Some(w) = a.get_webview_window("quick") { let _ = w.destroy(); }
         let Ok(Some(m)) = a.primary_monitor() else { return };
         let s = m.scale_factor();
         let (mw, mh) = (m.size().width as f64 / s, m.size().height as f64 / s);
         let w = 300.0;
+        let (x, y) = (m.position().x as f64 / s + mw - w - 20.0, m.position().y as f64 / s + mh - h - 64.0);
+        if let Some(win) = reuse_window(&a, "quick", &url) {
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+            return;
+        }
         let _ = WebviewWindowBuilder::new(&a, "quick", WebviewUrl::App(url.into()))
             .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(false).resizable(false)
-            .inner_size(w, h).position(m.position().x as f64 / s + mw - w - 20.0, m.position().y as f64 / s + mh - h - 64.0)
+            .inner_size(w, h).position(x, y)
             .build();
     });
 }
@@ -203,11 +258,13 @@ pub fn picker_delay(app: AppHandle, secs: u64) {
 /// Buttons on the quick-access card.
 #[tauri::command]
 pub fn quick_action(app: AppHandle, action: String, path: String) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
+    use std::path::Path;
+    let p = Path::new(&path);
     let is_video = matches!(p.extension().and_then(|e| e.to_str()).map(|e| e.to_ascii_lowercase()).as_deref(), Some("mp4" | "mkv" | "mov" | "webm" | "gif"));
     match action.as_str() {
         "edit" => editor::open_path(&app, p),
         "folder" => tauri_plugin_opener::reveal_item_in_dir(p).map_err(|e| e.to_string())?,
+        "ai" => crate::voice::open(&app, if is_video { Path::new("") } else { p }, is_video.then_some(p), ""),
         "pin" if !is_video => pin(&app, &image::open(p).map_err(|e| e.to_string())?.to_rgba8()).map_err(|e| e.to_string())?,
         "share" if is_video => editor::open_path(&app, p),
         "share" => editor::open_image(&app, &image::open(p).map_err(|e| e.to_string())?.to_rgba8(), &p.file_stem().unwrap_or_default().to_string_lossy(), Some("share")),
@@ -286,13 +343,19 @@ pub fn describe_card(app: &AppHandle, picture: Option<&std::path::Path>, text: &
     let url = format!("quick.html?mode=describe&t={}{}", urlencode(text), picture.map(|p| format!("&p={}", urlencode(&p.to_string_lossy()))).unwrap_or_default());
     let a = app.clone();
     let _ = std::thread::spawn(move || {
-        if let Some(w) = a.get_webview_window("quick") { let _ = w.destroy(); }
         let Ok(Some(m)) = a.primary_monitor() else { return };
         let s = m.scale_factor();
         let (mw, mh) = (m.size().width as f64 / s, m.size().height as f64 / s);
         let (w, h) = (420.0, 420.0);
+        let (x, y) = (m.position().x as f64 / s + mw - w - 20.0, m.position().y as f64 / s + mh - h - 64.0);
+        if let Some(win) = reuse_window(&a, "quick", &url) {
+            let _ = win.set_size(tauri::LogicalSize::new(w, h));
+            let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+            let _ = win.set_focus();
+            return;
+        }
         let _ = WebviewWindowBuilder::new(&a, "quick", WebviewUrl::App(url.into()))
             .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(true).resizable(false)
-            .inner_size(w, h).position(m.position().x as f64 / s + mw - w - 20.0, m.position().y as f64 / s + mh - h - 64.0).build();
+            .inner_size(w, h).position(x, y).build();
     });
 }

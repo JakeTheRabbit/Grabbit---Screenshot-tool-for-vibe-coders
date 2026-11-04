@@ -14,7 +14,7 @@ export function Menu({ label, icon, primary, onMain, items, title }: { label: st
     <div className="menuwrap">
       <div className={`split${primary ? " primary" : ""}`}>
         <button className={primary ? "primary" : ""} onClick={onMain ?? (() => setOpen(!open))} title={title}><Icon name={icon} />{label}</button>
-        {onMain && <button className={`caret${primary ? " primary" : ""}`} onClick={() => setOpen(!open)} aria-label={`More ${label} options`}>▾</button>}
+        {onMain && <button className={`caret${primary ? " primary" : ""}`} onClick={() => setOpen(!open)} aria-label={`More ${label} options`} title={`More ways to ${label.toLowerCase()}`}>▾</button>}
       </div>
       {open && <div className="dropdown">{items.map(([t, f, k]) => <button key={t} onClick={() => { setOpen(false); f(); }}><span>{t}</span>{k && <kbd>{k}</kbd>}</button>)}</div>}
     </div>

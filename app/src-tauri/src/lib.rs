@@ -197,6 +197,7 @@ pub fn run() {
             voice::voice_open,
             voice::voice_stop,
             voice::voice_restart,
+            voice::voice_level,
             voice::copy_for_ai,
             batch::batch_add,
             batch::batch_items,

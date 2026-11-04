@@ -7,7 +7,7 @@ const img = join(demo, "out/desktop.png").replaceAll("\\", "/");   // node frame
 const asset = (f) => `http://studio.local/asset/${encodeURIComponent(f)}`;
 
 const setup = `
-  localStorage.setItem("editor", "markup"); localStorage.removeItem("markupStyle"); localStorage.removeItem("barPos");
+  localStorage.setItem("editor", "markup"); localStorage.removeItem("markupStyle"); localStorage.removeItem("barPos"); ["library", "libraryDock", "libraryFolders", "tabsAt", "tabsSlim"].forEach((k) => localStorage.removeItem(k));
   window.__red = () => { const c = document.createElement("canvas"); c.width = 2560; c.height = 1440; const g = c.getContext("2d"); g.fillStyle = "#f00"; g.fillRect(0, 0, 2560, 1440); return c.toDataURL(); };
   __studio.handlers = {
     editor_msg: ({ msg }) => ({
@@ -211,14 +211,14 @@ await step("panels", async () => {
 await step("tabs", async () => {
   await p.ev(`__studio.handlers.editor_msg = ((orig) => (a) => { if (a.msg.type === "getImage") { setTimeout(() => window.grabbit.receive({ type: "image", reqId: a.msg.reqId, dataURL: __d, width: 2560, height: 1440 }), 10); return null; } return orig(a); })(__studio.handlers.editor_msg)`);
   const n0 = (await objs()).length;
-  await btn("Insert", ".thumbs"); await sleep(800);
+  await btn("Insert", ".lib-items"); await sleep(800);
   ok("Insert adds the capture on top", (await objs()).length === n0 + 1 && (await kinds()).at(-1) === "image");
-  await btn("New tab", ".thumbs"); await sleep(800);
-  ok("New tab opens a clean second tab", (await p.ev(`document.querySelectorAll(".doctab").length`)) === 2 && (await objs()).length === 0);
-  await p.ev(`document.querySelectorAll(".doctab")[0].click()`); await sleep(600);
+  await btn("New tab", ".lib-items"); await sleep(800);
+  ok("New tab opens a clean second tab", (await p.ev(`document.querySelectorAll(".vtab").length`)) === 2 && (await objs()).length === 0);
+  await p.ev(`document.querySelectorAll(".vtab")[0].click()`); await sleep(600);
   ok("switching back keeps the drawing", (await objs()).length === n0 + 1, `${(await objs()).length} vs ${n0 + 1}`);
-  for (let i = 0; i < 2; i++) { await p.ev(`document.querySelector(".doctab .x").click()`); await sleep(800); }
-  ok("closing every tab leaves a blank editor", (await p.ev(`document.querySelectorAll(".doctab").length`)) === 0 && (await p.ev(`!!document.querySelector(".blank")`)));
+  for (let i = 0; i < 2; i++) { await p.ev(`document.querySelector(".vtab .x").click()`); await sleep(800); }
+  ok("closing every tab leaves a blank editor", (await p.ev(`document.querySelectorAll(".vtab").length`)) === 0 && (await p.ev(`!!document.querySelector(".blank")`)));
 });
 
 console.log(p.errors.length ? "PAGE ERRORS:\n" + p.errors.join("\n") : "no page errors");

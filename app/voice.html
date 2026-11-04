@@ -14,16 +14,17 @@
     <aside>
       <header><span class="dot"></span><b>Talk about it</b><span id="time">0:00</span><button id="close" class="btn" title="Close (Esc)"></button></header>
       <div id="status">Listening…</div>
-      <div class="row"><button id="done" class="btn"></button><button id="redo" class="btn" hidden></button></div>
+      <div id="meter" title="How loud your microphone is. If this bar doesn't move when you speak, Grabbit can't hear you: check the microphone in Windows Settings → System → Sound → Input."><div class="lvl"></div><span id="micname"></span></div>
+      <div class="row"><button id="done" class="btn" title="Stop listening and type out what you said (Enter)"></button><button id="redo" class="btn" hidden title="Start listening again; what you say is added to your words"></button></div>
       <label class="small" for="words">Your words (edit anything)</label>
       <textarea id="words" placeholder="What should the AI do with this? Speak, or type here."></textarea>
       <div class="opts">
-        <label><input type="checkbox" id="opt-panel" checked /> Print my words under the picture</label>
-        <label><input type="checkbox" id="opt-ocr" checked /> Include the text on screen</label>
-        <label hidden><input type="checkbox" id="opt-video" /> Attach the video file too</label>
+        <label title="Your words are printed under the picture too, so the AI reads them even where a chat keeps only the image"><input type="checkbox" id="opt-panel" checked /> Print my words under the picture</label>
+        <label title="The words in the screenshot are read and added as text, so the AI gets them exactly"><input type="checkbox" id="opt-ocr" checked /> Include the text on screen</label>
+        <label hidden title="The recording itself goes on the clipboard too, for chats that take videos"><input type="checkbox" id="opt-video" /> Attach the video file too</label>
       </div>
-      <button id="copy" class="btn primary"></button>
-      <button id="addbatch" class="btn"></button>
+      <button id="copy" class="btn primary" title="Put the picture, your marks and your words on the clipboard, then paste into ChatGPT, Claude or Gemini (Ctrl+Enter)"></button>
+      <button id="addbatch" class="btn" title="Keep this picture and its words, take another capture, and paste them all together later"></button>
     </aside>
     <script type="module" src="/src/voice/main.ts"></script>
   </body>

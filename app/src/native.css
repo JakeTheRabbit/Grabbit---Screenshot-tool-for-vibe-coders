@@ -23,6 +23,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; font-family: var(--font); font-size: 14px; color: var(--fg); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; }
+/* A select's list takes the select's background; on see-through bars that left white text on a white list. */
+select { color: var(--fg); }
+select option { background-color: Canvas; color: CanvasText; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Buttons that look like the OS's. */

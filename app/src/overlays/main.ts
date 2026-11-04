@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import "../native.css";
+import "../ui/tip";
 import "./overlays.css";
 import { fileUrl } from "../bridge";
 import { icon } from "../ui/icons";
@@ -39,14 +40,14 @@ function quick() {
   const text = q.get("t") ?? "";
   const isVideo = !!path && /\.(mp4|mkv|mov|webm|gif)$/i.test(path);
   root.innerHTML = `<div class="card">
-    ${path ? `<div class="thumb" draggable="true">${isVideo ? `<video src="${fileUrl(path)}" muted autoplay loop></video>` : `<img src="${fileUrl(path)}">`}</div>` : ""}
+    ${path ? `<div class="thumb" draggable="true" title="Drag this into any app (chat, email, document) to drop the file there">${isVideo ? `<video src="${fileUrl(path)}" muted autoplay loop></video>` : `<img src="${fileUrl(path)}">`}</div>` : ""}
     <div class="row"><span class="msg">${text}</span>${path ? `
-      <button class="ic" data-a="edit" title="Edit">${icon("edit")}</button>
-      <button class="ic" data-a="ai" title="Talk about it, copy for an AI chat">${icon("mic")}</button>
-      <button class="ic" data-a="pin" title="Pin to screen">${icon("pin")}</button>
-      <button class="ic" data-a="share" title="Share">${icon("share")}</button>
-      <button class="ic" data-a="folder" title="Show in folder">${icon("folder")}</button>` : ""}
-      <button class="ic" data-a="close" title="Close">${icon("close")}</button></div></div>`;
+      <button class="ic" data-a="edit" title="Mark it up in the editor: arrows, boxes, text, blur, crop">${icon("edit")}</button>
+      <button class="ic" data-a="ai" title="Talk to AI: say what you want done with it, then paste picture + words into ChatGPT, Claude or Gemini">${icon("mic")}</button>
+      <button class="ic" data-a="pin" title="Pin it on top of every window">${icon("pin")}</button>
+      <button class="ic" data-a="share" title="Share it as a link">${icon("share")}</button>
+      <button class="ic" data-a="folder" title="Show the file in its folder">${icon("folder")}</button>` : ""}
+      <button class="ic" data-a="close" title="Close this card">${icon("close")}</button></div></div>`;
   let timer = window.setTimeout(() => void win.close(), path ? 7000 : 3000);
   root.onmouseenter = () => clearTimeout(timer);
   root.onmouseleave = () => { timer = window.setTimeout(() => void win.close(), 2500); };

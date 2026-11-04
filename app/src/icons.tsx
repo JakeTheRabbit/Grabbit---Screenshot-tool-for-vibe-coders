@@ -37,10 +37,24 @@ import front from "lucide-static/icons/bring-to-front.svg?raw";
 import back from "lucide-static/icons/send-to-back.svg?raw";
 import fit from "lucide-static/icons/maximize.svg?raw";
 import shadow from "lucide-static/icons/sun-dim.svg?raw";
+import list from "lucide-static/icons/list.svg?raw";
+import gridSmall from "lucide-static/icons/layout-grid.svg?raw";
+import gridLarge from "lucide-static/icons/grid-2x2.svg?raw";
+import calendar from "lucide-static/icons/calendar.svg?raw";
+import folder from "lucide-static/icons/folder.svg?raw";
+import folderPlus from "lucide-static/icons/folder-plus.svg?raw";
+import folderInput from "lucide-static/icons/folder-input.svg?raw";
+import film from "lucide-static/icons/film.svg?raw";
+import image from "lucide-static/icons/image.svg?raw";
+import images from "lucide-static/icons/images.svg?raw";
+import panelLeft from "lucide-static/icons/panel-left.svg?raw";
+import panelClose from "lucide-static/icons/panel-left-close.svg?raw";
+import panelOpen from "lucide-static/icons/panel-left-open.svg?raw";
 
 const svgs = {
   copy, shrink, chat, check, save, link, saveAs, editable, close, step, pixelate, blur, black, spot, smile, sparkles, info, mic, layout,
   pointer, arrow, line, rect, ellipse, pen, highlight, text, magnify, crop, pipette, undo, redo, trash, duplicate, front, back, fit, shadow,
+  list, gridSmall, gridLarge, calendar, folder, folderPlus, folderInput, film, image, images, panelLeft, panelClose, panelOpen,
 };
 export type IconName = keyof typeof svgs;
 

@@ -103,6 +103,28 @@ pub fn save_full(s: &Settings, img: &RgbaImage, name: &str) -> Result<PathBuf> {
 
 /// Put a picture on the clipboard: the pixels, plus (optionally) a named file so chat apps attach it.
 pub fn copy(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<PathBuf> {
+    let (file, pixels) = copy_file_for(s, img, size, name)?;
+    let files = if s.copy_as_file { vec![file.to_string_lossy().into_owned()] } else { vec![] };
+    set_clipboard(Clip { image: Some(&pixels), files: &files, text: None, html: None })?;
+    Ok(file)
+}
+
+/// Several pictures at once: all of them as files (chats attach each one), and the first as pixels.
+pub fn copy_many(s: &Settings, imgs: &[(RgbaImage, String)], size: Size) -> Result<Vec<PathBuf>> {
+    let mut out = Vec::new();
+    let mut first = None;
+    for (img, name) in imgs {
+        let (f, px) = copy_file_for(s, img, size, name)?;
+        first.get_or_insert(px);
+        out.push(f);
+    }
+    let files: Vec<String> = out.iter().map(|f| f.to_string_lossy().into_owned()).collect();
+    set_clipboard(Clip { image: first.as_ref(), files: &files, text: None, html: None })?;
+    Ok(out)
+}
+
+/// The file a copy puts on the clipboard (in the temp Grabbit folder), and the pixels that go with it.
+fn copy_file_for(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<(PathBuf, RgbaImage)> {
     let tmp = std::env::temp_dir().join("Grabbit");
     std::fs::create_dir_all(&tmp)?;
     let x = xmp(s);
@@ -117,9 +139,7 @@ pub fn copy(s: &Settings, img: &RgbaImage, size: Size, name: &str) -> Result<Pat
     };
     let file = tmp.join(format!("{name}.{ext}"));
     std::fs::write(&file, &bytes)?;
-    let files = if s.copy_as_file { vec![file.to_string_lossy().into_owned()] } else { vec![] };
-    set_clipboard(Clip { image: Some(&pixels), files: &files, text: None, html: None })?;
-    Ok(file)
+    Ok((file, pixels))
 }
 
 pub fn copy_text(t: &str) -> Result<()> {

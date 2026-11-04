@@ -14,6 +14,7 @@ import { beautify, DEFAULT_BEAUTY, type Beauty } from "../beautify";
 import { findPrivate, type Word } from "../private";
 import { Panel, type EditorOps, type PanelName } from "../Panel";
 import { switchEditor, takeCarried } from "../carry";
+import { Library, type Dock } from "./Library";
 import {
   COLORS, DEFAULT_STYLE, FONTS, PROPS, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
   restoreControls, restyle, setMeta, unit, type Style,
@@ -44,6 +45,9 @@ const STAYS: Tool[] = ["pen", "highlight", "step"];   // tools that stay picked 
 type Snap = { base: string; objs: object[] };
 type Base = { url: string; w: number; h: number };
 type Doc = { id: string; name: string; bases: Map<string, Base>; hist: Snap[]; at: number; saved: number; dirty: boolean };
+type TabsAt = "side" | "top";
+const pref = <T extends string>(key: string, d: T): T => { try { return (localStorage.getItem(key) as T) || d; } catch { return d; } };
+const keep = (key: string, v: string) => { try { localStorage.setItem(key, v); } catch { /* private mode */ } };
 
 InteractiveFabricObject.ownDefaults = {
   ...InteractiveFabricObject.ownDefaults,
@@ -67,11 +71,10 @@ export function MarkupApp() {
   const docs = useRef<Doc[]>([]);
   const active = useRef<Doc | null>(null);
   const restoring = useRef(false);
-  const [tabs, setTabs] = useState<{ id: string; name: string; dirty: boolean }[]>([]);
+  const [tabs, setTabs] = useState<{ id: string; name: string; dirty: boolean; thumb: string }[]>([]);
   const [activeId, setActiveId] = useState("");
   const [name, setName] = useState("Grabbit");
   const [recent, setRecent] = useState<RecentItem[]>([]);
-  const [tab, setTab] = useState<"capture" | "copied">("capture");
   const [busy, setBusy] = useState("");
   const [panel, setPanel] = useState<PanelName | null>(null);
   const [stickers, setStickers] = useState(false);
@@ -91,8 +94,12 @@ export function MarkupApp() {
   type BarPos = "top" | "bottom" | "left" | "right";
   const [barPos, setBarPosState] = useState<BarPos>(() => { try { return (localStorage.getItem("barPos") as BarPos) || "top"; } catch { return "top"; } });
   const setBarPos = (p: BarPos) => { setBarPosState(p); try { localStorage.setItem("barPos", p); } catch { /* private mode */ } };
-  const [preview, setPreview] = useState<{ item: RecentItem; top: number } | null>(null);
-  const hoverTimer = useRef(0);
+  const [dock, setDockState] = useState<Dock>(() => pref<Dock>("libraryDock", "left"));
+  const setDock = (d: Dock) => { setDockState(d); keep("libraryDock", d); };
+  const [tabsAt, setTabsAtState] = useState<TabsAt>(() => pref<TabsAt>("tabsAt", "side"));
+  const setTabsAt = (t: TabsAt) => { setTabsAtState(t); keep("tabsAt", t); };
+  const [tabsSlim, setTabsSlimState] = useState(() => pref<string>("tabsSlim", "") === "1");
+  const setTabsSlim = (v: boolean) => { setTabsSlimState(v); keep("tabsSlim", v ? "1" : ""); };
 
   const fc = () => fcRef.current!;
   const base = (): Base | null => { const d = active.current; return d ? d.bases.get(d.hist[d.at].base) ?? null : null; };
@@ -102,7 +109,7 @@ export function MarkupApp() {
   // ---------- tabs and history ----------
 
   const syncTabs = useCallback(() => {
-    setTabs(docs.current.map((d) => ({ id: d.id, name: d.name, dirty: d.dirty })));
+    setTabs(docs.current.map((d) => ({ id: d.id, name: d.name, dirty: d.dirty, thumb: d.bases.get(d.hist[d.at].base)?.url ?? "" })));
     post({ type: "dirty", value: docs.current.some((d) => d.dirty) });
   }, []);
 
@@ -553,6 +560,12 @@ export function MarkupApp() {
     await addDoc(item.name.replace(/\.(webp|png|jpe?g)$/i, ""), img.dataURL, img.width, img.height);
   }
 
+  /** A library item on its own: pictures in a new tab, recordings in the video editor. */
+  async function openItem(item: RecentItem) {
+    if (item.kind === "video") { await invoke("open_file", { path: item.path }).catch((e) => toast(String(e))); return; }
+    await openAsTab(item);
+  }
+
   async function insertRecent(item: RecentItem) {
     if (!active.current) return openAsTab(item);
     const img = await getImage(item.path);
@@ -771,7 +784,6 @@ export function MarkupApp() {
     return () => window.removeEventListener("pointerdown", downOut, true);
   }, [stickers]);
 
-  const shown = recent.filter((r) => (tab === "copied" ? r.kind === "copied" : r.kind !== "copied"));
   const t = TOOLS.find((x) => x.id === tool)!;
   const shapeTool = ["arrow", "line", "rect", "ellipse", "pen", "highlight"].includes(tool);
   const showFill = tool === "rect" || tool === "ellipse" || (tool === "select" && hasSel);
@@ -781,21 +793,21 @@ export function MarkupApp() {
     <div className={`shell bar-${barPos}`}>
       <header className="bar">
         <div className="seg">
-          <Menu label="Copy" icon="copy" primary onMain={() => exportAs("copy", "Full")} items={[
+          <Menu label="Copy" icon="copy" primary onMain={() => exportAs("copy", "Full")} title="Copy the picture with your drawing on it, ready to paste (Ctrl+C)" items={[
             ["Copy smaller (≤ 1920 px)", () => exportAs("copy", "Reduced")],
             ["Copy for chat (small JPEG)", () => exportAs("copy", "Chat")],
             ["Copy and close", () => exportAs("copyClose", "Full"), "Ctrl+Enter"],
             ["Copy text in the picture", copyText],
             ["Read QR code", readQr],
           ]} />
-          <Menu label="Save" icon="save" onMain={() => exportAs("saveQuick", "Full")} items={[
+          <Menu label="Save" icon="save" onMain={() => exportAs("saveQuick", "Full")} title="Save it to your Grabbit folder as “… edited” (Ctrl+S). The arrow has Save as…" items={[
             ["Save as…", () => exportAs("save", "Full"), "Ctrl+Shift+S"],
             ["Save and copy the path", () => exportAs("copyPath", "Full")],
             ["Pin on top of everything", () => exportAs("pin", "Full")],
           ]} />
         </div>
         <div className="seg">
-          <Menu label="Hide" icon="pixelate" items={[
+          <Menu label="Hide" icon="pixelate" title="Hide private things: find emails, phone numbers and keys automatically, or pixelate, blur or black out what you've selected" items={[
             ["Hide private details automatically", autoHide],
             ["Pixelate the selected areas", () => hideSelected("pixelate")],
             ["Blur the selected areas", () => hideSelected("blur")],
@@ -807,7 +819,12 @@ export function MarkupApp() {
         <div className="seg">
           <button onClick={talkToAi} title="Talk over this picture: mark things, say what you want, then paste it all into ChatGPT, Claude or Gemini"><Icon name="mic" />Talk</button>
           {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
-            <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)}>
+            <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)} title={{
+              beautify: "Put the picture on a background with padding, rounded corners and a shadow, ready to share",
+              share: "Upload the picture and copy a link to it, or send it to an app",
+              ai: "Ask AI about the picture, or have AI change it",
+              info: "The picture's size and details, and whether it carries your invisible Grabbit mark",
+            }[p]}>
               <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[p]}
               {p === "beautify" && beauty.on && <span className="dot" />}
             </button>
@@ -816,40 +833,36 @@ export function MarkupApp() {
         <div className="name">{busy ? <span className="busy">{busy}</span> : name}</div>
         <Menu label="" icon="layout" title="Move the toolbar" items={[
           ...(["top", "bottom", "left", "right"] as BarPos[]).map((p): [string, () => void] => [`Toolbar on the ${p}${p === barPos ? "  ✓" : ""}`, () => setBarPos(p)]),
+          ...(["left", "right", "top", "bottom"] as Dock[]).map((d): [string, () => void] => [`Captures on the ${d}${d === dock ? "  ✓" : ""}`, () => setDock(d)]),
+          [`Tabs down the side${tabsAt === "side" ? "  ✓" : ""}`, () => setTabsAt("side")],
+          [`Tabs across the top${tabsAt === "top" ? "  ✓" : ""}`, () => setTabsAt("top")],
           ["Use the classic editor", toClassic],
         ]} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
       </header>
-      <div className="body">
-        <aside className="strip">
-          <div className="tabs">
-            <button className={tab === "capture" ? "on" : ""} onClick={() => setTab("capture")}>Captures</button>
-            <button className={tab === "copied" ? "on" : ""} onClick={() => setTab("copied")}>Copied</button>
-          </div>
-          <div className="thumbs">
-            {shown.length === 0 && <div className="empty">Nothing yet</div>}
-            {shown.map((r) => (
-              <div className="thumb" key={r.path}
-                onMouseEnter={(e) => { const top = e.currentTarget.getBoundingClientRect().top; window.clearTimeout(hoverTimer.current); hoverTimer.current = window.setTimeout(() => setPreview({ item: r, top }), 450); }}
-                onMouseLeave={() => { window.clearTimeout(hoverTimer.current); setPreview(null); }}>
-                <img src={r.url} loading="lazy" onClick={() => insertRecent(r)} alt={r.name} title="Insert into the picture you're editing" />
-                <span className="time">{new Date(r.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                <div className="meta">
-                  <button onClick={() => insertRecent(r)} title="Add it on top of the picture you're editing">Insert</button>
-                  <button onClick={() => openAsTab(r)} title="Open it on its own in a new tab">New tab</button>
-                </div>
+      <div className={`body lib-at-${dock}`}>
+        <Library items={recent} dock={dock} setDock={setDock} hasPicture={!!activeId} onInsert={(r) => void insertRecent(r)} onOpen={(r) => void openItem(r)} />
+        <div className="work">
+        {tabsAt === "side" && tabs.length > 0 && (
+          <nav className={`vtabs${tabsSlim ? " slim" : ""}`} role="tablist" aria-orientation="vertical">
+            <div className="vtabs-head">
+              {!tabsSlim && <b>Open pictures</b>}
+              <button className="icon-only" onClick={() => setTabsSlim(!tabsSlim)} title={tabsSlim ? "Widen the tabs to show their names" : "Narrow the tabs to just pictures"} aria-label="Tab width"><Icon name={tabsSlim ? "panelOpen" : "panelClose"} /></button>
+            </div>
+            {tabs.map((d) => (
+              <div key={d.id} role="tab" aria-selected={d.id === activeId} className={`vtab${d.id === activeId ? " on" : ""}`}
+                onClick={() => { const x = docs.current.find((y) => y.id === d.id); if (x && x !== active.current) void show(x); }}
+                title={`${d.name}${d.dirty ? " · unsaved changes" : ""}`}>
+                <img src={d.thumb} alt="" draggable={false} />
+                {!tabsSlim && <span className="label">{d.name}</span>}
+                {d.dirty && <span className="dot" aria-label="unsaved changes" />}
+                <button className="x" onClick={(e) => { e.stopPropagation(); void closeTab(d.id); }} title="Close this tab (unsaved edits are kept as “… edited.png”)" aria-label="Close tab">×</button>
               </div>
             ))}
-          </div>
-        </aside>
-        {preview && (
-          <div className="preview" style={{ top: Math.max(8, Math.min(preview.top - 40, window.innerHeight - 520)) }} aria-hidden>
-            <img src={preview.item.url} alt="" />
-            <div className="info"><strong>{preview.item.name}</strong><em>Insert adds it on top · New tab opens it on its own</em></div>
-          </div>
+          </nav>
         )}
         <main className="canvas mk">
-          {tabs.length > 0 && (
+          {tabsAt === "top" && tabs.length > 0 && (
             <nav className="doctabs" role="tablist">
               {tabs.map((d) => (
                 <div key={d.id} role="tab" aria-selected={d.id === activeId} className={`doctab${d.id === activeId ? " on" : ""}`} onClick={() => { const x = docs.current.find((y) => y.id === d.id); if (x && x !== active.current) void show(x); }} title={d.name}>
@@ -928,6 +941,7 @@ export function MarkupApp() {
             </div>
           )}
         </main>
+        </div>
       </div>
     </div>
   );

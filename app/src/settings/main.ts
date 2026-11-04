@@ -4,6 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import "../native.css";
+import "../ui/tip";
 import "./settings.css";
 import { fileUrl, os, send } from "../bridge";
 
@@ -78,7 +79,7 @@ function hotkeyInput(key: string) {
 
 function field(f: Field): HTMLElement {
   if (f.kind === "note") { const n = h("p", { class: "note" }); n.innerHTML = f.html; return n; }
-  if (f.kind === "button") { const b = h("button", { class: "btn" }, f.label) as HTMLButtonElement; b.onclick = () => void f.run(b); return h("div", { class: "row" }, h("span"), b); }
+  if (f.kind === "button") { const b = h("button", { class: "btn", title: f.label }, f.label) as HTMLButtonElement; b.onclick = () => void f.run(b); return h("div", { class: "row" }, h("span"), b); }
   if (f.kind === "custom") return f.render();
   let input: HTMLElement;
   switch (f.kind) {
@@ -119,7 +120,9 @@ function field(f: Field): HTMLElement {
   }
   const lab = h("label", {}, h("span", { class: "title" }, f.label));
   if ("help" in f && f.help) lab.append(h("span", { class: "help" }, f.help));
-  return h("div", { class: "row" }, lab, input!);
+  const row = h("div", { class: "row" }, lab, input!);
+  row.title = "help" in f && f.help ? `${f.label}: ${f.help}` : f.label;
+  return row;
 }
 
 const SECTIONS: Record<string, () => Field[]> = {
@@ -221,6 +224,8 @@ function backupRow() {
   const secrets = h("input", { type: "checkbox" }) as HTMLInputElement;
   const out = h("button", { class: "btn" }, "Back up…") as HTMLButtonElement;
   const inn = h("button", { class: "btn" }, "Restore…") as HTMLButtonElement;
+  out.title = "Save all your settings to a file, to restore later or on another computer";
+  inn.title = "Load settings from a backup file";
   out.onclick = async () => {
     const path = await saveDialog({ defaultPath: "grabbit-settings.json", filters: [{ name: "Grabbit settings", extensions: ["json"] }] });
     if (!path) return;
@@ -318,6 +323,7 @@ async function main() {
   s = await invoke<S>("get_settings");
   for (const name of Object.keys(SECTIONS)) {
     const b = h("button", {}, name) as HTMLButtonElement;
+    b.title = `${name} settings`;
     b.onclick = () => show(name);
     nav.append(b);
   }

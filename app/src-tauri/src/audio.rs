@@ -48,14 +48,19 @@ pub fn samples_i16(data: &Data) -> Vec<i16> {
     }
 }
 
-fn start(device: cpal::Device, cfg: cpal::SupportedStreamConfig, path: PathBuf, keep_alive: Option<cpal::Stream>) -> Result<Capture> {
+/// Loudest microphone sample since it was last read (0..32767), for the Talk window's level meter.
+pub static MIC_PEAK: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+fn start(device: cpal::Device, cfg: cpal::SupportedStreamConfig, path: PathBuf, keep_alive: Option<cpal::Stream>, meter: bool) -> Result<Capture> {
     let spec = hound::WavSpec { channels: cfg.channels(), sample_rate: cfg.sample_rate(), bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
     let writer = Arc::new(Mutex::new(Some(hound::WavWriter::create(&path, spec)?)));
     let started = Arc::new(Mutex::new(None));
     let (w, st) = (writer.clone(), started.clone());
     let stream = device.build_input_stream_raw(cfg.config(), cfg.sample_format(), move |data: &Data, _| {
         st.lock().unwrap().get_or_insert_with(Instant::now);
-        if let Some(wr) = w.lock().unwrap().as_mut() { for s in samples_i16(data) { let _ = wr.write_sample(s); } }
+        let samples = samples_i16(data);
+        if meter { MIC_PEAK.fetch_max(samples.iter().map(|s| s.unsigned_abs() as u32).max().unwrap_or(0), std::sync::atomic::Ordering::Relaxed); }
+        if let Some(wr) = w.lock().unwrap().as_mut() { for s in samples { let _ = wr.write_sample(s); } }
     }, |e| log::warn!("audio: {e}"), None)?;
     stream.play()?;
     Ok(Capture { _stream: Some(stream), _keep_alive: keep_alive, #[cfg(target_os = "macos")] sck: None, writer, started, path })
@@ -65,7 +70,7 @@ impl Capture {
     pub fn microphone(path: PathBuf) -> Result<Self> {
         let d = cpal::default_host().default_input_device().context("no microphone")?;
         let cfg = d.default_input_config()?;
-        start(d, cfg, path, None)
+        start(d, cfg, path, None, true)
     }
 
     /// What the speakers play. Loopback delivers nothing while the device is silent, which would squash the gaps out
@@ -75,7 +80,7 @@ impl Capture {
         let d = cpal::default_host().default_output_device().context("no speakers")?;
         let cfg = d.default_output_config()?;
         let silence = silence_stream(&d, &cfg)?;
-        start(d, cfg, path, Some(silence))
+        start(d, cfg, path, Some(silence), false)
     }
 
     /// What the Mac plays, through ScreenCaptureKit (macOS 13+). The stream carries a token 2×2 picture, because

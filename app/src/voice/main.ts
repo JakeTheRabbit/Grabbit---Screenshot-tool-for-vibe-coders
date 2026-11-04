@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import "../native.css";
+import "../ui/tip";
 import "./voice.css";
 import { corsUrl, fileUrl, os, send } from "../bridge";
 import { icon } from "../ui/icons";
@@ -100,6 +101,22 @@ function insertAtCaret(t: string) {
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 setInterval(() => { if (listening) timeEl.textContent = fmt((performance.now() - started) / 1000); }, 250);
 
+// The level meter: proof the microphone hears you, and a plain warning when it doesn't.
+const lvl = $<HTMLDivElement>("#meter .lvl");
+$<HTMLSpanElement>("#micname").textContent = q.get("mic") ? `Microphone: ${q.get("mic")}` : "";
+let loudest = 0, shown = 0;
+setInterval(async () => {
+  if (!listening) { lvl.style.setProperty("--l", "0%"); return; }
+  const v = await invoke<number>("voice_level").catch(() => 0);
+  loudest = Math.max(loudest, v);
+  shown = Math.max(v, shown * 0.8);
+  lvl.style.setProperty("--l", `${Math.round(Math.min(1, Math.sqrt(shown) * 1.4) * 100)}%`);
+  if (performance.now() - started > 6000 && loudest < 0.0005 && !status.dataset.warned) {
+    status.dataset.warned = "1";
+    status.textContent = `Grabbit can't hear anything from ${q.get("mic") || "the microphone"}. Check it in Windows Settings → System → Sound → Input (and Privacy → Microphone), or type what you want below.`;
+  }
+}, 100);
+
 function setListening(on: boolean) {
   listening = on;
   document.body.classList.toggle("listening", on);
@@ -144,6 +161,7 @@ async function stopAndTranscribe() {
 async function startListening() {
   try { await invoke("voice_restart"); } catch (e) { status.textContent = `Microphone: ${e}. Type what you want instead.`; return; }
   started = performance.now();
+  loudest = 0; delete status.dataset.warned;
   setListening(true);
   status.textContent = "Listening… say what you want. Click the picture to point, drag to box something.";
 }

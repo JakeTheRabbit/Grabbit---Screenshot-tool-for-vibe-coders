@@ -6,11 +6,12 @@
 use crate::{actions, audio::Capture, editor, export, state, studio};
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use cpal::traits::{DeviceTrait, HostTrait};
 use std::{
     path::{Path, PathBuf},
     sync::{mpsc, Mutex},
 };
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
 
 enum Msg { Stop(bool, mpsc::Sender<Result<Option<PathBuf>>>) }
 static REC: Mutex<Option<mpsc::Sender<Msg>>> = Mutex::new(None);
@@ -36,12 +37,13 @@ pub fn start_mic() -> Result<()> {
 /// Open the AI-pack window for a picture or a video and start listening. `title`: the captured window's title.
 pub fn open(app: &AppHandle, picture: &Path, video: Option<&Path>, title: &str) {
     let mic = start_mic();
-    let url = format!("voice.html?t={}&p={}{}{}", actions::urlencode(title), actions::urlencode(&picture.to_string_lossy()),
+    let name = cpal::default_host().default_input_device().and_then(|d| d.description().ok()).map(|d| d.name().to_string()).unwrap_or_default();
+    let url = format!("voice.html?t={}&p={}&mic={}{}{}", actions::urlencode(title), actions::urlencode(&picture.to_string_lossy()), actions::urlencode(&name),
         video.map(|v| format!("&v={}", actions::urlencode(&v.to_string_lossy()))).unwrap_or_default(),
         if let Err(e) = &mic { format!("&err={}", actions::urlencode(&format!("{e}"))) } else { String::new() });
     let a = app.clone();
     std::thread::spawn(move || {
-        if let Some(w) = a.get_webview_window("voice") { let _ = w.destroy(); }
+        if let Some(w) = actions::reuse_window(&a, "voice", &url) { let _ = w.set_focus(); return; }
         let b = WebviewWindowBuilder::new(&a, "voice", WebviewUrl::App(url.into()))
             .title("Talk about it").inner_size(980.0, 720.0).min_inner_size(700.0, 520.0).always_on_top(true).focused(true).center();
         match b.build() { Ok(w) => { editor::apply_material(&w); let _ = w.set_focus(); } Err(e) => log::warn!("talk window: {e}") }
@@ -74,6 +76,10 @@ pub async fn voice_stop(app: AppHandle, keep: bool) -> Result<Vec<studio::Cue>, 
     let s = state(&app).settings.lock().unwrap().clone();
     stop(&s, keep).await.map_err(|e| e.to_string())
 }
+
+/// How loud the microphone has been since the last call (0–1), so the Talk window shows it's hearing you.
+#[tauri::command]
+pub fn voice_level() -> f32 { crate::audio::MIC_PEAK.swap(0, std::sync::atomic::Ordering::Relaxed) as f32 / 32767.0 }
 
 #[tauri::command]
 pub fn voice_restart() -> Result<(), String> {

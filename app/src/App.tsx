@@ -531,7 +531,7 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey, true);
   });
 
-  const shown = recent.filter((r) => tab === "copied" ? r.kind === "copied" : r.kind !== "copied");
+  const shown = recent.filter((r) => tab === "copied" ? r.kind === "copied" : r.kind === "capture" || r.kind === "edited");
 
   return (
     <div className={`shell bar-${barPos}`}>
@@ -605,7 +605,7 @@ export function App() {
             <div className="info">
               <strong>{preview.item.name}</strong>
               <span>{new Date(preview.item.time).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-              <span>{[previewSize, preview.item.bytes ? `${(preview.item.bytes / 1024 / 1024).toFixed(preview.item.bytes > 1048576 ? 1 : 2)} MB` : "", { capture: "Capture", edited: "Edited", copied: "Copied to clipboard" }[preview.item.kind]].filter(Boolean).join(" · ")}</span>
+              <span>{[previewSize, preview.item.bytes ? `${(preview.item.bytes / 1024 / 1024).toFixed(preview.item.bytes > 1048576 ? 1 : 2)} MB` : "", { capture: "Capture", edited: "Edited", copied: "Copied to clipboard", video: "Recording" }[preview.item.kind]].filter(Boolean).join(" · ")}</span>
               <em>Insert adds it on top · New tab opens it on its own</em>
             </div>
           </div>

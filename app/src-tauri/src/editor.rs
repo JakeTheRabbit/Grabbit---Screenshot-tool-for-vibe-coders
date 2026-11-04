@@ -11,6 +11,8 @@ use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindo
 
 pub enum Job {
     Image { path: PathBuf, name: String, panel: Option<String> },
+    /// Several pictures at once (a multi-area capture kept apart), one tab each.
+    Images { items: Vec<(PathBuf, String)> },
     Project { path: PathBuf },
     Video { path: PathBuf },
 }
@@ -43,6 +45,18 @@ pub fn open_image(app: &AppHandle, img: &RgbaImage, name: &str, panel: Option<&s
     let _ = std::fs::create_dir_all(tmp.parent().unwrap());
     if let Err(e) = export::png_bytes(img, None).and_then(|b| Ok(std::fs::write(&tmp, b)?)) { return actions::notify(app, &format!("{e}")); }
     open_window(app, "index.html", name, Job::Image { path: tmp, name: name.into(), panel: panel.map(String::from) });
+}
+
+pub fn open_images(app: &AppHandle, imgs: &[RgbaImage], names: &[String]) {
+    let dir = std::env::temp_dir().join("Grabbit");
+    let _ = std::fs::create_dir_all(&dir);
+    let mut items = Vec::new();
+    for (img, name) in imgs.iter().zip(names) {
+        let tmp = dir.join(format!("{name}.png"));
+        if let Err(e) = export::png_bytes(img, None).and_then(|b| Ok(std::fs::write(&tmp, b)?)) { return actions::notify(app, &format!("{e}")); }
+        items.push((tmp, name.clone()));
+    }
+    open_window(app, "index.html", names.first().map(String::as_str).unwrap_or("Grabbit"), Job::Images { items });
 }
 
 pub fn open_path(app: &AppHandle, p: &Path) {
@@ -91,6 +105,9 @@ pub fn handle_args(app: &AppHandle, args: &[String]) {
             "capture-screen" => crate::picker::start(app, crate::picker::Mode::Screen),
             "record" | "--record" => crate::picker::start(app, crate::picker::Mode::Record),
             "settings" => open_settings(app, None),
+            // Debug builds only: the corner card for a file, to test it without taking a screenshot.
+            #[cfg(debug_assertions)]
+            "--quick" => if let Some(p) = it.next() { actions::quick_show(app, Some(Path::new(p)), "Copied"); },
             p if Path::new(p).is_file() => open_path(app, Path::new(p)),
             _ => {}
         }
@@ -110,23 +127,31 @@ fn decode_data_url(u: &str) -> anyhow::Result<RgbaImage> {
 }
 
 #[derive(Serialize)]
-struct Recent { path: String, url: String, name: String, time: String, kind: &'static str }
+struct Recent { path: String, url: String, name: String, time: String, kind: &'static str, bytes: u64 }
 
-fn recent() -> Vec<Recent> {
+/// The editor's library: saved captures (history), copied pictures (the temp Grabbit folder) and recordings (the
+/// video folder), newest first within each.
+fn recent(s: &Settings) -> Vec<Recent> {
     let name = |p: &Path| p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
-    let mut out: Vec<Recent> = history::all().into_iter().rev().filter(|e| Path::new(&e.path).exists()).take(40).map(|e| Recent {
-        name: name(Path::new(&e.path)), path: e.path, url: String::new(), time: e.time, kind: "capture",
-    }).collect();
-    // Copied pictures: export::copy writes each one to the temp Grabbit folder, newest first.
-    let mut copied: Vec<_> = std::fs::read_dir(std::env::temp_dir().join("Grabbit")).into_iter().flatten().flatten()
-        .filter(|f| matches!(f.path().extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("png" | "jpg" | "jpeg" | "webp")))
-        .filter_map(|f| Some((f.metadata().ok()?.modified().ok()?, f.path())))
-        .collect();
-    copied.sort_by(|a, b| b.0.cmp(&a.0));
-    out.extend(copied.into_iter().take(40).map(|(t, p)| Recent {
-        name: name(&p), path: p.to_string_lossy().into_owned(), url: String::new(),
-        time: chrono::DateTime::<chrono::Local>::from(t).to_rfc3339(), kind: "copied",
-    }));
+    let mut seen = std::collections::HashSet::new();
+    let mut out: Vec<Recent> = history::all().into_iter().rev().filter_map(|e| {
+        let bytes = std::fs::metadata(&e.path).ok()?.len();
+        seen.insert(e.path.clone()).then(|| Recent { name: name(Path::new(&e.path)), path: e.path, url: String::new(), time: e.time, kind: "capture", bytes })
+    }).take(500).collect();
+    let files = |dir: PathBuf, exts: &[&str], take: usize, kind: &'static str| -> Vec<Recent> {
+        let mut v: Vec<_> = std::fs::read_dir(dir).into_iter().flatten().flatten()
+            .filter(|f| f.path().extension().and_then(|e| e.to_str()).map(|e| exts.contains(&e.to_ascii_lowercase().as_str())).unwrap_or(false))
+            .filter_map(|f| { let m = f.metadata().ok()?; Some((m.modified().ok()?, m.len(), f.path())) })
+            .collect();
+        v.sort_by(|a, b| b.0.cmp(&a.0));
+        v.into_iter().take(take).map(|(t, bytes, p)| Recent {
+            name: name(&p), path: p.to_string_lossy().into_owned(), url: String::new(),
+            time: chrono::DateTime::<chrono::Local>::from(t).to_rfc3339(), kind, bytes,
+        }).collect()
+    };
+    // Copied pictures: export::copy writes each one to the temp Grabbit folder.
+    out.extend(files(std::env::temp_dir().join("Grabbit"), &["png", "jpg", "jpeg", "webp"], 80, "copied"));
+    out.extend(files(PathBuf::from(&s.video_folder), &["mp4", "mkv", "mov", "webm", "gif"], 200, "video"));
     out
 }
 
@@ -145,14 +170,21 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
             match job {
                 Some(Job::Image { path, name, panel }) => {
                     let (url, width, height) = data_url(&path)?;
-                    reply(w, json!({ "type": "load", "name": name, "dataURL": url, "width": width, "height": height, "recent": recent(), "panel": panel }));
+                    reply(w, json!({ "type": "load", "name": name, "dataURL": url, "width": width, "height": height, "recent": recent(&s), "panel": panel }));
+                }
+                Some(Job::Images { items }) => {
+                    for (i, (path, name)) in items.iter().enumerate() {
+                        let (url, width, height) = data_url(path)?;
+                        let kind = if i == 0 { "load" } else { "addTab" };
+                        reply(w, json!({ "type": kind, "name": name, "dataURL": url, "width": width, "height": height, "recent": recent(&s) }));
+                    }
                 }
                 Some(Job::Project { path }) => {
                     let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
-                    reply(w, json!({ "type": "load", "name": name, "scene": std::fs::read_to_string(&path)?, "recent": recent() }));
+                    reply(w, json!({ "type": "load", "name": name, "scene": std::fs::read_to_string(&path)?, "recent": recent(&s) }));
                 }
                 Some(Job::Video { path }) => return crate::video::load_message(&s, &path).map(|m| { reply(w, m.clone()); m }),
-                None => reply(w, json!({ "type": "recent", "recent": recent() })),
+                None => reply(w, json!({ "type": "recent", "recent": recent(&s) })),
             }
         }
         // The video editor sends "export" too; its messages carry the kept parts.
@@ -165,7 +197,7 @@ async fn handle(app: &AppHandle, w: &WebviewWindow, msg: Value) -> anyhow::Resul
             let out = mark::apply(&s, &img, id);
             let size = match msg["size"].as_str() { Some("Reduced") => export::Size::Reduced, Some("Chat") => export::Size::Chat, _ => export::Size::Full };
             match msg["action"].as_str().unwrap_or("copy") {
-                "copy" | "copyClose" => { export::copy(&s, &out, size, &edited)?; if msg["action"] == "copyClose" { let _ = w.close(); } else { actions::notify(app, "Copied"); reply(w, json!({ "type": "recent", "recent": recent() })); } }
+                "copy" | "copyClose" => { export::copy(&s, &out, size, &edited)?; if msg["action"] == "copyClose" { let _ = w.close(); } else { actions::notify(app, "Copied"); reply(w, json!({ "type": "recent", "recent": recent(&s) })); } }
                 "saveQuick" | "closeSave" => { let p = export::save_full(&s, &out, &edited)?; history::add(app, Some(&p), &img, id); if msg["action"] == "saveQuick" { actions::notify(app, &format!("Saved {}", p.display())); } }
                 "copyPath" => { let p = export::save_full(&s, &out, &edited)?; history::add(app, Some(&p), &img, id); export::copy_text(&p.to_string_lossy())?; actions::notify(app, "Copied the file's path"); }
                 "save" => {
