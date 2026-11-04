@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { VideoDrawing, type DrawingHandle, type Timed } from "./VideoDrawing";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { DrawingHandle, Timed } from "./VideoDrawing";
+// Drawing on a video uses Excalidraw (1.3 MB): it loads the first time Draw is pressed.
+const VideoDrawing = lazy(() => import("./VideoDrawing").then((m) => ({ default: m.VideoDrawing })));
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { call, fileUrl, inTauri, onHostEvent, send } from "../bridge";
 
@@ -109,6 +111,8 @@ export function VideoApp() {
   useEffect(() => { void call<string[]>("share_targets").then((t) => setTargets(t ?? [])); }, []);
   const stage = useRef<HTMLElement>(null);
   const draw = useRef<DrawingHandle | null>(null);
+  const wantBlur = useRef(false);
+  const drawEver = useRef(false);   // once loaded, the drawing layer stays (it holds the drawings)
   const itemsKey = useRef("");
 
   const video = useRef<HTMLVideoElement>(null);
@@ -496,14 +500,14 @@ export function VideoApp() {
 
       <main ref={stage} onClick={() => !drawing && togglePlay()}>
         <video ref={video} src={meta.url} preload="auto" style={{ left: box.left, top: box.top, width: box.width, height: box.height }} />
-        <VideoDrawing box={box} width={meta.width} height={meta.height} t={t} duration={dur} drawing={drawing}
+        {(drawEver.current ||= drawing) && <Suspense fallback={null}><VideoDrawing box={box} width={meta.width} height={meta.height} t={t} duration={dur} drawing={drawing}
           onItems={(list, sel) => {
             setItems(list);
             setPicked(sel);
             const k = list.map((n) => `${n.id}@${n.from.toFixed(3)}-${n.to.toFixed(3)}`).join();
             if (k !== itemsKey.current) { itemsKey.current = k; setDrawVersion((v) => v + 1); }   // selecting isn't an edit
           }}
-          handle={(h) => (draw.current = h)} />
+          handle={(h) => { draw.current = h; if (h && wantBlur.current) { wantBlur.current = false; setTimeout(() => h.addBlur(), 50); } }} /></Suspense>}
         {!playing && !drawing && <div className="bigplay">▶</div>}
       </main>
 
@@ -517,7 +521,7 @@ export function VideoApp() {
           title="Draw on the video with Excalidraw (D). Each drawing shows for 4 s from the playhead; drag its bar on the timeline to change when.">
           {drawing ? "Done drawing" : "Draw"}
         </button>
-        <button onClick={() => { video.current?.pause(); setDrawing(true); setTimeout(() => draw.current?.addBlur(), 50); }}
+        <button onClick={() => { video.current?.pause(); setDrawing(true); if (draw.current) setTimeout(() => draw.current?.addBlur(), 50); else wantBlur.current = true; }}
           title="Blur a box (faces, emails, keys) while its bar is under the playhead. Move and resize it like a drawing.">Blur box</button>
         <span className="sep" />
         <button onClick={split} title="Split the part under the playhead (S)">Split</button>

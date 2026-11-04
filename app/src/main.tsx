@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import "@excalidraw/excalidraw/index.css";
 import "./styles.css";
-import "./ui/tip";
-import { App } from "./App";
+import "./ui/base";
 import { MarkupApp } from "./markup/MarkupApp";
 import { editorKind } from "./carry";
 
-createRoot(document.getElementById("root")!).render(editorKind() === "markup" ? <MarkupApp /> : <App />);
+// The classic editor brings Excalidraw (1.3 MB); it loads only when that editor is wanted.
+const App = lazy(() => import("./App").then((m) => ({ default: m.App })));
+
+createRoot(document.getElementById("root")!).render(editorKind() === "markup" ? <MarkupApp /> : <Suspense fallback={null}><App /></Suspense>);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import "@excalidraw/excalidraw/index.css";
 import { CaptureUpdateAction, Excalidraw, FONT_FAMILY, convertToExcalidrawElements, exportToCanvas, getCommonBounds } from "@excalidraw/excalidraw";
 import type { AppState, ExcalidrawImperativeAPI, NormalizedZoomValue } from "@excalidraw/excalidraw/types";
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";

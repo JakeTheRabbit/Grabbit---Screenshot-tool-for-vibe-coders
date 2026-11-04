@@ -114,11 +114,22 @@ pub fn handle_args(app: &AppHandle, args: &[String]) {
     }
 }
 
+/// A picture file as a data URL. Formats the page can show go as they are (only the header is read for the size);
+/// anything else is converted to PNG.
 fn data_url(p: &Path) -> anyhow::Result<(String, u32, u32)> {
     let bytes = std::fs::read(p)?;
+    let reader = image::ImageReader::new(std::io::Cursor::new(&bytes)).with_guessed_format()?;
+    let mime = match reader.format() {
+        Some(image::ImageFormat::Png) => "image/png", Some(image::ImageFormat::Jpeg) => "image/jpeg",
+        Some(image::ImageFormat::WebP) => "image/webp", Some(image::ImageFormat::Gif) => "image/gif", _ => "",
+    };
+    let b64 = |b: &[u8]| base64::engine::general_purpose::STANDARD.encode(b);
+    if !mime.is_empty() {
+        let (w, h) = reader.into_dimensions()?;
+        return Ok((format!("data:{mime};base64,{}", b64(&bytes)), w, h));
+    }
     let img = image::load_from_memory(&bytes)?;
-    let png = export::png_bytes(&img.to_rgba8(), None)?;
-    Ok((format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png)), img.width(), img.height()))
+    Ok((format!("data:image/png;base64,{}", b64(&export::png_bytes(&img.to_rgba8(), None)?)), img.width(), img.height()))
 }
 
 fn decode_data_url(u: &str) -> anyhow::Result<RgbaImage> {

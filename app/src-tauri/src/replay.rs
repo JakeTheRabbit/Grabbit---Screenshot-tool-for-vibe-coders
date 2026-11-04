@@ -81,6 +81,7 @@ fn start_buffer(s: &Settings) -> Result<Buffer> {
     let mut c = Command::new(video::ffmpeg(s)?);
     video::hide(c.args(&a).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()));
     let ffmpeg = c.spawn()?;
+    crate::guard::adopt(&ffmpeg);
     let host = cpal::default_host();
     let mic = if s.record_microphone { host.default_input_device().and_then(|d| { let c = d.default_input_config().ok()?; Ring::new(d, c, secs, None).ok() }) } else { None };
     #[cfg(windows)]

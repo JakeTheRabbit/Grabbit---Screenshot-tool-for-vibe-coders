@@ -83,6 +83,7 @@ pub fn run(exe: &Path, args: &[String], key: Option<&str>, mut line: impl FnMut(
     let mut c = Command::new(exe);
     hide(c.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()));
     let mut child = c.spawn().with_context(|| format!("starting {}", exe.display()))?;
+    crate::guard::adopt(&child);
     if let Some(k) = key { RUNNING.lock().unwrap().insert(k.to_string(), child.id()); }
     let stderr = child.stderr.take().unwrap();
     let err_t = std::thread::spawn(move || { let mut s = String::new(); let _ = std::io::Read::read_to_string(&mut BufReader::new(stderr), &mut s); s });

@@ -85,6 +85,8 @@ pub struct Ai {
 #[serde(default)]
 pub struct Settings {
     pub after_capture: AfterCapture,
+    /// Keep the picker windows loaded between captures: opens faster, holds 50–100 MB per screen.
+    pub keep_picker_ready: bool,
     pub auto_save: bool,
     pub save_format: SaveFormat,
     pub save_folder: String,
@@ -143,6 +145,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             after_capture: AfterCapture::Ask,
+            keep_picker_ready: false,
             auto_save: true,
             save_format: SaveFormat::WebpLossless,
             save_folder: folder(dirs::picture_dir()),
@@ -187,15 +190,33 @@ pub fn config_dir() -> PathBuf {
 fn path() -> PathBuf { config_dir().join("settings.json") }
 
 impl Settings {
+    /// Self-repairing: a damaged settings file is kept aside (settings.broken.json) and the last good copy
+    /// (settings.bak.json, written by every save) is used instead, so one bad write never loses your settings.
     pub fn load() -> Self {
-        let mut s: Settings = std::fs::read_to_string(path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+        let read = |p: &std::path::Path| std::fs::read_to_string(p).ok().and_then(|t| serde_json::from_str::<Settings>(&t).ok());
+        let main = path();
+        let mut s = match read(&main) {
+            Some(s) => s,
+            None if main.exists() => {
+                log::warn!("settings.json is damaged; kept as settings.broken.json, using the last good copy");
+                let _ = std::fs::copy(&main, main.with_file_name("settings.broken.json"));
+                let s = read(&main.with_file_name("settings.bak.json")).unwrap_or_default();
+                let _ = s.save();
+                s
+            }
+            None => Settings::default(),
+        };
         for (k, v) in default_hotkeys() { s.hotkeys.entry(k).or_insert(v); }
         s
     }
 
+    /// Written to a temporary file and moved into place, so a crash mid-write can't leave half a file.
     pub fn save(&self) -> anyhow::Result<()> {
         std::fs::create_dir_all(config_dir())?;
-        std::fs::write(path(), serde_json::to_string_pretty(self)?)?;
+        let (main, tmp) = (path(), path().with_extension("json.tmp"));
+        std::fs::write(&tmp, serde_json::to_string_pretty(self)?)?;
+        if main.exists() { let _ = std::fs::copy(&main, main.with_file_name("settings.bak.json")); }
+        std::fs::rename(&tmp, &main)?;
         Ok(())
     }
 }

@@ -31,6 +31,9 @@ export const fileUrl = (path: string) => (inTauri ? convertFileSrc(path) : path)
 /** A local file the page may also draw into a canvas and export (served with CORS; set crossOrigin = "anonymous"). */
 export const corsUrl = (path: string) => (inTauri ? convertFileSrc(`file/${path}`, "grabbit") : path);
 
+/** A small cached JPEG of a picture, for lists and tabs. */
+export const thumbUrl = (path: string) => (inTauri ? convertFileSrc(`thumb/${path}`, "grabbit") : path);
+
 export const call = <T = unknown>(cmd: string, args?: Record<string, unknown>) => (inTauri ? invoke<T>(cmd, args) : Promise.resolve(null as T));
 
 /** OS name for per-platform styling: "windows" | "macos" | "linux". */

@@ -4,8 +4,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import "../native.css";
-import "../ui/tip";
+import "../ui/base";
 import "./overlays.css";
 import { fileUrl } from "../bridge";
 import { icon } from "../ui/icons";

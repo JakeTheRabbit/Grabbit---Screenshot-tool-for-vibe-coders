@@ -3,7 +3,7 @@
 // Folders only group what's listed here; files stay where they are.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { corsUrl } from "../bridge";
+import { corsUrl, thumbUrl } from "../bridge";
 import { Icon, type IconName } from "../icons";
 import type { RecentItem } from "../host";
 import "./library.css";
@@ -181,7 +181,7 @@ export function Library({ items, dock, setDock, hasPicture, onInsert, onOpen }: 
         onMouseEnter={(e) => { const rect = e.currentTarget.getBoundingClientRect(); window.clearTimeout(hoverTimer.current); hoverTimer.current = window.setTimeout(() => setPreview({ r, rect }), 500); }}
         onMouseLeave={() => { window.clearTimeout(hoverTimer.current); setPreview(null); }}>
         <div className="lib-pic" onClick={() => (vid || !hasPicture ? onOpen(r) : onInsert(r))} title={tip}>
-          {vid ? <VideoThumb path={r.path} /> : <img src={r.url} loading="lazy" alt="" draggable={false} />}
+          {vid ? <VideoThumb path={r.path} /> : <img src={thumbUrl(r.path)} loading="lazy" decoding="async" alt="" draggable={false} />}
           {vid && <span className="lib-badge" aria-label="video"><Icon name="film" /></span>}
           <span className="lib-time">{new Date(r.time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
         </div>
@@ -190,7 +190,7 @@ export function Library({ items, dock, setDock, hasPicture, onInsert, onOpen }: 
           <div className="lib-acts">
             {vid ? <button onClick={() => onOpen(r)} title="Open the recording in the video editor (trim, captions, zoom, export)">Open</button> : <>
               <button onClick={() => onInsert(r)} title="Add it on top of the picture you're editing, to combine pictures">Insert</button>
-              <button onClick={() => onOpen(r)} title="Open it on its own, in a new tab">New tab</button>
+              <button onClick={() => onOpen(r)} title="Open it on its own, in a new tab">Open</button>
             </>}
             <span className="menuwrap">
               <button className={`lib-fbtn${inFolders.length ? " on" : ""}`} data-menu onClick={() => setMenu(menu === `folder:${r.path}` ? "" : `folder:${r.path}`)} title={inFolders.length ? `In: ${inFolders.join(", ")}. Click to change.` : "Put it in a folder"} aria-label="Folders"><Icon name="folderInput" /></button>

@@ -15,6 +15,7 @@ import { findPrivate, type Word } from "../private";
 import { Panel, type EditorOps, type PanelName } from "../Panel";
 import { switchEditor, takeCarried } from "../carry";
 import { Library, type Dock } from "./Library";
+import { getTheme, setTheme, type Theme } from "../ui/theme";
 import {
   COLORS, DEFAULT_STYLE, FONTS, PROPS, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
   restoreControls, restyle, setMeta, unit, type Style,
@@ -98,6 +99,7 @@ export function MarkupApp() {
   const setDock = (d: Dock) => { setDockState(d); keep("libraryDock", d); };
   const [tabsAt, setTabsAtState] = useState<TabsAt>(() => pref<TabsAt>("tabsAt", "side"));
   const setTabsAt = (t: TabsAt) => { setTabsAtState(t); keep("tabsAt", t); };
+  const [look, setLook] = useState<Theme>(getTheme);
   const [tabsSlim, setTabsSlimState] = useState(() => pref<string>("tabsSlim", "") === "1");
   const setTabsSlim = (v: boolean) => { setTabsSlimState(v); keep("tabsSlim", v ? "1" : ""); };
 
@@ -108,8 +110,28 @@ export function MarkupApp() {
 
   // ---------- tabs and history ----------
 
+  // Tabs show a 120 px copy of their picture: an <img> of the full picture would decode it all again per tab.
+  const thumbs = useRef(new Map<string, string>());
   const syncTabs = useCallback(() => {
-    setTabs(docs.current.map((d) => ({ id: d.id, name: d.name, dirty: d.dirty, thumb: d.bases.get(d.hist[d.at].base)?.url ?? "" })));
+    const thumb = (url: string) => {
+      if (!url) return "";
+      if (!thumbs.current.has(url)) {
+        thumbs.current.set(url, "");
+        const i = new Image();
+        i.onload = () => {
+          const c = document.createElement("canvas");
+          c.width = 120; c.height = Math.max(1, Math.round((i.naturalHeight * 120) / i.naturalWidth));
+          c.getContext("2d")!.drawImage(i, 0, 0, c.width, c.height);
+          thumbs.current.set(url, c.toDataURL("image/jpeg", 0.8));
+          syncTabs();
+        };
+        i.src = url;
+      }
+      return thumbs.current.get(url)!;
+    };
+    const urls = docs.current.map((d) => d.bases.get(d.hist[d.at].base)?.url ?? "");
+    for (const k of thumbs.current.keys()) if (!urls.includes(k)) thumbs.current.delete(k);
+    setTabs(docs.current.map((d, i) => ({ id: d.id, name: d.name, dirty: d.dirty, thumb: thumb(urls[i]) })));
     post({ type: "dirty", value: docs.current.some((d) => d.dirty) });
   }, []);
 
@@ -836,6 +858,7 @@ export function MarkupApp() {
           ...(["left", "right", "top", "bottom"] as Dock[]).map((d): [string, () => void] => [`Captures on the ${d}${d === dock ? "  ✓" : ""}`, () => setDock(d)]),
           [`Tabs down the side${tabsAt === "side" ? "  ✓" : ""}`, () => setTabsAt("side")],
           [`Tabs across the top${tabsAt === "top" ? "  ✓" : ""}`, () => setTabsAt("top")],
+          ...(["system", "light", "dark"] as Theme[]).map((t): [string, () => void] => [`${{ system: "Look: same as the system", light: "Look: light", dark: "Look: dark" }[t]}${look === t ? "  ✓" : ""}`, () => { setTheme(t); setLook(t); }]),
           ["Use the classic editor", toClassic],
         ]} />
         {tabs.length > 0 && <button className="icon-only" onClick={() => active.current && closeTab(active.current.id)} title="Close this tab (unsaved edits are kept)"><Icon name="close" /></button>}
@@ -853,7 +876,7 @@ export function MarkupApp() {
               <div key={d.id} role="tab" aria-selected={d.id === activeId} className={`vtab${d.id === activeId ? " on" : ""}`}
                 onClick={() => { const x = docs.current.find((y) => y.id === d.id); if (x && x !== active.current) void show(x); }}
                 title={`${d.name}${d.dirty ? " · unsaved changes" : ""}`}>
-                <img src={d.thumb} alt="" draggable={false} />
+                {d.thumb ? <img src={d.thumb} alt="" draggable={false} /> : <span className="vtab-ph" />}
                 {!tabsSlim && <span className="label">{d.name}</span>}
                 {d.dirty && <span className="dot" aria-label="unsaved changes" />}
                 <button className="x" onClick={(e) => { e.stopPropagation(); void closeTab(d.id); }} title="Close this tab (unsaved edits are kept as “… edited.png”)" aria-label="Close tab">×</button>

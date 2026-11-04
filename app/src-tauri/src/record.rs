@@ -164,19 +164,19 @@ fn webcam(s: &Settings) -> Option<(&'static str, String)> {
     }).clone()
 }
 
-/// ffmpeg arguments for one segment's picture (and, on Linux, system sound) into `out`. The webcam, when on, sits in
-/// a circle in the bottom-right corner.
+/// ffmpeg arguments for one segment's picture (and, on Linux, system sound) into `out`. The webcam is recorded on its
+/// own (camera_args) and put in its circle when the recording is finished: mixing it in live let a slow camera (most
+/// deliver fewer frames than they promise) hold back the screen, so a minute of recording came out as 12 seconds.
 fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool, size: (u32, u32)) -> Vec<String> {
     let fps = s.record_fps.to_string();
     let q = s.record_quality;
     let mut v: Vec<String> = vec!["-hide_banner".into(), "-y".into()];
     let enc = video::hw_encoder(s);
-    let cam = if s.record_webcam { webcam(s) } else { None };
-    // Filters on the screen picture, before the optional webcam overlay.
+    // Filters on the screen picture.
     let mut chain: Vec<String> = Vec::new();
     // NVENC can take Desktop Duplication's GPU frames directly; everything else needs them in memory.
     let resized = size != (a.width, a.height);
-    let gpu_direct = cfg!(windows) && hw && enc == "h264_nvenc" && cam.is_none() && !resized;
+    let gpu_direct = cfg!(windows) && hw && enc == "h264_nvenc" && !resized;
 
     #[cfg(windows)]
     {
@@ -208,14 +208,8 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool, size: (
         v.push(fps.clone());
         v.extend(["-draw_mouse".into(), (s.record_cursor as u8).to_string(), "-video_size".into(), format!("{}x{}", a.width, a.height), "-i".into(), format!("{display}+{},{}", a.x, a.y)]);
     }
+    #[cfg(target_os = "linux")]
     let mut next_input = 1;
-    let cam_idx = cam.as_ref().map(|(fmt, name)| {
-        v.extend(["-f".into(), fmt.to_string()]);
-        if *fmt == "avfoundation" { v.extend(["-framerate".into(), "30".into()]); }
-        v.extend(["-i".into(), name.clone()]);
-        next_input += 1;
-        next_input - 1
-    });
     #[cfg(target_os = "linux")]
     let sys_idx = (s.record_system_audio && pulse_ok()).then(|| {
         v.extend(["-f", "pulse", "-i", "@DEFAULT_MONITOR@"].map(String::from));
@@ -228,22 +222,8 @@ fn video_args(s: &Settings, a: Area, scr: &Screen, out: &Path, hw: bool, size: (
     // A part recorded after the frame was resized is fitted to the first part's size, so the parts still join.
     if resized { chain.push(format!("scale={0}:{1}:force_original_aspect_ratio=decrease,pad={0}:{1}:(ow-iw)/2:(oh-ih)/2", size.0, size.1)); }
     if !gpu_direct { chain.push("format=yuv420p".into()); }
-    match cam_idx {
-        Some(ci) => {
-            let d = (a.width.min(a.height) / 4).max(96) & !1;
-            let r = d / 2;
-            let m = (a.width.min(a.height) / 40).max(8);
-            v.extend(["-filter_complex".into(), format!(
-                "[0:v]{}[scr];[{ci}:v]scale={d}:{d}:force_original_aspect_ratio=increase,crop={d}:{d},format=yuva420p,geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)':a='if(lte((X-{r})*(X-{r})+(Y-{r})*(Y-{r}),{r}*{r}),255,0)'[cam];[scr][cam]overlay=W-w-{m}:H-h-{m}:shortest=1,format=yuv420p[v]",
-                chain.join(","))]);
-            v.extend(["-map".into(), "[v]".into()]);
-            if let Some(si) = sys_idx { v.extend(["-map".into(), format!("{si}:a")]); }
-        }
-        None => {
-            if !chain.is_empty() { v.extend(["-vf".into(), chain.join(",")]); }
-            if let Some(si) = sys_idx { v.extend(["-map".into(), "0:v".into(), "-map".into(), format!("{si}:a")]); }
-        }
-    }
+    if !chain.is_empty() { v.extend(["-vf".into(), chain.join(",")]); }
+    if let Some(si) = sys_idx { v.extend(["-map".into(), "0:v".into(), "-map".into(), format!("{si}:a")]); }
     if gpu_direct {
         v.extend(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "hq", "-rc", "vbr"].map(String::from));
         v.extend(["-cq".into(), q.to_string(), "-b:v".into(), "0".into()]);
@@ -262,6 +242,52 @@ struct Segment {
     system: Option<Capture>,
     mic: Option<Capture>,
     log: std::sync::Arc<Mutex<String>>,
+    /// The webcam's own recording: its ffmpeg, file, and when it started writing.
+    cam: Option<(Child, PathBuf, Instant)>,
+    size: (u32, u32),
+}
+
+/// Starts ffmpeg on `args` and waits until it writes (its "Output #0" line), up to 15 s. Its messages go to `log`.
+fn spawn_writer(exe: &Path, args: &[String], log: std::sync::Arc<Mutex<String>>) -> Result<(Child, Instant)> {
+    let mut c = Command::new(exe);
+    video::hide(c.args(args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()));
+    let mut child = c.spawn()?;
+    crate::guard::adopt(&child);
+    let (tx, rx) = mpsc::channel();
+    let err = child.stderr.take().unwrap();
+    std::thread::spawn(move || {
+        for line in BufReader::new(err).lines().map_while(Result::ok) {
+            if line.starts_with("Output #0") { let _ = tx.send(Instant::now()); }
+            let mut g = log.lock().unwrap();
+            if g.len() < 20000 { g.push_str(&line); g.push('\n'); }
+        }
+    });
+    match rx.recv_timeout(Duration::from_secs(15)) {
+        Ok(t) if child.try_wait()?.is_none() => Ok((child, t)),
+        _ => { let _ = child.kill(); let _ = child.wait(); bail!("didn't start") }
+    }
+}
+
+/// Asks an ffmpeg to finish its file ("q"), killing it after 10 s.
+fn finish_writer(c: &mut Child) {
+    if let Some(stdin) = c.stdin.as_mut() { let _ = stdin.write_all(b"q"); let _ = stdin.flush(); }
+    let t0 = Instant::now();
+    while c.try_wait().ok().flatten().is_none() {
+        if t0.elapsed() > Duration::from_secs(10) { let _ = c.kill(); break; }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// The webcam on its own, each frame stamped with the time it really arrived (a camera promising 60 fps may deliver
+/// 24), so it lines up with the screen however slow it is.
+fn camera_args(fmt: &str, name: &str, out: &Path) -> Vec<String> {
+    let mut v: Vec<String> = ["-hide_banner", "-y", "-f", fmt].map(String::from).to_vec();
+    if fmt == "dshow" { v.extend(["-rtbufsize", "64M"].map(String::from)); }
+    if fmt != "lavfi" { v.extend(["-use_wallclock_as_timestamps", "1", "-framerate", "30"].map(String::from)); }
+    v.extend(["-thread_queue_size".into(), "512".into(), "-i".into(), name.into()]);
+    v.extend(["-vf", "scale=640:-2,format=yuv420p", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-fps_mode", "passthrough"].map(String::from));
+    v.push(out.to_string_lossy().into());
+    v
 }
 
 fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize, size: (u32, u32)) -> Result<Segment> {
@@ -272,66 +298,94 @@ fn start_segment(s: &Settings, a: Area, scr: &Screen, dir: &Path, n: usize, size
     let system: Option<Capture> = None;
     let mic = if s.record_microphone { Capture::microphone(dir.join(format!("part{n}-mic.wav"))).map_err(|e| log::warn!("microphone: {e}")).ok() } else { None };
     let exe = video::ffmpeg(s)?;
+    // The camera starts first (cameras take a moment to wake up). One that won't start just leaves the bubble out.
+    let cam = s.record_webcam.then(|| webcam(s)).flatten().and_then(|(fmt, name)| {
+        let out = dir.join(format!("cam{n}.mkv"));
+        let args = camera_args(fmt, &name, &out);
+        log::info!("record camera: {}", args.join(" "));
+        let clog = std::sync::Arc::new(Mutex::new(String::new()));
+        spawn_writer(&exe, &args, clog.clone()).map(|(c, t)| (c, out, t))
+            .map_err(|_| log::warn!("camera didn't start: {}", clog.lock().unwrap().trim().lines().last().unwrap_or(""))).ok()
+    });
     let mut last_err = String::new();
     for hw in [true, false] {
         let args = video_args(s, a, scr, &mkv, hw, size);
         log::info!("record: {}", args.join(" "));
-        let mut c = Command::new(&exe);
-        video::hide(c.args(&args).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()));
-        let mut child = c.spawn()?;
         let log = std::sync::Arc::new(Mutex::new(String::new()));
-        let (tx, rx) = mpsc::channel();
-        let (l2, err) = (log.clone(), child.stderr.take().unwrap());
-        std::thread::spawn(move || {
-            for line in BufReader::new(err).lines().map_while(Result::ok) {
-                if line.starts_with("Output #0") { let _ = tx.send(Instant::now()); }
-                let mut g = l2.lock().unwrap();
-                if g.len() < 20000 { g.push_str(&line); g.push('\n'); }
-            }
-        });
-        match rx.recv_timeout(Duration::from_secs(15)) {
-            Ok(t) if child.try_wait()?.is_none() => return Ok(Segment { ffmpeg: child, mkv, video_start: t, system, mic, log }),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
+        match spawn_writer(&exe, &args, log.clone()) {
+            Ok((child, t)) => return Ok(Segment { ffmpeg: child, mkv, video_start: t, system, mic, log, cam, size }),
+            Err(_) => {
                 last_err = log.lock().unwrap().trim().lines().last().unwrap_or("").to_string();
                 if !cfg!(windows) { break; }
             }
         }
     }
+    if let Some((mut c, _, _)) = cam { let _ = c.kill(); let _ = c.wait(); }
     bail!("ffmpeg couldn't start recording: {last_err}")
 }
 
-struct Done { mkv: PathBuf, tracks: Vec<(PathBuf, &'static str, f64)> }
+/// A finished segment: the screen, its sound tracks and the webcam, each with how far it started before the picture.
+struct Done { mkv: PathBuf, tracks: Vec<(PathBuf, &'static str, f64)>, cam: Option<(PathBuf, f64)>, size: (u32, u32) }
+
+/// Positive: `t` came before the picture started, so that much of it is skipped.
+fn lead(video_start: Instant, t: Instant) -> f64 {
+    if video_start >= t { (video_start - t).as_secs_f64() } else { -((t - video_start).as_secs_f64()) }
+}
 
 fn stop_segment(mut seg: Segment) -> Done {
-    if let Some(stdin) = seg.ffmpeg.stdin.as_mut() { let _ = stdin.write_all(b"q"); let _ = stdin.flush(); }
-    let t0 = Instant::now();
-    while seg.ffmpeg.try_wait().ok().flatten().is_none() {
-        if t0.elapsed() > Duration::from_secs(10) { let _ = seg.ffmpeg.kill(); break; }
-        std::thread::sleep(Duration::from_millis(50));
-    }
+    finish_writer(&mut seg.ffmpeg);
     log::info!("segment ended: {}", seg.log.lock().unwrap().lines().last().unwrap_or(""));
+    let cam = seg.cam.take().and_then(|(mut c, p, t)| {
+        finish_writer(&mut c);
+        std::fs::metadata(&p).map(|m| m.len() > 4096).unwrap_or(false).then(|| (p, lead(seg.video_start, t)))
+    });
     let mut tracks = Vec::new();
     for (cap, title) in [(seg.system.take(), video::SYSTEM_TRACK), (seg.mic.take(), video::MIC_TRACK)] {
         let Some(c) = cap else { continue };
         let (p, first) = c.finish();
         // Positive: the sound started before the picture, so skip that much of it.
-        let offset = first.map(|f| if seg.video_start >= f { (seg.video_start - f).as_secs_f64() } else { -((f - seg.video_start).as_secs_f64()) }).unwrap_or(0.0);
+        let offset = first.map(|f| lead(seg.video_start, f)).unwrap_or(0.0);
         if std::fs::metadata(&p).map(|m| m.len() > 4096).unwrap_or(false) { tracks.push((p, title, offset)); }
     }
-    Done { mkv: seg.mkv, tracks }
+    Done { mkv: seg.mkv, tracks, cam, size: seg.size }
 }
 
-/// One segment to .mp4: picture copied, each sound a named AAC track.
+/// A white circle on black, `d` pixels across, with a soft one-pixel edge: where the webcam shows.
+fn circle_mask(d: u32, out: &Path) -> Result<()> {
+    let r = d as f64 / 2.0;
+    image::GrayImage::from_fn(d, d, |x, y| {
+        let dist = ((x as f64 + 0.5 - r).powi(2) + (y as f64 + 0.5 - r).powi(2)).sqrt();
+        image::Luma([((r - dist + 0.5).clamp(0.0, 1.0) * 255.0) as u8])
+    }).save(out)?;
+    Ok(())
+}
+
+/// One segment to .mp4: picture copied (or, with the webcam, re-encoded with it in a circle bottom-right), each
+/// sound a named AAC track.
 fn mux(s: &Settings, d: &Done, out: &Path) -> Result<()> {
     let mut a: Vec<String> = ["-hide_banner", "-v", "error", "-y", "-i"].map(String::from).to_vec();
     a.push(d.mkv.to_string_lossy().into());
+    let offset = |a: &mut Vec<String>, off: f64| if off >= 0.0 { a.extend(["-ss".into(), format!("{off:.3}")]); } else { a.extend(["-itsoffset".into(), format!("{:.3}", -off)]); };
     for (p, _, off) in &d.tracks {
-        if *off >= 0.0 { a.extend(["-ss".into(), format!("{off:.3}")]); } else { a.extend(["-itsoffset".into(), format!("{:.3}", -off)]); }
+        offset(&mut a, *off);
         a.extend(["-i".into(), p.to_string_lossy().into()]);
     }
-    a.extend(["-map", "0:v", "-c:v", "copy"].map(String::from));
+    if let Some((cam, off)) = &d.cam {
+        let (w, h) = d.size;
+        let dia = (w.min(h) / 4).max(96) & !1;
+        let m = (w.min(h) / 40).max(8);
+        let mask = d.mkv.with_extension("mask.png");
+        circle_mask(dia, &mask)?;
+        offset(&mut a, *off);
+        a.extend(["-i".into(), cam.to_string_lossy().into(), "-loop".into(), "1".into(), "-i".into(), mask.to_string_lossy().into()]);
+        let (ci, mi) = (d.tracks.len() + 1, d.tracks.len() + 2);
+        a.extend(["-filter_complex".into(), format!(
+            "[{ci}:v]scale={dia}:{dia}:force_original_aspect_ratio=increase,crop={dia}:{dia},format=yuva420p[c];[{mi}:v]format=gray[k];[c][k]alphamerge=shortest=1[cam];[0:v][cam]overlay=W-w-{m}:H-h-{m}:eof_action=pass,format=yuv420p[v]"),
+            "-map".into(), "[v]".into()]);
+        a.extend(video::h264(s, s.record_quality, 0));
+    } else {
+        a.extend(["-map", "0:v", "-c:v", "copy"].map(String::from));
+    }
     // Linux records system sound inside the .mkv already.
     let mut n = 0;
     #[cfg(target_os = "linux")]

@@ -7,6 +7,7 @@ mod batch;
 mod capture;
 mod editor;
 mod export;
+mod guard;
 mod history;
 mod hotkey;
 mod mark;
@@ -70,6 +71,25 @@ fn serve_file(path: &str, range: Option<&str>) -> Response<Vec<u8>> {
     if range.is_some() { b.status(206).header("Content-Range", format!("bytes {start}-{end}/{len}")).body(buf).unwrap() } else { b.body(buf).unwrap() }
 }
 
+/// grabbit://localhost/thumb/<path>: a small JPEG of a picture for lists, cached by path, size and date, so a library
+/// of 4K screenshots isn't decoded at full size.
+fn serve_thumb(file: &str) -> Response<Vec<u8>> {
+    use std::hash::{Hash, Hasher};
+    let ok = |b: Vec<u8>| Response::builder().header("Content-Type", "image/jpeg").header("Access-Control-Allow-Origin", "*").header("Cache-Control", "max-age=31536000").body(b).unwrap();
+    let Ok(m) = std::fs::metadata(file) else { return Response::builder().status(404).body(Vec::new()).unwrap() };
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    (file, m.len(), m.modified().ok()).hash(&mut h);
+    let dir = std::env::temp_dir().join("Grabbit").join("thumbs");
+    let cached = dir.join(format!("{:016x}.jpg", h.finish()));
+    if let Ok(b) = std::fs::read(&cached) { return ok(b); }
+    let Ok(img) = image::open(file) else { return serve_file(file, None) };
+    let mut b = Vec::new();
+    if image::codecs::jpeg::JpegEncoder::new_with_quality(&mut b, 82).encode_image(&img.thumbnail(480, 480).to_rgb8()).is_err() { return serve_file(file, None); }
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(&cached, &b);
+    ok(b)
+}
+
 pub(crate) fn percent_decode(s: &str) -> String {
     let b = s.as_bytes();
     let mut out = Vec::with_capacity(b.len());
@@ -87,6 +107,7 @@ fn serve(app: &AppHandle, path: &str, range: Option<&str>) -> Response<Vec<u8>> 
     let not_found = || Response::builder().status(404).body(Vec::new()).unwrap();
     let path = percent_decode(path);
     if let Some(file) = path.strip_prefix("/file/") { return serve_file(file, range); }
+    if let Some(file) = path.strip_prefix("/thumb/") { return serve_thumb(file); }
     let Some(i) = path.strip_prefix("/frame/").and_then(|s| s.parse::<usize>().ok()) else { return not_found() };
     let frames = state(app).frames.lock().unwrap();
     let Some(f) = frames.get(i) else { return not_found() };
@@ -148,6 +169,18 @@ pub fn run() {
         let dir = args.get(i + 1).cloned().unwrap_or_else(|| std::env::temp_dir().join("grabbit-selftest").to_string_lossy().into());
         std::process::exit(selftest::run(std::path::Path::new(&dir)));
     }
+    // Debug builds only: `--record-test <secs> <dir>` records the middle of the first screen with the real webcam
+    // through the normal recording path, to check a recording comes out as long as it was.
+    #[cfg(debug_assertions)]
+    if let Some(i) = args.iter().position(|a| a == "--record-test") {
+        let mut s = Settings::load();
+        s.record_webcam = true;
+        let secs = args.get(i + 1).and_then(|v| v.parse().ok()).unwrap_or(20);
+        let dir = std::path::PathBuf::from(args.get(i + 2).cloned().unwrap_or_else(|| "rec-test".into()));
+        match record::selftest(&s, &dir, secs) { Ok(p) => println!("recorded {}", p.display()), Err(e) => println!("FAILED {e:#}") }
+        std::process::exit(0);
+    }
+    guard::install();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _| editor::handle_args(app, &args)))
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(hotkey::on_event).build())
@@ -169,6 +202,7 @@ pub fn run() {
             actions::dev_window,
             picker::picker_info,
             picker::picker_shown,
+            picker::picker_pending,
             picker::picked,
             picker::picker_cancel,
             editor::editor_msg,
@@ -225,7 +259,8 @@ pub fn run() {
             tray(app.handle())?;
             hotkey::register_all(app.handle());
             let h = app.handle().clone();
-            std::thread::spawn(move || picker::warm(&h));
+            // Pickers are made when a capture starts, unless the user keeps them ready (faster, uses more memory).
+            if state(&h).settings.lock().unwrap().keep_picker_ready { std::thread::spawn(move || picker::warm(&h)); }
             replay::sync(app.handle());
             let args: Vec<String> = std::env::args().collect();
             editor::handle_args(app.handle(), &args);

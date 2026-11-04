@@ -4,8 +4,7 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import "../native.css";
-import "../ui/tip";
+import "../ui/base";
 import "./picker.css";
 import { os } from "../bridge";
 import { icon, type Icon } from "../ui/icons";
@@ -42,7 +41,7 @@ const hint = document.getElementById("hint")!;
 
 let info!: Info;
 let k = 1; // physical pixels per CSS pixel
-let img!: ImageBitmap;
+let img: ImageBitmap | null = null;
 const px = document.createElement("canvas"); // frame at 1:1 for the loupe and colour reads
 const pctx = px.getContext("2d", { willReadFrequently: true })!;
 let mouse = { x: -1, y: -1 };
@@ -97,6 +96,7 @@ function resize() {
 addEventListener("resize", resize);
 
 function draw() {
+  if (!img) return;
   const dpr = devicePixelRatio;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
@@ -503,6 +503,9 @@ canvas.addEventListener("pointerleave", () => { mouse = { x: -1, y: -1 }; draw()
 addEventListener("contextmenu", (e) => e.preventDefault());
 // The window stays loaded between captures; "open" brings a fresh frame, "reset" clears it for next time.
 function reset() {
+  // A closed picker stays loaded for speed, but lets go of its copies of the screen (a 4K frame is ~33 MB each).
+  img?.close(); img = null;
+  px.width = px.height = 1; canvas.width = canvas.height = 1;
   sel = null; hoverWin = null; picked = []; drag = null; measuring = false; fromWindow = null; preset = PRESETS[0]; keptP = []; layout = "separate";
   bar.hidden = true; sizeTag.hidden = true; loupeBox.hidden = true;
   hint.hidden = false; hint.innerHTML = HINT;
@@ -511,11 +514,13 @@ function reset() {
 const HINT = hint.innerHTML;
 // This window's events only: a global listen() would hear every monitor's "open" and show the last frame everywhere.
 const me = getCurrentWebviewWindow();
-void me.listen<number>("open", (e) => {
+function open(frame: number) {
   reset();
-  frameIdx = e.payload;
+  frameIdx = frame;
   start().catch((err) => { document.body.classList.add("ready"); hint.hidden = false; hint.textContent = "Couldn't open the picker: " + err; void invoke("picker_shown"); });
-});
+}
+// Windows are made when a capture starts, so a new one may load after its "open" was sent: once listening, it asks.
+void me.listen<number>("open", (e) => open(e.payload)).then(() => invoke<number | null>("picker_pending")).then((f) => { if (f != null) open(f); });
 void me.listen("reset", reset);
 // A multi-area capture can span screens: every picker shares the kept areas, and a new drag on one screen clears the
 // selection on the others (Ctrl+drag keeps it instead).

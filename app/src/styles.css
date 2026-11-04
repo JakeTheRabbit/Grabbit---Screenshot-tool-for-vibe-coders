@@ -1,62 +1,31 @@
-/* Grabbit editor chrome — matches Excalidraw's islands in light and dark. */
-:root {
-  --bg: #f3f4f7;
-  --panel: #ffffff;
-  --panel-2: #f7f8fa;
-  --line: #e4e6eb;
-  --text: #1c1d22;
-  --muted: #6b6f7b;
-  --hover: #eef1f6;
-  --accent: #3884ff;
-  --accent-2: #2c6fe6;
-  --accent-soft: rgb(56 132 255 / 0.12);
-  --shadow: 0 1px 2px rgb(15 20 30 / 0.06), 0 6px 20px rgb(15 20 30 / 0.07);
-  --shadow-lg: 0 18px 50px rgb(10 14 22 / 0.22), 0 2px 6px rgb(10 14 22 / 0.08);
-  --radius: 10px;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #121316; --panel: #1e1f24; --panel-2: #24252b; --line: #2f3138; --text: #ecedf1; --muted: #9a9daa;
-    --hover: #2a2c33; --accent-soft: rgb(56 132 255 / 0.2);
-    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.28);
-    --shadow-lg: 0 20px 56px rgb(0 0 0 / 0.55), 0 2px 8px rgb(0 0 0 / 0.3);
-  }
-}
-* { box-sizing: border-box; }
+/* Grabbit editor chrome. Colours, fonts and controls come from ui/theme.css (shadcn zinc, light/dark). */
 html, body, #root { margin: 0; height: 100%; background: var(--bg); }
 .shell { display: flex; flex-direction: column; height: 100%; }
 
 /* ---------- top bar ---------- */
 .bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   margin: 8px 8px 0; padding: 6px; border-radius: 12px;
   background: var(--panel); box-shadow: var(--shadow); border: 1px solid var(--line);
 }
-.seg { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
+.seg { display: flex; gap: 2px; padding: 2px; border-radius: var(--radius); background: var(--panel-2); border: 1px solid var(--line); }
 .bar .name { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28ch; padding: 0 6px; }
 .busy { color: var(--accent); font-weight: 600; animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity: 0.55; } to { opacity: 1; } }
 
 button {
-  font: inherit; font-size: 12.5px; font-weight: 550; line-height: 1;
+  font: inherit; font-size: 13px; font-weight: 500; line-height: 1;
   display: inline-flex; align-items: center; gap: 6px;
-  height: 30px; padding: 0 10px; border-radius: 7px; border: 0;
-  background: transparent; color: var(--text); cursor: pointer; white-space: nowrap;
-  transition: background 120ms var(--ease), color 120ms var(--ease), transform 90ms var(--ease), box-shadow 160ms var(--ease);
+  height: 30px; padding: 0 10px; border-radius: calc(var(--radius) - 2px); border: 0;
+  background: transparent; color: var(--text); cursor: default; white-space: nowrap;
+  transition: background 120ms var(--ease), color 120ms var(--ease), box-shadow 160ms var(--ease);
 }
 button:hover { background: var(--hover); }
-button:active { transform: scale(0.96); }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+button:disabled { opacity: 0.45; pointer-events: none; }
 button.on { background: var(--accent-soft); color: var(--accent); }
-button.primary {
-  color: #fff; background: linear-gradient(180deg, var(--accent), var(--accent-2));
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 2px 8px rgb(56 132 255 / 0.35);
-}
-button.primary:hover { filter: brightness(1.07); box-shadow: 0 1px 0 rgb(255 255 255 / 0.2) inset, 0 4px 14px rgb(56 132 255 / 0.45); }
+button.primary { color: var(--accent-fg); background: var(--accent); box-shadow: 0 1px 2px rgb(0 0 0 / 0.1); }
+button.primary:hover { background: var(--accent-2); }
 button.icon-only { width: 30px; padding: 0; justify-content: center; color: var(--muted); }
 button.icon-only:hover { color: var(--text); }
 .ico { display: inline-flex; width: 16px; height: 16px; flex: none; }
@@ -78,7 +47,7 @@ button.icon-only:hover { color: var(--text); }
 }
 .thumb:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .thumb img { display: block; width: 100%; height: 86px; object-fit: cover; cursor: copy; background: var(--bg); }
-.thumb .time { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: 6px; font-size: 10.5px; color: #fff; background: rgb(0 0 0 / .55); pointer-events: none; }
+.thumb .time { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: 6px; font-size: 11px; color: #fff; background: rgb(0 0 0 / .66); pointer-events: none; }
 .thumb .meta { display: flex; gap: 4px; padding: 4px; }
 .thumb .meta button { flex: 1; height: 24px; padding: 0 4px; justify-content: center; font-size: 11px; color: var(--accent); }
 .thumb .meta button:hover { background: var(--accent-soft); }
@@ -117,7 +86,7 @@ button.icon-only:hover { color: var(--text); }
 /* The side panel takes its own room here, so the picture and tools refit beside it instead of under it. */
 .canvas.mk:has(> .panel) { padding-right: 320px; }
 .mk-tools { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
-.mk-group { display: flex; align-items: center; gap: 1px; padding: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
+.mk-group { display: flex; flex-wrap: wrap; align-items: center; gap: 1px; padding: 2px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line); }
 .mk-group button { height: 30px; min-width: 30px; padding: 0 7px; justify-content: center; }
 .mk-group button:disabled { opacity: 0.4; cursor: default; }
 .mk-end { margin-left: auto; }
@@ -163,7 +132,7 @@ button.icon-only:hover { color: var(--text); }
 .menuwrap { position: relative; }
 .split { display: flex; }
 .split > button:first-child { border-radius: 7px 0 0 7px; }
-.split > button.caret { width: 22px; padding: 0; justify-content: center; border-radius: 0 7px 7px 0; font-size: 10px; }
+.split > button.caret { width: 22px; padding: 0; justify-content: center; border-radius: 0 7px 7px 0; font-size: 11px; }
 .split.primary > button.caret { border-left: 1px solid rgb(255 255 255 / 0.25); }
 .split > button:only-child { border-radius: 7px; }
 .dropdown {
@@ -229,5 +198,9 @@ button.icon-only:hover { color: var(--text); }
 .bpreview { width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; background: repeating-conic-gradient(#8883 0 25%, transparent 0 50%) 0 0 / 12px 12px; }
 .swatches .checker { background: repeating-conic-gradient(#8884 0 25%, transparent 0 50%) 0 0 / 10px 10px; }
 
-/* A select's list takes its background; keep the list readable in light and dark. */
-select option { background-color: Canvas; color: CanvasText; }
+
+/* Narrow windows: the header keeps its icons (each has a tooltip) and drops the words, so it stays on one line. */
+@media (max-width: 1080px) {
+  .shell.bar-top header.bar button:not(.caret), .shell.bar-bottom header.bar button:not(.caret) { font-size: 0; gap: 0; padding: 0 8px; }
+  .shell.bar-top header.bar .name, .shell.bar-bottom header.bar .name { max-width: 16ch; }
+}

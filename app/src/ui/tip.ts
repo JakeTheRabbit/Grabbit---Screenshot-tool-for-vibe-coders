@@ -3,7 +3,7 @@
 
 const css = document.createElement("style");
 css.textContent = `.gb-tip { position: fixed; z-index: 2147483647; max-width: 300px; padding: 6px 9px; border-radius: 7px;
-  background: rgba(24, 25, 29, 0.96); color: #fff; font: 12px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  background: var(--tip-bg, #18181b); color: var(--tip-fg, #fafafa); font: 12px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); pointer-events: none; white-space: pre-line; animation: gb-tip 90ms ease-out; }
 .gb-tip[hidden] { display: none; }
 @keyframes gb-tip { from { opacity: 0; transform: translateY(2px); } }`;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import "@excalidraw/excalidraw/index.css";
 import {
   CaptureUpdateAction, Excalidraw, FONT_FAMILY, convertToExcalidrawElements, exportToBlob,
   getCommonBounds, getSceneVersion, newElementWith, restoreElements, serializeAsJSON,
@@ -16,6 +17,7 @@ import { findPrivate, type Word } from "./private";
 import { Panel, type EditorOps, type PanelName } from "./Panel";
 import { Menu } from "./Menu";
 import { switchEditor } from "./carry";
+import { isDark, onThemeChange } from "./ui/theme";
 
 const BASE_ID = "grabbit-base";
 
@@ -54,13 +56,8 @@ export function App() {
   const setBarPos = (p: BarPos) => { setBarPosState(p); try { localStorage.setItem("barPos", p); } catch { /* private mode */ } };
   const [tabs, setTabs] = useState<{ id: string; name: string; dirty: boolean }[]>([]);
   const [activeId, setActiveId] = useState("");
-  const [dark, setDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
-  useEffect(() => {
-    const q = matchMedia("(prefers-color-scheme: dark)");
-    const f = () => setDark(q.matches);
-    q.addEventListener("change", f);
-    return () => q.removeEventListener("change", f);
-  }, []);
+  const [dark, setDark] = useState(isDark);
+  useEffect(() => onThemeChange(() => setDark(isDark())), []);
   // Hover a thumbnail for a moment → large preview with details beside the strip.
   const [preview, setPreview] = useState<{ item: RecentItem; top: number } | null>(null);
   const [previewSize, setPreviewSize] = useState("");

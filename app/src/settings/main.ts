@@ -3,8 +3,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import "../native.css";
-import "../ui/tip";
+import "../ui/base";
+import { getTheme, setTheme, type Theme } from "../ui/theme";
 import "./settings.css";
 import { fileUrl, os, send } from "../bridge";
 
@@ -127,6 +127,8 @@ function field(f: Field): HTMLElement {
 
 const SECTIONS: Record<string, () => Field[]> = {
   General: () => [
+    { kind: "custom", render: themeRow },
+    { kind: "toggle", key: "keep_picker_ready", label: "Keep the capture screen ready", help: "Captures open a little faster, but Grabbit holds 50–100 MB more memory per screen all the time" },
     { kind: "select", key: "after_capture", label: "After picking an area", options: [["Ask", "Show the action bar"], ["Copy", "Copy straight away"], ["Edit", "Open the editor"]] },
     { kind: "toggle", key: "auto_save", label: "Keep a copy of every capture", help: "Full size, in the Grabbit folder below" },
     { kind: "folder", key: "save_folder", label: "Grabbit folder" },
@@ -220,6 +222,16 @@ const SECTIONS: Record<string, () => Field[]> = {
 };
 
 /** Back up settings to a file, or restore them (e.g. on a new computer). */
+/** Light, dark or the system's choice, for every Grabbit window at once. */
+function themeRow() {
+  const sel = h("select", { class: "btn" }) as HTMLSelectElement;
+  for (const [v, l] of [["system", "Same as Windows"], ["light", "Light"], ["dark", "Dark"]]) sel.add(new Option(os === "windows" ? l : l.replace("Windows", "the system"), v, false, getTheme() === v));
+  sel.onchange = () => setTheme(sel.value as Theme);
+  const row = h("div", { class: "row" }, h("label", {}, h("span", { class: "title" }, "Appearance"), h("span", { class: "help" }, "Light or dark, for every Grabbit window")), sel);
+  row.title = "Appearance: light or dark for every Grabbit window, or follow your system's setting";
+  return row;
+}
+
 function backupRow() {
   const secrets = h("input", { type: "checkbox" }) as HTMLInputElement;
   const out = h("button", { class: "btn" }, "Back up…") as HTMLButtonElement;

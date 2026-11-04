@@ -21,6 +21,7 @@ function resolve(url) {
   if (p.startsWith("demo/")) return { file: join(demo, p.slice(5)) };
   if (p.startsWith("asset/")) return { file: p.slice(6) };
   if (p.startsWith("grabbit/file/")) return { file: p.slice(13) };
+  if (p.startsWith("grabbit/thumb/")) return { file: p.slice(14) };
   return null;
 }
 

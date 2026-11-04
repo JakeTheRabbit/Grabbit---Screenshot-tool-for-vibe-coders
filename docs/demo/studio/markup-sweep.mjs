@@ -213,7 +213,7 @@ await step("tabs", async () => {
   const n0 = (await objs()).length;
   await btn("Insert", ".lib-items"); await sleep(800);
   ok("Insert adds the capture on top", (await objs()).length === n0 + 1 && (await kinds()).at(-1) === "image");
-  await btn("New tab", ".lib-items"); await sleep(800);
+  await btn("Open", ".lib-items"); await sleep(800);
   ok("New tab opens a clean second tab", (await p.ev(`document.querySelectorAll(".vtab").length`)) === 2 && (await objs()).length === 0);
   await p.ev(`document.querySelectorAll(".vtab")[0].click()`); await sleep(600);
   ok("switching back keeps the drawing", (await objs()).length === n0 + 1, `${(await objs()).length} vs ${n0 + 1}`);

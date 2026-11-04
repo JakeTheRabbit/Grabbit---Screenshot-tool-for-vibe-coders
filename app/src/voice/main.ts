@@ -4,8 +4,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import "../native.css";
-import "../ui/tip";
+import "../ui/base";
 import "./voice.css";
 import { corsUrl, fileUrl, os, send } from "../bridge";
 import { icon } from "../ui/icons";
@@ -103,7 +102,7 @@ setInterval(() => { if (listening) timeEl.textContent = fmt((performance.now() -
 
 // The level meter: proof the microphone hears you, and a plain warning when it doesn't.
 const lvl = $<HTMLDivElement>("#meter .lvl");
-$<HTMLSpanElement>("#micname").textContent = q.get("mic") ? `Microphone: ${q.get("mic")}` : "";
+$<HTMLSpanElement>("#micname").textContent = q.get("mic") ?? "";
 let loudest = 0, shown = 0;
 setInterval(async () => {
   if (!listening) { lvl.style.setProperty("--l", "0%"); return; }
