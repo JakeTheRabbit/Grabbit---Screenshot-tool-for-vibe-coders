@@ -12,6 +12,7 @@
   <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1f2330?style=for-the-badge">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/JakeTheRabbit/grabbit?style=for-the-badge&color=1f2330"></a>
   <a href="https://github.com/JakeTheRabbit/grabbit/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/JakeTheRabbit/grabbit?style=for-the-badge&color=1f2330"></a>
+  <a href="https://github.com/JakeTheRabbit/grabbit/actions/workflows/build.yml"><img alt="Build and test" src="https://img.shields.io/github/actions/workflow/status/JakeTheRabbit/grabbit/build.yml?branch=main&style=for-the-badge&label=tests"></a>
 </p>
 
 <p align="center">
@@ -20,7 +21,9 @@
   <a href="#features">Features</a> &nbsp;·&nbsp;
   <a href="#keys">Keys</a> &nbsp;·&nbsp;
   <a href="#privacy">Privacy</a> &nbsp;·&nbsp;
-  <a href="#build-from-source">Build</a>
+  <a href="#build-from-source">Build</a> &nbsp;·&nbsp;
+  <a href="CHANGELOG.md">Changelog</a> &nbsp;·&nbsp;
+  <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
 ---
@@ -56,7 +59,7 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 
 <img src="docs/screenshots/tools.webp" alt="The picker's More menu, the pixel loupe, and a whole window highlighted">
 
-- Region, window (captured whole even when covered), whole screen, or **up to 4 areas** combined side by side, stacked, as a grid, or as they sit on screen.
+- Region, window (captured whole even when covered), whole screen, or **up to 8 areas** across all your screens (<kbd>Ctrl</kbd>+drag adds one), kept as separate pictures or joined side by side, stacked, as a grid, or as they sit on screen.
 - **Scrolling capture** of long pages: Grabbit scrolls and stitches, and sticky headers appear once.
 - **Copy text** (OCR), **read QR codes**, **pin** a capture on top of everything, capture again **in 3 or 10 s**, timed captures that end as a timelapse.
 - A pixel loupe with coordinates and colour (<kbd>C</kbd> copies the hex), a **measure** tool, and **size presets** for Instagram, Stories/Reels/TikTok, YouTube, X, LinkedIn, Facebook and Pinterest.
@@ -75,7 +78,11 @@ Every capture lands on the clipboard as a picture **and** a named file (so chat 
 Built for screenshots and fully offline: the capture is the canvas. Arrows, lines, boxes, ellipses, text, pen, highlighter, numbered **steps**, pixelate, blur, black out, spotlight, magnifier, crop, emoji and icons, tabs, and a strip of recent captures; every tool has a key ([docs/markup-editor.md](docs/markup-editor.md)). The classic [Excalidraw](https://github.com/excalidraw/excalidraw) whiteboard is in the layout menu, and `.excalidraw` projects open there.
 
 - **Hide** private details in one click: finds and pixelates **emails, IP addresses, phone and card numbers, API keys and tokens**. Or pixelate, blur, black out or spotlight any box.
-- **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes.
+- **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes. Use it on every copy, or **apply it to the picture** you're editing.
+- **Pictures on pictures:** drag any capture from the side panel onto the canvas, then give it a **frame**: border colour, width and opacity, rounded corners, and how see-through it is.
+- **Layers:** everything you add is a layer you can reorder, hide, select or delete. Ctrl+Z undoes all of it.
+- Resizing keeps proportions (hold <kbd>Shift</kbd> to stretch), and text can use **any font on your computer**.
+- **Captures panel:** every picture and recording grouped by day, with sort, a calendar, a pictures/videos filter, folders, and list or thumbnail views. Dock it on any side. Open pictures sit in **vertical tabs** with thumbnails.
 
 <img src="docs/screenshots/ai.webp" alt="The editor's AI panel: remove background, change what's in a box, replace text, ask about the picture">
 
@@ -118,7 +125,10 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
   </tr>
 </table>
 
+- **Light and dark mode**, or follow the system. Every window switches at once, title bars included.
 - Every key is configurable, and all settings **back up and restore** as one file.
+- **Light on your computer:** under 10 MB of memory while idle. The capture screens are built when you press the key and closed a minute later; turn on **Keep the capture screen ready** for instant captures.
+- **Looks after itself:** Windows restarts Grabbit after a crash or hang, recording helpers close with it, a damaged settings file is replaced with the last good copy, and old temporary files are cleared.
 - `grabbit://capture`, `grabbit://record`, `grabbit://replay`, `grabbit://open/<file>` and the same words on the command line, for launchers and scripts.
 
 ## Install
@@ -167,7 +177,7 @@ PrtScn only works when no other screenshot tool has claimed it (Windows: turn of
 | <kbd>Enter</kbd> | Copy | <kbd>E</kbd> | Edit |
 | <kbd>Shift</kbd>+<kbd>Enter</kbd> | Copy smaller | <kbd>R</kbd> | Record this area |
 | <kbd>V</kbd> | Talk to AI | <kbd>X</kbd> | Describe with AI |
-| <kbd>N</kbd> | Add another area (up to 4) | <kbd>B</kbd> | Start an AI batch |
+| <kbd>N</kbd> | Add another area (up to 8) | <kbd>B</kbd> | Start an AI batch |
 | <kbd>T</kbd> | Copy text | <kbd>Q</kbd> | Read QR code |
 | <kbd>S</kbd> | Scrolling capture | <kbd>I</kbd> | Pin on top |
 | <kbd>P</kbd> | Copy file path | <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>S</kbd> | Save as… |
@@ -222,8 +232,22 @@ Needs [Rust](https://rustup.rs), [Bun](https://bun.sh) and, for recording, ffmpe
 git clone https://github.com/JakeTheRabbit/grabbit
 cd grabbit/app
 bun install
-bunx tauri build
+bunx tauri dev      # run it with live reload
+bunx tauri build    # make the installers in src-tauri/target/release/bundle
 ```
+
+<details>
+<summary><b>Where things are</b></summary>
+
+| Path | What |
+|---|---|
+| `app/src-tauri/src/` | The Rust core: hotkeys, capture, picker windows, recording (ffmpeg), OCR, export, sharing, AI, settings, self-test |
+| `app/src/` | The web pages each window shows: the picture editors (`markup/` and the Excalidraw `App.tsx`), `video/`, `picker/`, `settings/`, `voice/`, `overlays/`, and the shared look in `ui/` |
+| `docs/` | Editor guide, code-signing notes, plans, and the [studio](docs/demo/studio) that makes the README pictures and runs UI checks |
+| `spikes/` | Windows end-to-end test scripts |
+| `legacy/windows-wpf/` | The original Windows-only WPF version (0.1) |
+
+</details>
 
 <details>
 <summary><b>Tests</b></summary>
@@ -241,9 +265,15 @@ bunx tauri build --debug --no-bundle
 
 </details>
 
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first, and follow the [code of conduct](CODE_OF_CONDUCT.md). Found a security problem? Report it privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
+
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
+
 ## Credits
 
-[Tauri](https://tauri.app) · [Excalidraw](https://github.com/excalidraw/excalidraw) (MIT) · [ffmpeg](https://ffmpeg.org) (LGPL/GPL, run as a separate program) · [whisper.cpp](https://github.com/ggml-org/whisper.cpp) via ffmpeg · [xcap](https://github.com/nashaofu/xcap) · [cpal](https://github.com/RustAudio/cpal) · [ScreenCaptureKit-rs](https://github.com/doom-fish/screencapturekit-rs) · [Lucide](https://lucide.dev) icons (ISC).
+[Tauri](https://tauri.app) · [Fabric.js](https://fabricjs.com) (MIT) · [Excalidraw](https://github.com/excalidraw/excalidraw) (MIT) · [ffmpeg](https://ffmpeg.org) (LGPL/GPL, run as a separate program) · [whisper.cpp](https://github.com/ggml-org/whisper.cpp) via ffmpeg · [xcap](https://github.com/nashaofu/xcap) · [cpal](https://github.com/RustAudio/cpal) · [ScreenCaptureKit-rs](https://github.com/doom-fish/screencapturekit-rs) · [Lucide](https://lucide.dev) icons (ISC).
 
 ## Licence
 

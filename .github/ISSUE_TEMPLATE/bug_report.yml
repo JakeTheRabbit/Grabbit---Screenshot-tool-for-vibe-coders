@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Grabbit doesn't work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Please don't attach captures of anything private. Security problems go through SECURITY.md, not here.
+  - type: input
+    id: version
+    attributes:
+      label: Grabbit version
+      placeholder: "2.0.13"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows 11, Windows 10, macOS (Apple silicon), macOS (Intel), Linux (X11), Linux (Wayland)]
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Screens and scaling
+      description: How many screens, their resolution and scaling, if it might matter.
+      placeholder: "2 screens: 2560x1440 at 100%, 1920x1080 at 125%"
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      placeholder: |
+        1. Tap PrtScn
+        2. Drag an area
+        3. Press V
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: 'The end of grabbit.log: %LOCALAPPDATA%\app.grabbit\logs (Windows), ~/Library/Logs/app.grabbit (macOS), ~/.local/share/app.grabbit/logs (Linux).'
+      render: text

@@ -1,0 +1,20 @@
+name: Feature idea
+description: Something Grabbit could do, or do better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The task, not the solution. "I want to send a recording to a colleague without a file over 25 MB" beats "add compression".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Grabbit help?
+  - type: textarea
+    id: elsewhere
+    attributes:
+      label: Does another app do this well?
+      description: Name it, and say what you like about how it works.

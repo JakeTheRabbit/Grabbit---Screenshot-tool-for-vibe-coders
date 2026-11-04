@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/JakeTheRabbit/grabbit/security/advisories/new
+    about: Report it privately, not in a public issue.
+  - name: Install help
+    url: https://github.com/JakeTheRabbit/grabbit#install
+    about: SmartScreen, Gatekeeper, Defender, ffmpeg and PrtScn setup.
