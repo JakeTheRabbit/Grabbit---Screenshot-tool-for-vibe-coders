@@ -1,6 +1,6 @@
 [package]
 name = "grabbit"
-version = "2.0.11"
+version = "2.0.12"
 edition = "2021"
 description = "Screenshots and screen recordings, straight to the clipboard"
 license = "MIT"
