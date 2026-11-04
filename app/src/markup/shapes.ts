@@ -2,11 +2,15 @@
 // with the picture: `unit(w, h)` is one "step" of stroke width or text size for a picture that big.
 
 import {
-  Circle, Ellipse, FabricImage, FabricText, Group, IText, Point, Polyline, Rect, Shadow, classRegistry, controlsUtils,
-  type FabricObject,
+  Circle, Control, Ellipse, FabricImage, FabricText, Group, IText, Point, Polyline, Rect, Shadow, classRegistry, controlsUtils,
+  type FabricObject, type TransformActionHandler,
 } from "fabric";
 
-export type Meta = { kind: "arrow" | "line" | "rect" | "ellipse" | "pen" | "highlight" | "text" | "step" | "redact" | "spot" | "magnify" | "sticker" | "image"; mode?: "pixelate" | "blur" | "black"; n?: number };
+export type Meta = { kind: "arrow" | "line" | "rect" | "ellipse" | "pen" | "highlight" | "text" | "step" | "redact" | "spot" | "magnify" | "sticker" | "image"; mode?: "pixelate" | "blur" | "black"; n?: number; frame?: Frame };
+/** A picture's frame: border colour, width (picture pixels), border opacity, corner radius, and the picture's own
+ *  opacity (0–1). */
+export type Frame = { color: string; width: number; alpha: number; radius: number; opacity: number };
+export const NO_FRAME: Frame = { color: "#ffffff", width: 0, alpha: 1, radius: 0, opacity: 1 };
 export type Style = { color: string; width: number; fill: "none" | "soft" | "solid"; font: number; family: string; textBg: boolean; shadow: boolean };
 
 export const COLORS = ["#e03131", "#f08c00", "#ffd43b", "#2f9e44", "#1971c2", "#7048e8", "#000000", "#ffffff"];
@@ -83,7 +87,50 @@ export function makeLine(kind: "arrow" | "line", x1: number, y1: number, x2: num
 export function restoreControls(o: FabricObject) {
   const k = meta(o)?.kind;
   if ((k === "arrow" || k === "line") && o instanceof Polyline) o.controls = controlsUtils.createPolyControls(o);
+  else keepProportions(o);
 }
+
+/** Every handle keeps the proportions while dragged; holding Shift stretches freely. (The corners do that through the
+ *  canvas's uniformScaling; the side handles would otherwise always stretch one way.) */
+export function keepProportions(o: FabricObject) {
+  const k = meta(o)?.kind;
+  if (k === "arrow" || k === "line" || !o.controls?.ml || (o.controls.ml as Control & { gbUniform?: boolean }).gbUniform) return;
+  // Stretch along the handle's axis, then (without Shift) give the other axis the same change.
+  const along = (axis: "x" | "y"): TransformActionHandler => (e, t, x, y) => {
+    const done = (axis === "x" ? controlsUtils.scalingX : controlsUtils.scalingY)(e, t, x, y);
+    if (!e.shiftKey) {
+      const o = t.target, k = axis === "x" ? o.scaleX / t.original.scaleX : o.scaleY / t.original.scaleY;
+      o.set(axis === "x" ? { scaleY: t.original.scaleY * k } : { scaleX: t.original.scaleX * k });
+    }
+    return done;
+  };
+  const side = (c: Control, axis: "x" | "y") => Object.assign(new Control({ ...c, actionHandler: along(axis), cursorStyleHandler: controlsUtils.scaleCursorStyleHandler, getActionName: () => "scale" }), { gbUniform: true });
+  o.controls = { ...o.controls, ml: side(o.controls.ml, "x"), mr: side(o.controls.mr, "x"), mt: side(o.controls.mt, "y"), mb: side(o.controls.mb, "y") };
+}
+
+/** A picture that can have a frame (meta.frame): rounded corners, a border inside its edge, and see-through-ness. */
+export class Picture extends FabricImage {
+  static type = "Picture";
+  _render(ctx: CanvasRenderingContext2D) {
+    const f = meta(this)?.frame;
+    if (!f) return super._render(ctx);
+    const w = this.width, h = this.height, k = Math.max(1e-6, Math.abs(this.scaleX));
+    const r = Math.min(f.radius / k, w / 2, h / 2), lw = f.width / k;
+    ctx.save();
+    ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, r); ctx.clip();
+    ctx.globalAlpha *= f.opacity;
+    super._render(ctx);
+    ctx.restore();
+    if (lw > 0) {
+      ctx.save();
+      ctx.globalAlpha *= f.alpha;
+      ctx.strokeStyle = f.color; ctx.lineWidth = lw;
+      ctx.beginPath(); ctx.roundRect(-w / 2 + lw / 2, -h / 2 + lw / 2, w - lw, h - lw, Math.max(0, r - lw / 2)); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+classRegistry.setClass(Picture);
 
 export function makeBox(kind: "rect" | "ellipse", x: number, y: number, w: number, h: number, s: Style, u: number) {
   const common = {
@@ -115,7 +162,7 @@ export function makeStep(n: number, cx: number, cy: number, s: Style, u: number)
 }
 
 export async function makeImage(dataURL: string, x: number, y: number, w: number, h: number, m: Meta) {
-  const img = await FabricImage.fromURL(dataURL);
+  const img = await Picture.fromURL(dataURL);
   img.set({ scaleX: w / img.width, scaleY: h / img.height });
   return setMeta(place(img, x, y), m);
 }
@@ -135,6 +182,11 @@ export function restyle(o: FabricObject, s: Style, u: number) {
   else if (k === "text" && o instanceof IText) {
     const size = FONTS[s.font] * u;
     o.set({ fontSize: size, fontFamily: fontOf(s), fill: s.textBg ? contrast(s.color) : s.color, backgroundColor: s.textBg ? s.color : "", padding: s.textBg ? size * 0.25 : 0, shadow: s.textBg ? null : shadowFor(s.shadow, u * 0.6) });
+  } else if (k === "image") {
+    // The palette colours a picture's border (and gives it one when it has none).
+    const f = meta(o)!.frame ?? NO_FRAME;
+    setMeta(o, { ...meta(o)!, frame: { ...f, color: s.color, width: f.width || WIDTHS[s.width] * u * 1.5 } });
+    o.dirty = true;
   } else if (k === "step" && o instanceof Group) {
     const [disc, label] = o.getObjects();
     disc.set({ fill: s.color, shadow: sh });

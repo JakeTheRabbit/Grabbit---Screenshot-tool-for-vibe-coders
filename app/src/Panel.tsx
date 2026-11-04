@@ -6,7 +6,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { BACKGROUNDS, SIZES, type Beauty } from "./beautify";
 import { send } from "./bridge";
 
-export type PanelName = "beautify" | "share" | "ai" | "info";
+export type PanelName = "beautify" | "share" | "ai" | "info" | "layers";
 export type Region = { x: number; y: number; width: number; height: number };
 
 export type EditorOps = {
@@ -26,7 +26,7 @@ const TARGET_LABEL: Record<string, string> = { onedrive: "OneDrive", immich: "Im
 export function Panel({ which, ops, beauty, setBeauty, onClose }: { which: PanelName; ops: EditorOps; beauty: Beauty; setBeauty: (b: Beauty) => void; onClose: () => void }) {
   return (
     <aside className="panel">
-      <header><b>{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[which]}</b><button className="x" onClick={onClose} title="Close">×</button></header>
+      <header><b>{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info", layers: "Layers" }[which]}</b><button className="x" onClick={onClose} title="Close">×</button></header>
       {which === "beautify" && <BeautifyPanel beauty={beauty} setBeauty={setBeauty} ops={ops} />}
       {which === "share" && <SharePanel ops={ops} />}
       {which === "ai" && <AiPanel ops={ops} />}

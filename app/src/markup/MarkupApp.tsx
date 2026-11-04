@@ -17,8 +17,8 @@ import { switchEditor, takeCarried } from "../carry";
 import { Library, type Dock } from "./Library";
 import { getTheme, setTheme, type Theme } from "../ui/theme";
 import {
-  COLORS, DEFAULT_STYLE, FONTS, PROPS, fontOf, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
-  restoreControls, restyle, setMeta, unit, type Style,
+  COLORS, DEFAULT_STYLE, FONTS, NO_FRAME, PROPS, fontOf, keepProportions, WIDTHS, makeBlack, makeBox, makeImage, makeLine, makeStep, makeText, meta, place,
+  restoreControls, restyle, setMeta, unit, type Frame, type Meta, type Style,
 } from "./shapes";
 
 type Tool = "select" | "arrow" | "line" | "rect" | "ellipse" | "pen" | "highlight" | "text" | "step" | "pixelate" | "blur" | "black" | "spotlight" | "magnify" | "crop" | "eyedropper";
@@ -100,6 +100,10 @@ export function MarkupApp() {
   const [tabsAt, setTabsAtState] = useState<TabsAt>(() => pref<TabsAt>("tabsAt", "side"));
   const setTabsAt = (t: TabsAt) => { setTabsAtState(t); keep("tabsAt", t); };
   const [look, setLook] = useState<Theme>(getTheme);
+  const [, setTick] = useState(0);
+  const bump = () => setTick((n) => n + 1);
+  const [dragLayer, setDragLayer] = useState<number | null>(null);
+  const [framePop, setFramePop] = useState(false);
   // The computer's fonts, asked for the first time the font menu opens.
   const [fonts, setFonts] = useState<string[]>([]);
   const loadFonts = () => { if (!fonts.length) void invoke<string[]>("system_fonts").then((f) => setFonts(f ?? [])).catch(() => {}); };
@@ -443,7 +447,7 @@ export function MarkupApp() {
 
   useEffect(() => {
     const c = new Canvas(el.current!, {
-      preserveObjectStacking: true, targetFindTolerance: 10, uniformScaling: false, stopContextMenu: true,
+      preserveObjectStacking: true, targetFindTolerance: 10, uniformScaling: true, uniScaleKey: "shiftKey", stopContextMenu: true,
       selectionColor: "rgba(56,132,255,0.08)", selectionBorderColor: "#3884ff", selectionLineWidth: 1.5, backgroundColor: "",
     });
     fcRef.current = c;
@@ -513,13 +517,15 @@ export function MarkupApp() {
       setMeta(path, { kind: t === "highlight" ? "highlight" : "pen" });
       commit();
     });
-    c.on("object:modified", (o) => { if (!isCrop(o.target)) commit(); });
+    c.on("object:modified", (o) => { if (!isCrop(o.target)) commit(); bump(); });
+    c.on("object:added", (o) => { keepProportions(o.target); bump(); });
+    c.on("object:removed", bump);
     c.on("text:editing:exited", (o) => {
       const t = o.target as IText;
       if (!t.text?.trim()) { c.remove(t); return; }
       commit();
     });
-    const sel = () => setHasSel(c.getActiveObjects().length > 0);
+    const sel = () => { setHasSel(c.getActiveObjects().length > 0); bump(); };
     c.on("selection:created", sel); c.on("selection:updated", sel); c.on("selection:cleared", sel);
     setReady(true);
     return () => { ro.disconnect(); void c.dispose(); fcRef.current = null; };
@@ -574,8 +580,8 @@ export function MarkupApp() {
     c.add(o); c.setActiveObject(o); commit(); setTool("select");
   }
 
-  async function insertPicture(dataURL: string, w: number, h: number) {
-    const c = fc(), b = base()!, k = Math.min(1, (b.w * 0.6) / w), ctr = viewCentre();
+  async function insertPicture(dataURL: string, w: number, h: number, at?: { x: number; y: number }) {
+    const c = fc(), b = base()!, k = Math.min(1, (b.w * 0.6) / w), ctr = at ?? viewCentre();
     const o = await makeImage(dataURL, ctr.x - (w * k) / 2, ctr.y - (h * k) / 2, w * k, h * k, { kind: "image" });
     c.add(o); c.setActiveObject(o); commit(); setTool("select");
   }
@@ -589,6 +595,54 @@ export function MarkupApp() {
   async function openItem(item: RecentItem) {
     if (item.kind === "video") { await invoke("open_file", { path: item.path }).catch((e) => toast(String(e))); return; }
     await openAsTab(item);
+  }
+
+  /** A capture dragged from the library onto the picture: added where it was dropped. */
+  async function dropPicture(e: React.DragEvent) {
+    const path = e.dataTransfer.getData("text/x-grabbit-path");
+    if (!path) return;
+    e.preventDefault();
+    const item = recent.find((r) => r.path === path);
+    if (item?.kind === "video") { toast("Recordings can't go into a picture. Open them from the library instead."); return; }
+    if (!active.current) { if (item) await openAsTab(item); return; }
+    const c = fc(), r = c.upperCanvasEl.getBoundingClientRect(), vp = c.viewportTransform, z = c.getZoom();
+    const img = await getImage(path);
+    await insertPicture(img.dataURL, img.width, img.height, { x: (e.clientX - r.left - vp[4]) / z, y: (e.clientY - r.top - vp[5]) / z });
+  }
+
+  // ---------- picture frames ----------
+
+  const selPicture = () => { const o = fcRef.current?.getActiveObject(); return o && meta(o)?.kind === "image" ? o : null; };
+  function setFrame(p: Partial<Frame>, done = true) {
+    const o = selPicture();
+    if (!o) return;
+    const m = meta(o) as Meta;
+    setMeta(o, { ...m, frame: { ...(m.frame ?? NO_FRAME), ...p } });
+    o.dirty = true;
+    fc().requestRenderAll();
+    bump();
+    if (done) commit();
+  }
+
+  // ---------- layers ----------
+
+  const LAYER_NAMES: Record<Meta["kind"], string> = { arrow: "Arrow", line: "Line", rect: "Box", ellipse: "Ellipse", pen: "Pen", highlight: "Highlighter", text: "Text", step: "Step", redact: "Hidden area", spot: "Spotlight", magnify: "Magnifier", sticker: "Sticker", image: "Picture" };
+  const LAYER_ICONS: Record<Meta["kind"], Parameters<typeof Icon>[0]["name"]> = { arrow: "arrow", line: "line", rect: "rect", ellipse: "ellipse", pen: "pen", highlight: "highlight", text: "text", step: "step", redact: "pixelate", spot: "spot", magnify: "magnify", sticker: "smile", image: "image" };
+  const layerName = (o: FabricObject) => {
+    const m = meta(o)!;
+    if (m.kind === "text") return `Text “${((o as IText).text ?? "").slice(0, 24)}”`;
+    if (m.kind === "step") return `Step ${m.n}`;
+    if (m.kind === "redact") return { pixelate: "Pixelated area", blur: "Blurred area", black: "Blacked-out area" }[m.mode ?? "pixelate"];
+    return LAYER_NAMES[m.kind];
+  };
+  /** Moves a layer to a new place in the stack (0 = bottom); the spotlight always stays right above the picture. */
+  function moveLayer(o: FabricObject, to: number) {
+    const c = fc();
+    c.moveObjectTo(o, Math.max(0, Math.min(c.getObjects().length - 1, to)));
+    c.getObjects().filter((x) => meta(x)?.kind === "spot").forEach((x) => c.sendObjectToBack(x));
+    c.requestRenderAll();
+    commit();
+    bump();
   }
 
   async function insertRecent(item: RecentItem) {
@@ -857,14 +911,15 @@ export function MarkupApp() {
         </div>
         <div className="seg">
           <button onClick={talkToAi} title="Talk over this picture: mark things, say what you want, then paste it all into ChatGPT, Claude or Gemini"><Icon name="mic" />Talk</button>
-          {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
+          {(["beautify", "share", "ai", "info", "layers"] as PanelName[]).map((p) => (
             <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)} title={{
               beautify: "Put the picture on a background with padding, rounded corners and a shadow, ready to share",
               share: "Upload the picture and copy a link to it, or send it to an app",
               ai: "Ask AI about the picture, or have AI change it",
               info: "The picture's size and details, and whether it carries your invisible Grabbit mark",
+              layers: "Everything you've added, top to bottom: reorder, show or hide, select and delete",
             }[p]}>
-              <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[p]}
+              <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info", layers: "layers" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info", layers: "Layers" }[p]}
               {p === "beautify" && beauty.on && <span className="dot" />}
             </button>
           ))}
@@ -950,6 +1005,24 @@ export function MarkupApp() {
                     <button className={style.textBg ? "on" : ""} onClick={() => setStyle({ textBg: !style.textBg })} title="Text on a coloured background">Aa</button>
                   </div>
                 )}
+                {selPicture() && (() => {
+                  const f = (meta(selPicture()!) as Meta).frame ?? NO_FRAME;
+                  return (
+                    <div className="mk-group menuwrap">
+                      <button className={framePop ? "on" : ""} onClick={() => setFramePop(!framePop)} title="Frame this picture: border colour, width and opacity, rounded corners, and how see-through the picture is"><Icon name="frame" />Frame</button>
+                      {framePop && (
+                        <div className="mk-pop" onPointerDown={(e) => e.stopPropagation()}>
+                          <label title="Border colour (the colour swatches set it too)">Border colour <input type="color" value={f.color} onInput={(e) => setFrame({ color: (e.target as HTMLInputElement).value, width: f.width || 6 }, false)} onChange={() => commit()} /></label>
+                          <label title="Border width, in picture pixels">Border width <input type="range" min={0} max={40} step={1} value={f.width} onInput={(e) => setFrame({ width: Number((e.target as HTMLInputElement).value) }, false)} onChange={() => commit()} /><em>{f.width}px</em></label>
+                          <label title="How see-through the border is">Border opacity <input type="range" min={0} max={1} step={0.05} value={f.alpha} onInput={(e) => setFrame({ alpha: Number((e.target as HTMLInputElement).value) }, false)} onChange={() => commit()} /><em>{Math.round(f.alpha * 100)}%</em></label>
+                          <label title="Round the picture's corners">Corners <input type="range" min={0} max={200} step={1} value={f.radius} onInput={(e) => setFrame({ radius: Number((e.target as HTMLInputElement).value) }, false)} onChange={() => commit()} /><em>{f.radius}px</em></label>
+                          <label title="How see-through the picture itself is">Picture opacity <input type="range" min={0.05} max={1} step={0.05} value={f.opacity} onInput={(e) => setFrame({ opacity: Number((e.target as HTMLInputElement).value) }, false)} onChange={() => commit()} /><em>{Math.round(f.opacity * 100)}%</em></label>
+                          <button onClick={() => setFrame({ ...NO_FRAME })} title="Remove the border and corners, make it solid again">Reset</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="mk-group">
                   <button className={style.shadow ? "on" : ""} onClick={() => setStyle({ shadow: !style.shadow })} title="Shadow (stands out on busy pictures)"><Icon name="shadow" /></button>
                 </div>
@@ -968,12 +1041,42 @@ export function MarkupApp() {
               <button className="zoom" onClick={() => zoomTo(1)} title="Actual size (1) · Ctrl+wheel to zoom, Space+drag to pan">{zoomPct}%</button>
             </div>
           </div>
-          <div className="mk-stage" ref={host}>
+          <div className="mk-stage" ref={host} onDragOver={(e) => { if (e.dataTransfer.types.includes("text/x-grabbit-path")) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } }} onDrop={(e) => void dropPicture(e)}>
             <canvas ref={el} />
             {tabs.length === 0 && <div className="blank">No picture open<span>Pick a capture on the left: Insert or New tab. Or paste one (Ctrl+V).</span></div>}
             {activeId && tool !== "select" && <div className="mk-hint">{t.label}{tool === "crop" ? ": drag the part to keep" : BOXY.includes(tool) ? ": drag over the picture" : tool === "step" ? ": click to place the next number" : tool === "eyedropper" ? ": click the picture" : ""} · Esc to stop</div>}
           </div>
-          {panel && <Panel which={panel} ops={ops} beauty={beauty} setBeauty={setBeauty} onClose={() => setPanel(null)} />}
+          {panel && panel !== "layers" && <Panel which={panel} ops={ops} beauty={beauty} setBeauty={setBeauty} onClose={() => setPanel(null)} />}
+          {panel === "layers" && (() => {
+            const c = fcRef.current, all = c ? c.getObjects().filter((o) => meta(o) && !isCrop(o)) : [], sel = c?.getActiveObjects() ?? [];
+            return (
+              <aside className="panel layers">
+                <header><b>Layers</b><button className="x" onClick={() => setPanel(null)} title="Close">×</button></header>
+                <div className="pbody">
+                  {all.length === 0 && <p className="hint">Nothing added yet. Arrows, boxes, text, steps and pictures you add show here, top layer first.</p>}
+                  {[...all].reverse().map((o) => {
+                    const i = all.indexOf(o), k = meta(o)!.kind;
+                    return (
+                      <div key={i + k} className={`layer${sel.includes(o) ? " on" : ""}${o.visible ? "" : " off"}${dragLayer === i ? " dragging" : ""}`} draggable
+                        onDragStart={(e) => { setDragLayer(i); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/x-grabbit-layer", String(i)); }}
+                        onDragOver={(e) => { if (dragLayer != null) e.preventDefault(); }}
+                        onDrop={(e) => { e.preventDefault(); if (dragLayer != null && dragLayer !== i) moveLayer(all[dragLayer], c!.getObjects().indexOf(o)); setDragLayer(null); }}
+                        onDragEnd={() => setDragLayer(null)}
+                        onClick={() => { if (!o.visible) return; c!.setActiveObject(o); c!.requestRenderAll(); bump(); }}
+                        title="Click to select · drag up or down to change the order">
+                        <span className="lic"><Icon name={LAYER_ICONS[k]} /></span>
+                        <span className="lname">{layerName(o)}</span>
+                        <button onClick={(e) => { e.stopPropagation(); o.visible = !o.visible; if (!o.visible) c!.discardActiveObject(); c!.requestRenderAll(); commit(); bump(); }} title={o.visible ? "Hide this layer (it's left out of copies and saves while hidden)" : "Show this layer"} aria-label={o.visible ? "Hide" : "Show"}><Icon name={o.visible ? "eye" : "eyeOff"} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); moveLayer(o, c!.getObjects().indexOf(o) + 1); }} disabled={i === all.length - 1} title="Move up (in front of the one above)" aria-label="Move up"><Icon name="up" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); moveLayer(o, c!.getObjects().indexOf(o) - 1); }} disabled={i === 0} title="Move down (behind the one below)" aria-label="Move down"><Icon name="down" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); c!.remove(o); commit(); bump(); }} title="Delete this layer (Ctrl+Z brings it back)" aria-label="Delete"><Icon name="trash" /></button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+            );
+          })()}
           {stickers && (
             <div className="stickers">
               <header><b>Stickers</b><button className="x" onClick={() => setStickers(false)} title="Close (Esc)">×</button></header>

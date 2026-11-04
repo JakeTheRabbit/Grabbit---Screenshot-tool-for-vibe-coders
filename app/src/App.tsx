@@ -562,7 +562,7 @@ export function App() {
         </div>
         <div className="seg">
           <button onClick={talkToAi} title="Talk over this picture: mark things, say what you want, then paste it all into ChatGPT, Claude or Gemini"><Icon name="mic" />Talk</button>
-          {(["beautify", "share", "ai", "info"] as PanelName[]).map((p) => (
+          {(["beautify", "share", "ai", "info"] as Exclude<PanelName, "layers">[]).map((p) => (
             <button key={p} className={panel === p ? "on" : ""} onClick={() => setPanel(panel === p ? null : p)}>
               <Icon name={({ beautify: "spot", share: "link", ai: "sparkles", info: "info" } as const)[p]} />{{ beautify: "Beautify", share: "Share", ai: "AI", info: "Info" }[p]}
               {p === "beautify" && beauty.on && <span className="dot" />}

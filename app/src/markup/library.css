@@ -109,3 +109,25 @@
 .view-small .lib-acts .lib-menu, .view-large .lib-acts .lib-menu { top: auto; bottom: calc(100% - 12px); }
 .vtab-ph { flex: none; width: 46px; height: 32px; border-radius: 5px; background: var(--bg); border: 1px solid var(--line); }
 .mk-font { height: 30px; max-width: 150px; padding: 0 26px 0 8px; border: 0; box-shadow: none; background-color: transparent; }
+
+/* Layers panel: one row per item, top layer first. */
+.layers .pbody { gap: 2px; }
+.layer { display: flex; align-items: center; gap: 6px; min-height: 34px; padding: 2px 4px 2px 8px; border-radius: 7px; border: 1px solid transparent; cursor: grab; }
+.layer:hover { background: var(--hover); }
+.layer.on { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.layer.off .lic, .layer.off .lname { opacity: 0.4; }
+.layer.dragging { opacity: 0.5; }
+.layer .lic { display: grid; place-items: center; width: 22px; color: var(--muted); }
+.layer .lname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.layer button { width: 26px; height: 26px; padding: 0; justify-content: center; color: var(--muted); }
+.layer button:hover { color: var(--text); }
+.layer .ico, .layer .ico svg { width: 15px; height: 15px; }
+
+/* Frame popover for a selected picture. */
+.mk-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 280px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  border-radius: 10px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-lg); font-size: 12.5px; }
+.mk-pop label { display: grid; grid-template-columns: 104px 1fr 40px; align-items: center; gap: 8px; color: var(--muted); }
+.mk-pop input[type="range"] { width: 100%; }
+.mk-pop input[type="color"] { grid-column: 2 / 4; width: 100%; height: 26px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: transparent; }
+.mk-pop em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.mk-pop button { align-self: flex-end; height: 28px; border: 1px solid var(--line); }

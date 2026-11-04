@@ -50,11 +50,18 @@ import images from "lucide-static/icons/images.svg?raw";
 import panelLeft from "lucide-static/icons/panel-left.svg?raw";
 import panelClose from "lucide-static/icons/panel-left-close.svg?raw";
 import panelOpen from "lucide-static/icons/panel-left-open.svg?raw";
+import layers from "lucide-static/icons/layers.svg?raw";
+import eye from "lucide-static/icons/eye.svg?raw";
+import eyeOff from "lucide-static/icons/eye-off.svg?raw";
+import up from "lucide-static/icons/chevron-up.svg?raw";
+import down from "lucide-static/icons/chevron-down.svg?raw";
+import frame from "lucide-static/icons/frame.svg?raw";
 
 const svgs = {
   copy, shrink, chat, check, save, link, saveAs, editable, close, step, pixelate, blur, black, spot, smile, sparkles, info, mic, layout,
   pointer, arrow, line, rect, ellipse, pen, highlight, text, magnify, crop, pipette, undo, redo, trash, duplicate, front, back, fit, shadow,
   list, gridSmall, gridLarge, calendar, folder, folderPlus, folderInput, film, image, images, panelLeft, panelClose, panelOpen,
+  layers, eye, eyeOff, up, down, frame,
 };
 export type IconName = keyof typeof svgs;
 
