@@ -185,11 +185,8 @@ fn start_now(app: &AppHandle, mode: Mode) {
     let builder = (mode != Mode::Screen && pickers(app).len() != app.available_monitors().map(|m| m.len()).unwrap_or(0))
         .then(|| { let a = app.clone(); std::thread::spawn(move || warm(&a)) });
     let t0 = std::time::Instant::now();
-    // The window list (for snapping) is read while the screens are grabbed, and so are the shared buffers the frames
-    // go to (they're made on the main thread).
+    // The window list (for snapping) is read while the screens are grabbed.
     let windows = (mode != Mode::Screen).then(|| std::thread::spawn(capture::windows));
-    #[cfg(windows)]
-    let buffers = if mode != Mode::Screen { make_buffers(app) } else { Vec::new() };
     let frames = match capture::freeze_all() {
         Ok(f) => f,
         Err(e) => return actions::notify(app, &format!("Couldn't capture the screen: {e}")),
@@ -220,22 +217,16 @@ fn start_now(app: &AppHandle, mode: Mode) {
     OPEN.store(true, SeqCst);
     SHOWN.store(false, SeqCst);
     let e = EPOCH.load(SeqCst);
-    let mut ready = Vec::new();
     for (i, m) in monitors.iter().enumerate() {
         let pos = m.position();
         let frame = origins.iter().position(|&(x, y)| x == pos.x && y == pos.y).unwrap_or(i.min(origins.len().saturating_sub(1)));
         if let Some(w) = app.get_webview_window(&format!("picker-{e}-{i}")) {
             cover(&w, m);
             let mut r = READY.lock().unwrap();
-            if r.0.iter().any(|l| l == w.label()) { ready.push((w, frame)); }
+            if r.0.iter().any(|l| l == w.label()) { send_frame(app, &w, frame); }
             else { r.1.retain(|(l, _)| l != w.label()); r.1.push((w.label().to_string(), frame)); }
         }
     }
-    #[cfg(windows)]
-    let ready = fill_buffers(app, ready, buffers);
-    #[cfg(not(windows))]
-    let ready: Vec<_> = ready.into_iter().map(|(w, f)| (w, f, None::<Shared>)).collect();
-    for (w, frame, shared) in ready { send_frame(app, &w, frame, shared); }
     // Self-repair: a picker page that crashed or hung never shows. Throw the windows away and start once more.
     let (app, mode) = (app.clone(), mode);
     std::thread::spawn(move || {
@@ -250,69 +241,9 @@ fn start_now(app: &AppHandle, mode: Mode) {
     });
 }
 
-/// Windows: memory shared with a picker page, made ahead of its frame so the pixels can be copied in off the main
-/// thread, all screens at once.
-#[cfg(windows)]
-struct Shared { buf: webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2SharedBuffer, ptr: usize, len: usize }
-// Only the raw memory is touched off the main thread; the buffer object itself is used on the main thread.
-#[cfg(windows)]
-unsafe impl Send for Shared {}
-#[cfg(not(windows))]
-type Shared = ();
-
-/// Asks each loaded picker page's WebView2 for a buffer the size of its screen (answered by the main thread while
-/// the screens are being grabbed).
-#[cfg(windows)]
-fn make_buffers(app: &AppHandle) -> Vec<(String, std::sync::mpsc::Receiver<Option<Shared>>)> {
-    let monitors = app.available_monitors().unwrap_or_default();
-    let e = EPOCH.load(SeqCst);
-    let ready = READY.lock().unwrap().0.clone();
-    monitors.iter().enumerate().filter_map(|(i, m)| {
-        let w = app.get_webview_window(&format!("picker-{e}-{i}")).filter(|w| ready.iter().any(|l| l == w.label()))?;
-        let len = m.size().width as usize * m.size().height as usize * 4;
-        let (tx, rx) = std::sync::mpsc::channel();
-        w.with_webview(move |pv| unsafe {
-            use webview2_com::Microsoft::Web::WebView2::Win32::*;
-            use windows_core::Interface;
-            let made = (|| -> windows_core::Result<Shared> {
-                let buf = pv.environment().cast::<ICoreWebView2Environment12>()?.CreateSharedBuffer(len as u64)?;
-                let mut p = std::ptr::null_mut();
-                buf.Buffer(&mut p)?;
-                Ok(Shared { buf, ptr: p as usize, len })
-            })();
-            let _ = tx.send(made.ok());
-        }).ok()?;
-        Some((w.label().to_string(), rx))
-    }).collect()
-}
-
-/// Copies every screen's frame into its page's buffer, all at once on worker threads.
-#[cfg(windows)]
-fn fill_buffers(app: &AppHandle, ready: Vec<(tauri::WebviewWindow, usize)>, buffers: Vec<(String, std::sync::mpsc::Receiver<Option<Shared>>)>) -> Vec<(tauri::WebviewWindow, usize, Option<Shared>)> {
-    let mut buffers: Vec<(String, Option<Shared>)> = buffers.into_iter().map(|(l, rx)| (l, rx.recv_timeout(std::time::Duration::from_millis(500)).ok().flatten())).collect();
-    let out: Vec<_> = ready.into_iter().map(|(w, frame)| {
-        let s = buffers.iter_mut().find(|(l, _)| l == w.label()).and_then(|(_, s)| s.take());
-        (w, frame, s)
-    }).collect();
-    let frames = state(app).frames.lock().unwrap();
-    std::thread::scope(|sc| for (_, frame, s) in &out {
-        let (Some(s), Some(f)) = (s, frames.get(*frame)) else { continue };
-        let raw = f.image.as_raw();
-        if raw.len() != s.len { continue; }
-        let dst = s.ptr;
-        sc.spawn(move || unsafe { std::ptr::copy_nonoverlapping(raw.as_ptr(), dst as *mut u8, raw.len()) });
-    });
-    // A buffer that didn't match its frame (the screen changed size) isn't used.
-    out.into_iter().map(|(w, frame, s)| {
-        let ok = s.as_ref().is_some_and(|s| frames.get(frame).is_some_and(|f| f.image.as_raw().len() == s.len));
-        (w, frame, s.filter(|_| ok))
-    }).collect()
-}
-
 /// Hands a loaded picker page its frame. On Windows the pixels go into memory shared with the page, together with
-/// the picker details: no copying through the page's network stack, which took 0.2–0.5 s for a 4K screen. `shared`
-/// is a buffer already holding the frame; without one it's made and filled here.
-fn send_frame(app: &AppHandle, w: &tauri::WebviewWindow, frame: usize, shared: Option<Shared>) {
+/// the picker details: no copying through the page's network stack, which took 0.2–0.5 s for a 4K screen.
+fn send_frame(app: &AppHandle, w: &tauri::WebviewWindow, frame: usize) {
     #[cfg(windows)]
     {
         let (app2, label) = (app.clone(), w.label().to_string());
@@ -323,27 +254,20 @@ fn send_frame(app: &AppHandle, w: &tauri::WebviewWindow, frame: usize, shared: O
             let res = (|| -> windows_core::Result<()> {
                 set_awake(&pv, true);
                 let wv = pv.controller().CoreWebView2()?;
-                let buf = match shared {
-                    Some(s) => s.buf,
-                    None => {
-                        let frames = state(&app2).frames.lock().unwrap();
-                        let Some(f) = frames.get(frame) else { return Ok(()) };
-                        let raw = f.image.as_raw();
-                        let buf = pv.environment().cast::<ICoreWebView2Environment12>()?.CreateSharedBuffer(raw.len() as u64)?;
-                        let mut p = std::ptr::null_mut();
-                        buf.Buffer(&mut p)?;
-                        std::ptr::copy_nonoverlapping(raw.as_ptr(), p, raw.len());
-                        buf
-                    }
-                };
+                let frames = state(&app2).frames.lock().unwrap();
+                let Some(f) = frames.get(frame) else { return Ok(()) };
+                let raw = f.image.as_raw();
+                let buf = pv.environment().cast::<ICoreWebView2Environment12>()?.CreateSharedBuffer(raw.len() as u64)?;
+                let mut p = std::ptr::null_mut();
+                buf.Buffer(&mut p)?;
+                std::ptr::copy_nonoverlapping(raw.as_ptr(), p, raw.len());
+                drop(frames);
                 wv.cast::<ICoreWebView2_17>()?.PostSharedBufferToScript(&buf, COREWEBVIEW2_SHARED_BUFFER_ACCESS_READ_WRITE, &windows_core::HSTRING::from(info))
             })();
             if let Err(e) = res { log::warn!("shared frame failed ({e}); sending it the slow way"); let _ = app2.emit_to(&label, "open", frame); }
         });
         if sent.is_ok() { return; }
     }
-    #[cfg(not(windows))]
-    let _ = shared;
     awake(w, true);
     let _ = w.emit_to(w.label(), "open", frame);
 }
@@ -374,7 +298,6 @@ fn set_awake(pv: &tauri::webview::PlatformWebview, on: bool) {
 /// The capture key held long enough: the picker that opened on the press becomes the recording picker. (It may still
 /// be getting ready; it then opens in this mode.)
 pub fn set_mode(app: &AppHandle, mode: Mode) {
-    if !OPEN.load(SeqCst) && !STARTING.load(SeqCst) { return; }
     *MODE.lock().unwrap() = mode;
     let _ = app.emit("picker-mode", mode);
 }

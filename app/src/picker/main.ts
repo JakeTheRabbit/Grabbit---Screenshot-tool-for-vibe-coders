@@ -518,7 +518,7 @@ const REC_HINT = `Drag the area to record, click a window, or press <kbd>F</kbd>
 // The capture key opens the picker as it goes down; held on, a progress pill fills (`hold` 0–1, or -1 when it was let
 // go in time), and at the end the picker turns into the recording picker (`picker-mode`).
 void listen<number>("hold", (e) => {
-  if (!info || sel || keptP.length) return;
+  if (!info || sel || keptP.length || info.mode === "Record") return;
   if (e.payload < 0) { hint.innerHTML = info.mode === "Record" ? REC_HINT : HINT; return; }
   hint.hidden = false;
   hint.innerHTML = `<span class="hold"><span class="dot"></span><b>Keep holding to record</b><span class="track"><span class="fill" style="width:${Math.min(100, e.payload * 100)}%"></span></span></span>`;

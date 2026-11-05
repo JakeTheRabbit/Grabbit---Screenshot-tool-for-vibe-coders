@@ -6,10 +6,11 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.15] - 2026-11-05
+
 ### Changed
 
 - **The screens freeze as soon as you press the capture key**, not when you let go of it, which saved the time your finger is on the key (about 0.1 s) on every capture. Keep holding and a "Keep holding to record" pill fills in the capture screen; at the end it becomes the recording capture screen, ready for you to pick the area.
-- **The frozen picture is ready sooner on Windows.** Memory for each screen is set up while the screens are being grabbed, and all screens are copied into it at once instead of one after another.
 
 ### Removed
 
@@ -194,7 +195,8 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...HEAD
+[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.15...HEAD
+[2.0.15]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...v2.0.15
 [2.0.14]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.13...v2.0.14
 [2.0.13]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.12...v2.0.13
 [2.0.12]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.11...v2.0.12
