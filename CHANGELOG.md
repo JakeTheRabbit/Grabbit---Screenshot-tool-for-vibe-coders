@@ -6,7 +6,9 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
-## [2.0.15] - 2026-11-05
+## [2.0.16] - 2026-11-05
+
+2.0.15 was tagged but never released (its build failed a type check); its changes are in this release.
 
 ### Changed
 
@@ -195,8 +197,8 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.15...HEAD
-[2.0.15]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...v2.0.15
+[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.16...HEAD
+[2.0.16]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...v2.0.16
 [2.0.14]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.13...v2.0.14
 [2.0.13]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.12...v2.0.13
 [2.0.12]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.11...v2.0.12
