@@ -90,15 +90,19 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
     }
     if let Some((w, h)) = p.size { img = image::imageops::resize(&img, w, h, image::imageops::FilterType::Lanczos3); }
     *st.last_rect.lock().unwrap() = Some((p.x, p.y, p.width, p.height));
-    st.frames.lock().unwrap().clear();
     let s = st.settings.lock().unwrap().clone();
-    let name = export::stamp_name("Grabbit");
+    crate::history::set_context(&p.windows, (p.x, p.y, p.width, p.height), &st.windows.lock().unwrap());
+    let name = if s.smart_names { crate::history::smart_name() } else { export::stamp_name("Grabbit") };
     let id = mark::capture_id();
 
     let action = match p.action.as_str() {
         "default" => match s.after_capture { crate::settings::AfterCapture::Edit => "edit", _ => "copy" },
         a => a,
     };
+    if s.keep_full_screen && s.auto_save && !action.starts_with("ocr") && action != "qr" {
+        crate::history::keep_full_screen(&s, &st.frames.lock().unwrap(), (p.x, p.y, p.width, p.height), &name);
+    }
+    st.frames.lock().unwrap().clear();
     match action {
         "copy" | "reduced" | "chat" | "path" | "pin" | "share" => {
             let out = mark::apply(&s, &img, id);
@@ -111,6 +115,7 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
             });
             let (saved, copied) = (saved?, copied?);
             crate::history::add(app, saved.as_deref(), &img, id);
+            if let (Some(p), Some(_)) = (&saved, &copied) { crate::history::watch_paste(p.clone()); }
             match action {
                 "path" => export::copy_text(&saved.as_ref().unwrap().to_string_lossy())?,
                 "pin" => pin(app, &out)?,

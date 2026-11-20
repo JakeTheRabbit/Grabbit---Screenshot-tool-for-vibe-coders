@@ -1,12 +1,12 @@
-// Settings: one page per area, everything saved as you change it. Also hosts History (search old captures by the
-// words in them) and Check image (read Grabbit's invisible watermark from a found copy).
+// Settings: one page per area, everything saved as you change it. Also hosts Check image (read Grabbit's invisible
+// watermark from a found copy) and a way into the History window.
 
 import { invoke } from "@tauri-apps/api/core";
 import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import "../ui/base";
 import { getTheme, setTheme, type Theme } from "../ui/theme";
 import "./settings.css";
-import { fileUrl, os, send } from "../bridge";
+import { os } from "../bridge";
 
 type S = Record<string, any>;
 let s: S = {};
@@ -132,6 +132,9 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "select", key: "after_capture", label: "After picking an area", options: [["Ask", "Show the action bar"], ["Copy", "Copy straight away"], ["Edit", "Open the editor"]] },
     { kind: "toggle", key: "auto_save", label: "Keep a copy of every capture", help: "Full size, in the Grabbit folder below" },
     { kind: "folder", key: "save_folder", label: "Grabbit folder" },
+    { kind: "button", label: "Open the Grabbit folder", run: () => void invoke("open_captures_folder", {}) },
+    { kind: "toggle", key: "smart_names", label: "Name files after what's in them", help: "\"Google Chrome – Orders 2026-11-21 14.32.05\" instead of \"Grabbit 2026-11-21 14.32.05\"" },
+    { kind: "toggle", key: "keep_full_screen", label: "Keep the whole screen too", help: "Every capture also saves the full screen it was taken from, in \"Full screens\" inside the Grabbit folder. History links the two." },
     { kind: "select", key: "save_format", label: "Saved format", options: [["WebpLossless", "WebP lossless (pixel-exact, ~40 % of PNG)"], ["Png", "PNG"]] },
     { kind: "toggle", key: "copy_as_file", label: "Copy as a file too", help: "Chat apps (Signal, Slack, Teams) then attach it with its name" },
     { kind: "number", key: "reduced_long_edge", label: "Smaller copies", min: 320, max: 8000, unit: "px long edge" },
@@ -147,6 +150,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "hotkey", key: "hotkeys.Record", label: "Record (start / stop)" },
     { kind: "hotkey", key: "hotkeys.ReplaySave", label: "Save the replay buffer" },
     { kind: "hotkey", key: "hotkeys.Steps", label: "Step recorder (start / stop)" },
+    { kind: "hotkey", key: "hotkeys.History", label: "History: find a capture" },
     { kind: "note", html: `Click a key, then press the new combination. <kbd>Backspace</kbd> clears it. In the picker: <kbd>Enter</kbd> copy · <kbd>E</kbd> edit · <kbd>R</kbd> record · <kbd>T</kbd> copy text · <kbd>Q</kbd> QR · <kbd>I</kbd> pin · <kbd>C</kbd> colour · <kbd>M</kbd> measure · <kbd>A</kbd> size presets · <kbd>L</kbd> last area · <kbd>${MOD}+S</kbd> save.` },
   ],
   Recording: () => [
@@ -218,7 +222,11 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "obsidian_folder", label: "Folder in the vault", placeholder: "Grabbit" },
     { kind: "note", html: "Send to Obsidian (in the editor's Share tab) saves the picture there and links it in today's daily note." },
   ],
-  History: () => [{ kind: "custom", render: historyView }],
+  History: () => [
+    { kind: "button", label: "Open History", run: () => void invoke("open_history", {}) },
+    { kind: "note", html: "History finds any capture or recording again: by the words in it, the programs it showed, where you pasted it, the date, tags and notes. Star things, save them for later, or set a reminder." },
+    { kind: "toggle", key: "index_text", label: "Read the text in every capture", help: "On your computer, in the background, so History can search the words in your pictures" },
+  ],
 };
 
 /** Back up settings to a file, or restore them (e.g. on a new computer). */
@@ -301,27 +309,6 @@ async function checkImage(b: HTMLButtonElement) {
       r.yours ? `This is your capture${r.capture ? ` from ${new Date(r.capture.time).toLocaleString()}\n${r.capture.path}` : ` (id ${r.id})`}.` :
       `It carries a Grabbit watermark from someone else (id ${r.id}).`);
   } finally { b.disabled = false; b.textContent = "Check an image for a watermark…"; }
-}
-
-function historyView() {
-  const box = h("div", { class: "history" });
-  const q = h("input", { class: "text search", placeholder: "Search captures by the words in them…", type: "search" }) as HTMLInputElement;
-  const grid = h("div", { class: "grid" });
-  const run = async () => {
-    const items = await send<{ path: string; time: string; text: string }[]>({ type: "search", query: q.value });
-    grid.innerHTML = "";
-    for (const it of items ?? []) {
-      const card = h("button", { class: "card", title: it.text.slice(0, 300) }, h("img", { src: fileUrl(it.path), loading: "lazy" }), h("span", {}, new Date(it.time).toLocaleString()));
-      card.onclick = () => void invoke("open_file", { path: it.path });
-      grid.append(card);
-    }
-    if (!grid.children.length) grid.append(h("p", { class: "note" }, q.value ? "Nothing matches." : "No captures yet."));
-  };
-  let t = 0;
-  q.oninput = () => { clearTimeout(t); t = window.setTimeout(run, 200); };
-  box.append(q, grid);
-  void run();
-  return box;
 }
 
 function show(name: string) {

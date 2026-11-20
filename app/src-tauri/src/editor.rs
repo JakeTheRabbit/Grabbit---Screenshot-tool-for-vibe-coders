@@ -145,7 +145,7 @@ struct Recent { path: String, url: String, name: String, time: String, kind: &'s
 fn recent(s: &Settings) -> Vec<Recent> {
     let name = |p: &Path| p.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     let mut seen = std::collections::HashSet::new();
-    let mut out: Vec<Recent> = history::all().into_iter().rev().filter_map(|e| {
+    let mut out: Vec<Recent> = history::all().into_iter().rev().filter(|e| e.kind != "recording").filter_map(|e| {
         let bytes = std::fs::metadata(&e.path).ok()?.len();
         seen.insert(e.path.clone()).then(|| Recent { name: name(Path::new(&e.path)), path: e.path, url: String::new(), time: e.time, kind: "capture", bytes })
     }).take(500).collect();

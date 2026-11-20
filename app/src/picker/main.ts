@@ -205,6 +205,8 @@ const MORE: Item[] = [
   { id: "path", label: "Save and copy the file path", icon: "link", key: "P", tip: "Save it to your Grabbit folder and copy where it was saved." },
   { id: "delay3", label: "Capture again in 3 s", icon: "timer", tip: "Close this, wait 3 seconds (open a menu meanwhile), then capture again." },
   { id: "delay10", label: "Capture again in 10 s", icon: "timer", key: "D", tip: "Close this, wait 10 seconds, then capture again." },
+  { id: "folder", label: "Open the Grabbit folder", icon: "folder", key: "O", tip: "Close this and open the folder your captures are saved in." },
+  { id: "history", label: "Find an old capture (History)", icon: "history", key: "H", tip: "Close this and open History: search every capture by its words, programs, where you pasted it, dates and tags." },
 ];
 const REC: Item[] = [{ id: "record", label: "Record", icon: "record", key: "Enter", primary: true, tip: "Start recording this area." }];
 
@@ -313,6 +315,7 @@ async function act(id: string) {
     return;
   }
   if (id.startsWith("delay")) { await invoke("picker_delay", { secs: Number(id.slice(5)) }); return; }
+  if (id === "folder" || id === "history") { await invoke("picker_cancel"); await invoke(id === "folder" ? "open_captures_folder" : "open_history", {}); return; }
   // Finishing a multi-area capture with nothing selected: the last kept area is the current one.
   if (!sel && keptP.length) { sel = toLocal(keptP.pop()!); fromWindow = null; }
   const target: R | null = sel ?? (hoverWin ? clampR(local(hoverWin)) : null);
@@ -495,6 +498,7 @@ addEventListener("keydown", (e) => {
     const [x, y, w, h] = info.last_rect;
     select({ x: (x - info.x) / k, y: (y - info.y) / k, w: w / k, h: h / k }); return;
   }
+  if ((key === "o" || key === "h") && !mod && info.mode !== "Record") { void act(key === "o" ? "folder" : "history"); return; }
   const target = sel || picked.length || hoverWin || keptP.length;
   if (!target) return;
   const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", v: "voice", x: "describe", b: "batch", n: "add", r: "record", s: "scroll", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };

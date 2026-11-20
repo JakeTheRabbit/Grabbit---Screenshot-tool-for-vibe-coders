@@ -11,7 +11,7 @@ pub enum AfterCapture { Ask, Copy, Edit }
 pub enum SaveFormat { WebpLossless, Png }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum HotkeyAction { Capture, CaptureScreen, CaptureRepeat, Record, ReplaySave, Steps }
+pub enum HotkeyAction { Capture, CaptureScreen, CaptureRepeat, Record, ReplaySave, Steps, History }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(default)]
@@ -90,6 +90,10 @@ pub struct Settings {
     /// everyone gets the new default instead of the old "off".)
     pub instant_capture: bool,
     pub auto_save: bool,
+    /// Name files after what's in them ("Google Chrome – Orders 2026-11-21 14.32.05") instead of "Grabbit <time>".
+    pub smart_names: bool,
+    /// Also save the whole screen each capture was taken from, in "Full screens" next to it.
+    pub keep_full_screen: bool,
     pub save_format: SaveFormat,
     pub save_folder: String,
     pub copy_as_file: bool,
@@ -136,6 +140,7 @@ pub fn default_hotkeys() -> BTreeMap<HotkeyAction, String> {
         (Record, if cfg!(target_os = "macos") { format!("{mods}+Alt+R") } else { format!("{mods}+PrintScreen") }),
         (ReplaySave, if cfg!(target_os = "macos") { format!("{mods}+Alt+B") } else { format!("{mods}+Shift+B") }),
         (Steps, if cfg!(target_os = "macos") { format!("{mods}+Alt+T") } else { format!("{mods}+Shift+T") }),
+        (History, if cfg!(target_os = "macos") { format!("{mods}+Alt+H") } else { format!("{mods}+H") }),
     ])
 }
 
@@ -149,6 +154,8 @@ impl Default for Settings {
             after_capture: AfterCapture::Ask,
             instant_capture: true,
             auto_save: true,
+            smart_names: true,
+            keep_full_screen: false,
             save_format: SaveFormat::WebpLossless,
             save_folder: folder(dirs::picture_dir()),
             copy_as_file: true,
