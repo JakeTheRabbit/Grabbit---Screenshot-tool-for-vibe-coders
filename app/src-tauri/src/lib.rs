@@ -11,6 +11,7 @@ mod guard;
 mod history;
 mod hotkey;
 mod mark;
+mod notes;
 mod ocr;
 mod textfmt;
 mod picker;
@@ -246,6 +247,7 @@ pub fn run() {
             history::history_remove,
             history::open_history,
             history::open_captures_folder,
+            history::open_recording_notes,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

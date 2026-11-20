@@ -114,6 +114,8 @@ pub struct Settings {
     pub show_keys: bool,
     pub copy_recording: bool,
     pub edit_after_recording: bool,
+    /// A notes folder next to each recording: transcript, captions, stills, JSON.
+    pub recording_notes: bool,
     pub ffmpeg_path: String,
     pub replay_seconds: u32,
     pub replay_enabled: bool,
@@ -175,6 +177,7 @@ impl Default for Settings {
             show_keys: false,
             copy_recording: true,
             edit_after_recording: true,
+            recording_notes: true,
             ffmpeg_path: String::new(),
             replay_seconds: 60,
             replay_enabled: false,

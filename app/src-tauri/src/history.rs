@@ -39,6 +39,8 @@ pub struct Entry {
     pub note: String,
     /// The whole screen at the moment of the capture, when "keep the full screen" is on.
     pub full: String,
+    /// A recording's notes folder (transcript, captions, stills).
+    pub notes: String,
 }
 
 fn file() -> std::path::PathBuf { config_dir().join("history.jsonl") }
@@ -162,9 +164,17 @@ pub fn add_described(app: &AppHandle, saved: Option<&std::path::Path>, img: &Rgb
     });
 }
 
-/// A finished recording.
-pub fn add_recording(path: &std::path::Path) {
-    append(&Entry { path: path.to_string_lossy().into_owned(), time: chrono::Local::now().to_rfc3339(), kind: "recording".into(), ..Default::default() });
+/// A finished recording; its notes folder (and the spoken words, for search) follow in the background.
+pub fn add_recording(app: &AppHandle, path: &std::path::Path) {
+    let p = path.to_string_lossy().into_owned();
+    append(&Entry { path: p.clone(), time: chrono::Local::now().to_rfc3339(), kind: "recording".into(), ..Default::default() });
+    let s = state(app).settings.lock().unwrap().clone();
+    if !s.recording_notes { return }
+    let path = path.to_path_buf();
+    std::thread::spawn(move || match crate::notes::write(&s, &path) {
+        Ok(n) => { change(&p, |e| { e.text = n.text.clone(); e.notes = n.dir.to_string_lossy().into_owned(); }); }
+        Err(e) => eprintln!("recording notes: {e:#}"),
+    });
 }
 
 // ---- keeping the whole screen ----
@@ -323,6 +333,13 @@ pub fn open_captures_folder(app: AppHandle, videos: Option<bool>) -> Result<(), 
     let s = state(&app).settings.lock().unwrap().clone();
     let dir = if videos.unwrap_or(false) { s.video_folder } else { s.save_folder };
     let _ = std::fs::create_dir_all(&dir);
+    tauri_plugin_opener::open_path(&dir, None::<&str>).map_err(|e| e.to_string())
+}
+
+/// Open a recording's notes folder (looked up by the recording, so only folders Grabbit wrote can be opened).
+#[tauri::command]
+pub fn open_recording_notes(path: String) -> Result<(), String> {
+    let dir = all().into_iter().rev().find(|e| e.path == path && !e.notes.is_empty()).map(|e| e.notes).ok_or("No notes for this recording yet")?;
     tauri_plugin_opener::open_path(&dir, None::<&str>).map_err(|e| e.to_string())
 }
 

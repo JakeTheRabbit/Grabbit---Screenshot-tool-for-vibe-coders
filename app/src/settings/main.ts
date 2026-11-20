@@ -165,6 +165,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "toggle", key: "show_keys", label: "Record key presses", help: "Shown as captions in the video editor" },
     { kind: "toggle", key: "copy_recording", label: "Copy the video when finished" },
     { kind: "toggle", key: "edit_after_recording", label: "Open the video editor when finished" },
+    { kind: "toggle", key: "recording_notes", label: "Write notes for every recording", help: "A \"notes\" folder next to the video: what was said with times, captions, a still every few seconds and a JSON file, so a coding agent can read the recording. History can then find it by what was said." },
     { kind: "toggle", key: "replay_enabled", label: "Replay buffer", help: "Always keeps the last minute or two; the hotkey saves it" },
     { kind: "number", key: "replay_seconds", label: "Replay length", min: 10, max: 600, unit: "seconds" },
     { kind: "number", key: "timelapse_seconds", label: "Timed captures", min: 1, max: 3600, unit: "seconds apart (tray → Timed captures)" },

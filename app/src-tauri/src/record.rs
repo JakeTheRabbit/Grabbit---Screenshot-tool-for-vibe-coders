@@ -547,7 +547,7 @@ pub fn stop(app: &AppHandle, keep: bool) {
     std::thread::spawn(move || {
         match rx.recv().unwrap_or_else(|_| Ok(None)) {
             Ok(Some(path)) => {
-                crate::history::add_recording(&path);
+                crate::history::add_recording(&app, &path);
                 let s = state(&app).settings.lock().unwrap().clone();
                 if s.copy_recording { let _ = export::copy_file(&path); }
                 actions::quick_show(&app, Some(&path), if s.copy_recording { "Recording copied" } else { "Recording saved" });

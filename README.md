@@ -110,6 +110,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - Hardware encoding where available (NVIDIA, Intel, AMD, Apple), x264 everywhere else. Crash-safe, and it stops by itself before the disk fills.
 - **Replay buffer:** always keeps the last 10 s to 10 min; one key saves it.
 - **Step recorder:** click through a task and get a **how-to** as Markdown and a Word document, with a numbered picture per step.
+- **Notes for every recording**, for you or a coding agent that can't watch video: a `<video> notes` folder with `transcript.md` (what was said, with times, and a still every few seconds), `captions.vtt`, the stills, and `recording.json`. History then finds the recording by what was said.
 
 <a href="docs/screenshots/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it. The red frame and Stop bar stay out of the video."></a>
 
@@ -129,7 +130,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 
 **History** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, <kbd>H</kbd> in the picker, or the tray) keeps every capture and recording, and finds any of them again by:
 
-- **the words in it**, read on your computer in the background, with the matches highlighted;
+- **the words in it**, read on your computer in the background, with the matches highlighted, and **what was said** in a recording;
 - **the programs and windows it showed**, and **where you pasted it** (Grabbit notes the window you pressed <kbd>Ctrl</kbd>+<kbd>V</kbd> in while the capture was still on the clipboard);
 - **when**: today, yesterday, last week, or words like *tuesday*, *november* or *2026-11-21*;
 - **tags, a note**, and the AI description if Describe is on.
