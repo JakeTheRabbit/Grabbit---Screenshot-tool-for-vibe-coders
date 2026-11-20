@@ -11,6 +11,19 @@ Every picture in the README is Grabbit's real UI (the app's own pages) running i
 
 Both scripts take names to redo just some, e.g. `node shoot.mjs picker voice` or `node posters.mjs hero`.
 
+## The workflow reel
+
+`node ../reel/reel.mjs` (after steps 1 and 2, with ffmpeg and uv installed) makes the narrated tour: `docs/screenshots/reel.mp4` (about 5 minutes, with sound), a narrated `clip-<feature>.mp4` per feature, and a silent `clip-<feature>.webp` loop of each for the README (GitHub plays WebP inline, not a repo's MP4). It follows one made-up bug from "something's off" to fixed, then walks through the bar's keys, the More menu, scrolling capture, copy text, pin, hiding private details, recording and the video editor (scrubbing, split, trim, cut silences, captions). The whole screen stays in view: nothing zooms or pans.
+
+- [../reel/desk.html](../reel/desk.html) is the made-up desktop: a half-built app with two bugs, a long Orders page for the scrolling capture, and an AI chat. [../reel/secrets.html](../reel/secrets.html) is the screenshot with private details in it.
+- `shoot` drives the real picker, Talk to AI window, picture editor and video editor with mouse and keys, and writes a timeline of beats: what's on screen, where the pointer is, the caption, the keys and the spoken lines. What the chat receives is what Talk to AI really put on the clipboard. The voices come from `edge-tts` (run through `uvx`) and are cached in `out/reel/vo`, so a second shoot doesn't fetch them again.
+- `render` works out every frame (pointer, fades, key presses) and has [../reel/stage.html](../reel/stage.html) draw it; `encode` mixes the voices and click sounds and turns the frames into the videos and the WebPs. `CLIPS` at the top of `reel.mjs` says which scenes make each clip.
+- `node ../reel/reel.mjs render 10 20` draws only seconds 10 to 20; a third number draws every nth frame, for a contact sheet.
+
+To change the story, edit the beats in `shoot()`: `cap(html, line)` sets the caption and the narrator's line, `say()` the person's own words, `keys()` the key caps, `glide()` moves the pointer, `wait()` holds until the line being spoken is over, `beat(seconds)` holds.
+
+## Checks
+
 `node markup-sweep.mjs` does the same for the new editor (the default, [../../markup-editor.md](../../markup-editor.md)): every tool, Hide modes, crop, undo, export size, panels and tabs.
 
 `node editor-sweep.mjs` (after steps 1, 2 and 4) clicks through the picture editor's buttons, menus and panels with a faked core and prints PASS/FAIL per check: steps, Hide modes and undo, Spotlight, Copy/Save, stickers, Beautify, AI edits, tabs and the sidebar.

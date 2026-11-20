@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reel desktop</title>
+<!-- Made-up desktop for the workflow reel (reel.mjs): a half-built web app with two bugs on the left, an AI chat on the
+     right. Nothing here is real data. Laid out for 1600×900. window.desk drives the states the reel steps through. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1600px; height: 900px; overflow: hidden; }
+  body {
+    font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: #1b1d22;
+    background:
+      radial-gradient(900px 600px at 12% 18%, #5b7cfa 0, transparent 60%),
+      radial-gradient(800px 700px at 88% 80%, #c157f5 0, transparent 62%),
+      radial-gradient(700px 500px at 70% 10%, #2ec5ce 0, transparent 60%),
+      linear-gradient(135deg, #1b2350, #2b1a4f 60%, #3a1846);
+  }
+  .win { position: absolute; background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 30px 80px rgb(8 10 30 / .45), 0 0 0 1px rgb(255 255 255 / .08); display: flex; flex-direction: column; }
+  .bar { height: 38px; flex: none; display: flex; align-items: center; padding: 0 6px 0 14px; gap: 10px; font-size: 12.5px; color: #3c4150; background: #f1f3f6; border-bottom: 1px solid #e3e6eb; }
+  .bar .ico { width: 16px; height: 16px; border-radius: 4px; flex: none; }
+  .bar .t { flex: 1; font-weight: 600; }
+  .bar .ctl { display: flex; margin-left: auto; }
+  .bar .ctl i { width: 40px; height: 30px; display: grid; place-items: center; font-style: normal; color: #5b6070; font-size: 13px; }
+  .url { flex: 1; max-width: 460px; background: #fff; border: 1px solid #e3e6eb; border-radius: 999px; padding: 4px 14px; color: #6b7080; font-size: 12px; }
+
+  /* ---- the app being built ---- */
+  #app { left: 56px; top: 48px; width: 990px; height: 704px; }
+  .site { flex: 1; display: flex; min-height: 0; background: #f5f6f8; position: relative; }
+  .site nav { width: 170px; background: #141821; color: #c9cdd8; padding: 18px 12px; display: flex; flex-direction: column; gap: 3px; flex: none; }
+  .site nav .brand { display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 700; font-size: 15px; margin: 0 6px 18px; }
+  .site nav .brand i { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, #f08a24, #e5484d); display: block; }
+  .site nav a { padding: 8px 12px; border-radius: 8px; }
+  .site nav a.on { background: #232937; color: #fff; }
+  .site main { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .site header { display: flex; align-items: center; justify-content: space-between; }
+  .site h1 { margin: 0; font-size: 22px; }
+  .site header p { margin: 1px 0 0; color: #6b7080; }
+  .pill { background: #fff; border: 1px solid #e6e8ec; border-radius: 999px; padding: 6px 13px; color: #6b7080; font-size: 12.5px; }
+  .pill.ok { background: #e8f7f1; border-color: #bfe8d8; color: #0f7a5d; font-weight: 600; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { background: #fff; border: 1px solid #e6e8ec; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 2px rgb(20 24 33 / .04); }
+  .kpi small { color: #6b7080; }
+  .kpi b { display: block; font-size: 30px; margin: 3px 0 1px; font-variant-numeric: tabular-nums; }
+  .kpi b.bad { color: #d6336c; }
+  .up { color: #16a37f; font-weight: 600; } .down { color: #e5484d; font-weight: 600; }
+  .row { display: grid; grid-template-columns: 1fr 204px; gap: 14px; flex: 1; min-height: 0; }
+  .card h2 { font-size: 14.5px; margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8.5px 4px; border-top: 1px solid #e6e8ec; white-space: nowrap; }
+  td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  td small { color: #8a8f9c; }
+  .tag { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #e8f7f1; color: #0f7a5d; }
+  .tag.pend { background: #fff3dc; color: #a15c00; }
+  .export p { margin: 0 0 12px; color: #6b7080; }
+  .cta { display: inline-block; background: #3884ff; color: #fff; font-weight: 600; border-radius: 9px; padding: 10px 16px; white-space: nowrap; box-shadow: 0 2px 6px rgb(56 132 255 / .35); }
+  .fixed .cta { white-space: normal; display: block; text-align: center; }
+  .toast { position: absolute; left: 196px; right: 26px; bottom: 16px; background: #2a1215; color: #ffd9dc; border: 1px solid #7a2a31; border-radius: 10px; padding: 10px 14px;
+    font: 13px/1.5 "Cascadia Code", "Cascadia Mono", Consolas, monospace; box-shadow: 0 10px 30px rgb(0 0 0 / .25); }
+  .toast b { color: #ff6b74; }
+  .fixed .toast, .site:not(.fixed) .pill.ok, .fixed .pill.dev { display: none; }
+  /* a page longer than the window, for the scrolling capture: the header sticks, the orders go on and on */
+  .long main { display: block; overflow: hidden; padding-top: 0; }
+  .long main > * { margin-bottom: 16px; }
+  .long main header { position: sticky; top: 0; z-index: 2; background: #f5f6f8; padding: 22px 0 12px; margin-bottom: 4px; }
+  .long .row { display: block; } .long .export { display: none; }
+
+  /* ---- the AI chat ---- */
+  #chat { left: 1076px; top: 84px; width: 468px; height: 740px; background: #fbfbfd; }
+  .msgs { flex: 1; padding: 16px 16px 6px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; min-height: 0; }
+  .m { display: flex; gap: 10px; align-items: flex-start; flex: none; }
+  .av { width: 28px; height: 28px; border-radius: 9px; flex: none; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; }
+  .av.ai { background: linear-gradient(135deg, #6c5ce7, #c157f5); }
+  .av.me { background: #3884ff; }
+  .m .b { min-width: 0; flex: 1; }
+  .m b.n { font-size: 12.5px; color: #3c4150; }
+  .m p { margin: 2px 0 0; }
+  .m pre.ctx { margin: 6px 0 0; padding: 8px 10px; background: #f1f3f6; border: 1px solid #e3e6eb; border-radius: 8px; font: 11.5px/1.5 "Cascadia Code", Consolas, monospace; color: #4a4f5e;
+    white-space: pre-wrap; overflow: hidden; }
+  .m pre.ctx i { display: block; font-style: normal; color: #9aa0ad; text-align: center; line-height: 1.1; }
+  .m pre.ctx mark { background: #ffe9a8; color: inherit; border-radius: 3px; }
+  .m img.att { display: block; margin-top: 6px; width: 290px; border-radius: 10px; border: 1px solid #e3e6eb; }
+  .m code { font: 12.5px "Cascadia Code", Consolas, monospace; background: #eef0f4; padding: 1px 5px; border-radius: 5px; }
+  .diff { margin: 7px 0 2px; border-radius: 8px; overflow: hidden; border: 1px solid #e3e6eb; font: 12px/1.6 "Cascadia Code", Consolas, monospace; }
+  .diff div { padding: 1px 10px; white-space: pre; }
+  .diff .f { background: #f1f3f6; color: #5b6070; }
+  .diff .d { background: #ffe9ea; color: #9b1c25; }
+  .diff .a { background: #e2f6ea; color: #0b6b3f; }
+  .think { color: #8a8f9c; font-style: italic; }
+  .w { visibility: hidden; } .w.on { visibility: visible; }
+  .compose { margin: 8px 14px 14px; border: 1px solid #d9dde5; border-radius: 14px; background: #fff; padding: 10px 12px; color: #9aa0ad; flex: none; display: flex; flex-direction: column; gap: 8px; }
+  .compose.has { border-color: #3884ff; box-shadow: 0 0 0 3px rgb(56 132 255 / .15); color: #1b1d22; }
+  .compose .atts { display: flex; gap: 8px; align-items: center; }
+  .compose .atts img { height: 74px; border-radius: 8px; border: 1px solid #e3e6eb; }
+  .compose .chip { font-size: 11.5px; background: #eef0f4; color: #4a4f5e; border-radius: 999px; padding: 3px 9px; }
+  .compose .txt { max-height: 62px; overflow: hidden; white-space: pre-wrap; }
+  .compose .foot { display: flex; align-items: center; justify-content: space-between; color: #9aa0ad; font-size: 12px; }
+  .compose .go { width: 30px; height: 30px; border-radius: 9px; background: #d9dde5; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  .compose.has .go { background: #3884ff; }
+  .dock { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 10px; padding: 8px 12px;
+    background: rgb(255 255 255 / .16); border: 1px solid rgb(255 255 255 / .2); border-radius: 18px; backdrop-filter: blur(20px); }
+  .dock i { width: 40px; height: 40px; border-radius: 11px; display: block; }
+</style>
+</head>
+<body>
+  <div class="win" id="app">
+    <div class="bar"><span class="ico" style="background:linear-gradient(135deg,#f08a24,#e5484d)"></span><span class="url">localhost:3000/orders</span><span class="ctl"><i>&#x2212;</i><i>&#x25A1;</i><i>&#x2715;</i></span></div>
+    <div class="site" id="site">
+      <nav><div class="brand"><i></i>Fernhill</div><a>Overview</a><a class="on">Orders</a><a>Wholesale</a><a>Customers</a><a>Settings</a></nav>
+      <main>
+        <header>
+          <div><h1>Orders</h1><p>Today · all cafés and online</p></div>
+          <span class="pill dev">dev build</span><span class="pill ok">&#x2713; Hot reloaded</span>
+        </header>
+        <section class="kpis">
+          <div class="card kpi"><small>Revenue today</small><b id="rev" class="bad">$NaN</b><span class="up">&#x25B2; 12.4%</span> vs yesterday</div>
+          <div class="card kpi"><small>Orders</small><b>128</b><span class="up">&#x25B2; 8.1%</span></div>
+          <div class="card kpi"><small>Avg. basket</small><b>$24.83</b><span class="down">&#x25BC; 1.2%</span></div>
+        </section>
+        <section class="row">
+          <div class="card"><h2>Latest orders</h2>
+            <table>
+              <tr><td>#1046 <small>9:41</small></td><td>Aroha T.</td><td>Ridgeline Espresso 1 kg</td><td><span class="tag pend">Pending</span></td><td>&ndash;</td></tr>
+              <tr><td>#1045 <small>9:38</small></td><td>Sam K.</td><td>Morning Fog 250 g &times; 2</td><td><span class="tag">Paid</span></td><td>$37.00</td></tr>
+              <tr><td>#1044 <small>9:30</small></td><td>Mia J.</td><td>Ember Dark 500 g</td><td><span class="tag">Paid</span></td><td>$26.50</td></tr>
+              <tr><td>#1043 <small>9:22</small></td><td>Caf&eacute; Rata</td><td>K&#x101;piti Filter 5 kg</td><td><span class="tag">Paid</span></td><td>$184.00</td></tr>
+              <tr><td>#1042 <small>9:15</small></td><td>Tane W.</td><td>Decaf Swiss 250 g</td><td><span class="tag">Paid</span></td><td>$19.50</td></tr>
+            </table>
+          </div>
+          <div class="card export"><h2>Export</h2><p>Everything from this week, one row per order.</p><span class="cta" id="cta">Download weekly report (CSV)</span></div>
+        </section>
+      </main>
+      <div class="toast"><b>TypeError:</b> Cannot read properties of undefined (reading 'total')<br>&nbsp;&nbsp;at RevenueCard (RevenueCard.tsx:42)</div>
+    </div>
+  </div>
+
+  <div class="win" id="chat">
+    <div class="bar"><span class="ico" style="background:linear-gradient(135deg,#6c5ce7,#c157f5)"></span><span class="t">AI chat</span><span class="pill" style="padding:2px 10px;font-size:11.5px">fernhill-admin</span><span class="ctl"><i>&#x2212;</i><i>&#x2715;</i></span></div>
+    <div class="msgs" id="msgs">
+      <div class="m"><span class="av me">B</span><div class="b"><b class="n">You</b><p>Add an Orders page with today's revenue and an export button.</p></div></div>
+      <div class="m"><span class="av ai">AI</span><div class="b"><b class="n">Assistant</b><p>Done. The page is at <code>/orders</code>. Have a look and tell me what needs changing.</p></div></div>
+    </div>
+    <div class="compose" id="compose"><div class="txt" id="ctxt">Message the assistant</div><div class="foot"><span>Paste a screenshot with Ctrl+V</span><span class="go">&#x2191;</span></div></div>
+  </div>
+
+  <div class="dock">
+    <i style="background:linear-gradient(135deg,#3884ff,#2ec5ce)"></i><i style="background:linear-gradient(135deg,#f08a24,#e5484d)"></i>
+    <i style="background:linear-gradient(135deg,#6c5ce7,#c157f5)"></i><i style="background:linear-gradient(135deg,#16a37f,#9be15d)"></i>
+    <i style="background:linear-gradient(135deg,#ffb84d,#ff7a59)"></i>
+  </div>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const esc = (t) => t.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const bottom = () => { const m = $("#msgs"); m.scrollTop = m.scrollHeight; };
+  let pending = null, words = [];
+  window.desk = {
+    /** The app after the fix: the figure is back, the button fits, the error is gone. */
+    fixed(on) { $("#site").classList.toggle("fixed", on); $("#rev").textContent = on ? "$3,178.40" : "$NaN"; $("#rev").classList.toggle("bad", !on); $("#cta").textContent = on ? "Download weekly report" : "Download weekly report (CSV)"; },
+    /** What Grabbit put on the clipboard, pasted into the message box: the picture and the text. */
+    paste(img, text) {
+      pending = { img, text };
+      const [mine] = text.split("\n\n---\n");
+      $("#compose").classList.add("has");
+      $("#compose").innerHTML = `<div class="atts"><img src="${img}"><span class="chip">screenshot.png</span></div><div class="txt">${esc(mine)}\n\n---\nContext from Grabbit: …</div><div class="foot"><span>1 picture · your words · the text on screen</span><span class="go">&#x2191;</span></div>`;
+      return new Promise((r) => { const i = $("#compose img"); i.complete ? r() : (i.onload = r); });
+    },
+    send() {
+      const [mine, ctx = ""] = pending.text.split("\n\n---\n");
+      // The context is long (every line of text on screen): its first lines, then the last ones, where the error is.
+      const ls = ctx.split("\n"), err = ls.findIndex((l) => l.startsWith("TypeError"));
+      const shown = `${esc(ls.slice(0, 2).join("\n"))}\n${esc(ls.find((l) => l.startsWith("- Text visible")) ?? "")}<i>⋮</i><mark>${esc(ls.slice(err, err + 2).join("\n"))}</mark>`;
+      $("#msgs").insertAdjacentHTML("beforeend", `<div class="m"><span class="av me">B</span><div class="b"><b class="n">You</b><img class="att" src="${pending.img}"><p>${esc(mine)}</p><pre class="ctx">${shown}</pre></div></div>`);
+      $("#compose").classList.remove("has");
+      $("#compose").innerHTML = `<div class="txt">Message the assistant</div><div class="foot"><span>Paste a screenshot with Ctrl+V</span><span class="go">&#x2191;</span></div>`;
+      bottom();
+    },
+    thinking() { $("#msgs").insertAdjacentHTML("beforeend", `<div class="m" id="reply"><span class="av ai">AI</span><div class="b"><b class="n">Assistant</b><p class="think">Reading the screenshot…</p></div></div>`); bottom(); },
+    /** The answer, laid out in full but hidden word by word; reveal(n) shows the first n. Returns how many there are. */
+    reply(html) {
+      const b = $("#reply .b"); b.innerHTML = `<b class="n">Assistant</b>` + html;
+      words = [];
+      const walk = (n) => { for (const c of [...n.childNodes]) {
+        if (c.nodeType === 3) { const f = document.createDocumentFragment(); for (const part of c.textContent.split(/(\s+)/)) { if (!part) continue; if (/^\s+$/.test(part)) f.append(part); else { const s = document.createElement("span"); s.className = "w"; s.textContent = part; words.push(s); f.append(s); } } c.replaceWith(f); }
+        else if (c.classList?.contains("n")) continue; else walk(c); } };
+      walk(b);
+      b.querySelectorAll(".diff div").forEach((d) => (d.style.visibility = "hidden"));
+      bottom();
+      return words.length;
+    },
+    reveal(n) { words.forEach((w, i) => { const on = i < n; w.classList.toggle("on", on); const d = w.closest(".diff div"); if (d && on) d.style.visibility = "visible"; }); },
+    /** The Orders page with a long list (the scrolling capture and the recording scroll it). */
+    long(on) {
+      $("#site").classList.toggle("long", on);
+      for (const r of document.querySelectorAll("tr.x")) r.parentNode.removeChild(r);
+      if (on) {
+        const who = ["Aroha T.", "Sam K.", "Mia J.", "Café Rata", "Tane W.", "Lena P.", "The Daily Grind", "Wiremu H.", "Nikau R.", "Corner Bakehouse"];
+        const what = [["Ridgeline Espresso 1 kg", 42], ["Morning Fog 250 g", 18.5], ["Ember Dark 500 g", 26.5], ["Kāpiti Filter 5 kg", 184], ["Decaf Swiss 250 g", 19.5], ["House Blend 1 kg × 3", 117], ["Cold Brew Pack", 31]];
+        let h = "";
+        for (let i = 0; i < 38; i++) {
+          const [w, c] = what[(i * 3 + 1) % what.length], m = 9 * 60 + 14 - i * 4;
+          h += `<tr class="x"><td>#${1041 - i} <small>${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}</small></td><td>${who[(i * 7 + 2) % who.length]}</td><td>${w}</td><td><span class="tag">Paid</span></td><td>$${c.toFixed(2)}</td></tr>`;
+        }
+        $("table").insertAdjacentHTML("beforeend", h);
+      }
+      $("#site main").scrollTop = 0;
+    },
+    /** Scrolls the long page; returns how far it can go. */
+    scroll(y) { const m = $("#site main"); m.scrollTop = y; return m.scrollHeight - m.clientHeight; },
+    /** The window grown to show the whole page at once (the stitched picture). Returns the window's height. */
+    tall(on) {
+      const a = $("#app"), m = $("#site main");
+      if (!on) { a.style.height = ""; document.documentElement.style.height = document.body.style.height = ""; return 0; }
+      m.scrollTop = 0;
+      const h = 38 + m.scrollHeight;
+      a.style.height = h + "px"; document.documentElement.style.height = document.body.style.height = (h + 120) + "px";
+      return h;
+    },
+    /** Plain text pasted into the message box. */
+    type(text) { $("#compose").classList.add("has"); $("#compose .txt").textContent = text; },
+    /** Where things are, for the pointer: [x, y, w, h] in page pixels. */
+    rect(sel) { const r = $(sel).getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; },
+  };
+  if (location.search.includes("fixed")) desk.fixed(true);
+</script>
+</body>
+</html>

@@ -29,7 +29,8 @@
 ---
 
 <p align="center">
-  <img src="docs/screenshots/demo.webp" width="880" alt="Six-second demo: drag an area, the action bar appears, the capture is copied and a Copied card appears in the corner.">
+  <a href="docs/screenshots/clip-talk-to-ai.mp4"><img src="docs/screenshots/clip-talk-to-ai.webp" width="880" alt="A bug in a half-built app: press V, click and drag to mark it while saying what is wrong, Ctrl+Enter, paste into an AI chat. The AI gets the picture, the words, the marks and the text on screen, and fixes it."></a><br>
+  <sub>A bug, from "something's off" to fixed, without typing a word. <a href="docs/screenshots/reel.mp4"><b>Watch the full tour with sound</b></a> (about 5 minutes, every feature below). Click any clip for its narrated version.</sub>
 </p>
 
 ## Why Grabbit
@@ -65,6 +66,14 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 - A pixel loupe with coordinates and colour (<kbd>C</kbd> copies the hex), a **measure** tool, and **size presets** for Instagram, Stories/Reels/TikTok, YouTube, X, LinkedIn, Facebook and Pinterest.
 - Move and resize the selection after you draw it; arrow keys nudge it.
 
+<table><tr>
+<td><a href="docs/screenshots/clip-capture.mp4"><img src="docs/screenshots/clip-capture.webp" width="420" alt="Tap PrtScn, drag over an area, and the bar pops up where you let go. Every button shows its key: Enter copies, Shift+Enter copies smaller, E marks up, Ctrl+S saves, R records, N adds another area, V is Talk to AI."></a><br><sub>The bar after a capture, every button with its key</sub></td>
+<td><a href="docs/screenshots/clip-more-menu.mp4"><img src="docs/screenshots/clip-more-menu.webp" width="420" alt="The More menu, item by item: X describes with AI, B starts a batch, S scrolling capture, T copies text, Q reads a QR code, I pins, Share, P saves and copies the path, D captures again in 10 s."></a><br><sub>Everything under More, each with its key</sub></td>
+</tr><tr>
+<td><a href="docs/screenshots/clip-scrolling-capture.mp4"><img src="docs/screenshots/clip-scrolling-capture.webp" width="420" alt="Press S on a page longer than the window: Grabbit scrolls it and stitches one tall picture, with the sticky header once."></a><br><sub>Scrolling capture</sub></td>
+<td><a href="docs/screenshots/clip-copy-text-and-pin.mp4"><img src="docs/screenshots/clip-copy-text-and-pin.webp" width="420" alt="Press T to copy the words in an area as text and paste them anywhere; press I to pin a picture on top of every window."></a><br><sub>Copy the text (T) and pin on top (I)</sub></td>
+</tr></table>
+
 ### Ready to paste, everywhere
 
 <img src="docs/screenshots/quick.webp" alt="The Copied card in the corner of the screen after a capture">
@@ -78,6 +87,9 @@ Every capture lands on the clipboard as a picture **and** a named file (so chat 
 Built for screenshots and fully offline: the capture is the canvas. Arrows, lines, boxes, ellipses, text, pen, highlighter, numbered **steps**, pixelate, blur, black out, spotlight, magnifier, crop, emoji and icons, tabs, and a strip of recent captures; every tool has a key ([docs/markup-editor.md](docs/markup-editor.md)). The classic [Excalidraw](https://github.com/excalidraw/excalidraw) whiteboard is in the layout menu, and `.excalidraw` projects open there.
 
 - **Hide** private details in one click: finds and pixelates **emails, IP addresses, phone and card numbers, API keys and tokens**. Or pixelate, blur, black out or spotlight any box.
+
+  <a href="docs/screenshots/clip-hide-private-details.mp4"><img src="docs/screenshots/clip-hide-private-details.webp" width="720" alt="A settings screenshot with an email, a live key, a webhook link, an IP address and a phone number. Hide, then Hide private details, pixelates all of them."></a>
+
 - **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes. Use it on every copy, or **apply it to the picture** you're editing.
 - **Pictures on pictures:** drag any capture from the side panel onto the canvas, then give it a **frame**: border colour, width and opacity, rounded corners, and how see-through it is.
 - **Layers:** everything you add is a layer you can reorder, hide, select or delete. Ctrl+Z undoes all of it.
@@ -99,6 +111,8 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Replay buffer:** always keeps the last 10 s to 10 min; one key saves it.
 - **Step recorder:** click through a task and get a **how-to** as Markdown and a Word document, with a numbered picture per step.
 
+<a href="docs/screenshots/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it. The red frame and Stop bar stay out of the video."></a>
+
 ### Edit the video
 
 <img src="docs/screenshots/video.webp" alt="The video editor: captions, silences cut on the timeline, a part sped up 2×">
@@ -108,6 +122,8 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Studio effects** from what was recorded: **auto-zoom on clicks**, **click rings** and **key captions**, all changeable after recording.
 - **Draw** on the video and add **blur boxes** that hide a region for exactly as long as you choose.
 - Copy, Copy for chat (under 94 MB), GIF, animated WebP, a styled copy on a background, and every social size.
+
+<a href="docs/screenshots/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, and Captions are made on your computer."></a>
 
 ### Share and protect
 
@@ -261,7 +277,7 @@ bunx tauri build --debug --no-bundle
 - `--self-test` captures the screens, round-trips every encoder, metadata and the watermark, reads text, checks the clipboard, records 3 s and renders cuts, speed, GIF and social sizes; CI runs it on Windows, macOS and Linux.
 - `cargo test --lib` (in `app/src-tauri`) covers the watermark, stitching, layouts, captions, studio effects, S3 signing, settings backup and more.
 - `spikes/all.ps1` runs the Windows end-to-end flows (picker, recording, both editors, scrolling, Talk to AI) over DevTools.
-- The README pictures come from the real app pages running in headless Chrome on a made-up demo desktop: see [docs/demo/studio](docs/demo/studio).
+- The README pictures, clips and tour come from the real app pages running in headless Chrome on a made-up demo desktop: see [docs/demo/studio](docs/demo/studio).
 - The original Windows-only WPF version is kept in [`legacy/windows-wpf`](legacy/windows-wpf).
 
 </details>
