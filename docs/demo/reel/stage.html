@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reel stage</title>
+<!-- The reel's compositor (reel.mjs): a 1600×900 "screen" made of pictures of Grabbit's real pages, a camera that
+     zooms and pans over it, a drawn pointer, and the captions and key caps underneath. draw(state) shows one frame. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  body { position: relative; color: #fff; background: #0b0d17; font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .glow { position: absolute; inset: 0; background:
+    radial-gradient(900px 560px at 0% 0%, rgb(251 124 72 / .30), transparent 70%),
+    radial-gradient(1000px 700px at 100% 100%, rgb(124 77 255 / .34), transparent 70%),
+    radial-gradient(700px 460px at 88% 0%, rgb(46 197 206 / .16), transparent 70%); }
+  #screen { position: absolute; left: 160px; top: 26px; width: 1600px; height: 900px; border-radius: 18px; overflow: hidden; background: #15171f;
+    box-shadow: 0 40px 110px rgb(0 0 0 / .62), 0 0 0 1px rgb(255 255 255 / .12); }
+  #world { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; transform-origin: 0 0; will-change: transform; }
+  #world > .l { position: absolute; display: block; transform-origin: 50% 50%; }
+  #world > .l.sh { box-shadow: 0 30px 90px rgb(0 0 0 / .55), 0 0 0 1px rgb(255 255 255 / .14); }
+  #ptr { position: absolute; left: 0; top: 0; z-index: 50; pointer-events: none; }
+  #ptr svg { position: absolute; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .55)); }
+  #ptr .arrow { left: -2px; top: -2px; } #ptr .cross { left: -15px; top: -15px; }
+  #ring { position: absolute; left: 0; top: 0; z-index: 49; width: 0; height: 0; pointer-events: none; }
+  #ring i { position: absolute; left: -32px; top: -32px; width: 64px; height: 64px; border-radius: 50%; border: 4px solid #ffb13d; background: rgb(255 177 61 / .22); }
+
+  /* ---- under the screen ---- */
+  #hud { position: absolute; left: 0; right: 0; top: 926px; bottom: 0; }
+  #cap { position: absolute; left: 0; right: 0; top: 62px; display: flex; align-items: center; justify-content: center; gap: 22px; font-size: 42px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+  #cap em { font-style: normal; background: linear-gradient(90deg, #ff9a5a, #ff4f8b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #keys { display: flex; align-items: center; gap: 8px; }
+  #keys kbd { display: inline-grid; place-items: center; min-width: 62px; height: 62px; padding: 0 16px; border-radius: 13px; font: 700 27px/1 "Segoe UI Variable Text", "Segoe UI", sans-serif; color: #1b1d22;
+    background: linear-gradient(#fff, #dfe3ec); box-shadow: 0 5px 0 #8f96a8, 0 9px 18px rgb(0 0 0 / .45); }
+  #keys span { font-size: 26px; color: #8f96a8; font-weight: 700; }
+  #say { position: absolute; left: 50%; top: -2px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 7px 18px 8px 14px; border-radius: 999px; white-space: nowrap;
+    font: italic 500 29px/1.2 "Segoe UI Variable Text", "Segoe UI", sans-serif; color: #ffd7c2; background: rgb(255 122 89 / .16); border: 1px solid rgb(255 148 102 / .45); }
+  #say .bars { display: flex; align-items: center; gap: 4px; height: 30px; }
+  #say .bars i { width: 5px; border-radius: 2px; background: #ff9466; display: block; }
+  #brand { position: absolute; left: 44px; top: 72px; display: flex; align-items: center; gap: 12px; font: 700 26px/1 "Segoe UI Variable Display", sans-serif; opacity: .92; }
+  #brand img { width: 42px; height: 42px; }
+  #prog { position: absolute; left: 0; bottom: 0; height: 5px; background: linear-gradient(90deg, #ff9a5a, #ff4f8b); }
+
+  /* ---- the title and end cards ---- */
+  #card { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; text-align: center; background: #0b0d17; }
+  #card .in { position: relative; }
+  #card .logo { display: inline-flex; align-items: center; gap: 22px; font: 700 64px/1 "Segoe UI Variable Display", sans-serif; }
+  #card .logo img { width: 112px; height: 112px; }
+  #card h1 { font-size: 84px; line-height: 1.08; margin: 34px 0 0; font-weight: 700; letter-spacing: -.02em; }
+  #card h1 em { font-style: normal; background: linear-gradient(90deg, #ff9a5a, #ff4f8b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #card p { font: 400 36px/1.4 "Segoe UI Variable Text", "Segoe UI", sans-serif; color: #b3b8cc; margin: 22px 0 0; }
+  #card .url { display: inline-block; margin-top: 40px; font: 600 32px/1 "Cascadia Code", Consolas, monospace; color: #fff; background: rgb(255 255 255 / .08); border: 1px solid rgb(255 255 255 / .16); padding: 16px 28px; border-radius: 14px; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div id="screen"><div id="world">
+    <div id="ring"><i></i></div>
+    <div id="ptr">
+      <svg class="arrow" width="34" height="46" viewBox="0 0 18 26"><path d="M1 1v20l5-5 4 9 3-1.4-4-8.6h7z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      <svg class="cross" width="30" height="30" viewBox="0 0 30 30"><path d="M15 1v11M15 18v11M1 15h11M18 15h11" stroke="#000" stroke-width="4.5" stroke-linecap="round"/><path d="M15 1v11M15 18v11M1 15h11M18 15h11" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+  </div></div>
+  <div id="hud">
+    <div id="say"><span class="bars"><i></i><i></i><i></i><i></i><i></i></span><span class="t"></span></div>
+    <div id="cap"><span id="keys"></span><span id="text"></span></div>
+    <div id="brand"><img id="icon" alt=""><span>Grabbit</span></div>
+    <div id="prog"></div>
+  </div>
+  <div id="card"><div class="glow"></div><div class="in"></div></div>
+<script>
+  const $ = (s) => document.querySelector(s);
+  const world = $("#world"), layers = new Map();
+  const VW = 1600, VH = 900;
+  let cardHtml = "";
+  /** One frame. Resolves when every picture it uses is decoded, so the screenshot never catches a half-loaded layer. */
+  window.draw = async (s) => {
+    $("#icon").src = s.icon;
+    // layers, bottom to top
+    const seen = new Set(), waits = [];
+    s.layers.forEach((l, i) => {
+      seen.add(l.id);
+      let e = layers.get(l.id);
+      if (!e) { e = l.fill ? document.createElement("div") : new Image(); e.className = "l"; layers.set(l.id, e); world.insertBefore(e, $("#ring")); }
+      if (!l.fill && e.dataset.src !== l.src) { e.dataset.src = l.src; e.src = l.src; }
+      if (!l.fill) waits.push(e.decode().catch(() => {}));
+      e.classList.toggle("sh", !!l.sh);
+      e.style.cssText = `left:${l.x}px;top:${l.y}px;width:${l.w}px;height:${l.h}px;z-index:${i + 1};opacity:${l.a ?? 1};border-radius:${l.r ?? 0}px;transform:scale(${l.s ?? 1});${l.fill ? `background:${l.fill};` : ""}`;
+    });
+    for (const [id, e] of layers) if (!seen.has(id)) { e.remove(); layers.delete(id); }
+    // camera: the world point (x, y) sits in the middle of the screen at zoom z, never showing past the edges
+    const z = s.cam.z, hw = VW / 2 / z, hh = VH / 2 / z;
+    const cx = Math.min(VW - hw, Math.max(hw, s.cam.x)), cy = Math.min(VH - hh, Math.max(hh, s.cam.y));
+    world.style.transform = `translate(${VW / 2 - cx * z}px, ${VH / 2 - cy * z}px) scale(${z})`;
+    world.style.opacity = s.fade ?? 1;
+    // pointer and click ring keep their size on screen whatever the zoom
+    const k = 1 / Math.sqrt(z);
+    $("#ptr").style.transform = `translate(${s.ptr.x}px, ${s.ptr.y}px) scale(${k * (s.ptr.down ? .88 : 1)})`;
+    $("#ptr").style.display = s.ptr.kind === "none" ? "none" : "";
+    $("#ptr .arrow").style.display = s.ptr.kind === "arrow" ? "" : "none";
+    $("#ptr .cross").style.display = s.ptr.kind === "cross" ? "" : "none";
+    const ring = $("#ring"), r = s.ptr.ripple;
+    ring.style.display = r == null ? "none" : "";
+    if (r != null) { ring.style.transform = `translate(${s.ptr.rx}px, ${s.ptr.ry}px) scale(${k * (.35 + r * .9)})`; ring.style.opacity = 1 - r; }
+    // caption, keys, spoken words
+    $("#text").innerHTML = s.cap.html;
+    $("#cap").style.opacity = s.cap.a; $("#cap").style.transform = `translateY(${(1 - s.cap.a) * 14}px)`;
+    $("#keys").innerHTML = (s.keys ?? []).map((k, i) => `${i ? "<span>+</span>" : ""}<kbd style="transform:translateY(${k.p * 5}px);box-shadow:0 ${5 - k.p * 5}px 0 #8f96a8,0 9px 18px rgb(0 0 0 / .45)">${k.label}</kbd>`).join("");
+    $("#say").style.display = s.say ? "" : "none";
+    if (s.say) { $("#say .t").textContent = `“${s.say.text}${s.say.done ? "”" : "…"}`; [...$("#say .bars").children].forEach((b, i) => (b.style.height = `${7 + 23 * s.say.bars[i]}px`)); }
+    $("#prog").style.width = `${s.prog * 100}%`;
+    // cards
+    const c = $("#card");
+    c.style.display = s.card ? "" : "none";
+    if (s.card) { if (cardHtml !== s.card.html) { cardHtml = s.card.html; $("#card .in").innerHTML = cardHtml; waits.push(...[...c.querySelectorAll("img")].map((i) => i.decode().catch(() => {}))); } c.style.opacity = s.card.a; $("#card .in").style.transform = `scale(${.97 + .03 * s.card.a})`; }
+    waits.push($("#icon").decode().catch(() => {}));
+    await Promise.all(waits);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  };
+</script>
+</body>
+</html>

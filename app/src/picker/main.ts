@@ -207,7 +207,7 @@ const REC: Item[] = [{ id: "record", label: "Record", icon: "record", key: "Ente
 function button(it: Item) {
   const b = document.createElement("button");
   b.className = "btn" + (it.primary ? " primary" : "");
-  b.innerHTML = `${icon(it.icon)}<span>${it.label}</span>`;
+  b.innerHTML = `${icon(it.icon)}<span>${it.label}</span>${it.key ? `<kbd>${it.key}</kbd>` : ""}`;
   b.title = it.key ? `${it.tip}\nShortcut: ${it.key}` : it.tip;
   b.onclick = (e) => { e.stopPropagation(); act(it.id); };
   return b;
