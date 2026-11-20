@@ -60,7 +60,7 @@ mod imp {
         let writer = DataWriter::new()?;
         writer.WriteBytes(&bgra)?;
         let bmp = SoftwareBitmap::CreateCopyFromBuffer(&writer.DetachBuffer()?, BitmapPixelFormat::Bgra8, img.width() as i32, img.height() as i32)?;
-        let result = engine.RecognizeAsync(&bmp)?.get()?;
+        let result = engine.RecognizeAsync(&bmp)?.join()?;
         let mut out = Vec::new();
         for (i, line) in result.Lines()?.into_iter().enumerate() {
             for w in line.Words()? {
