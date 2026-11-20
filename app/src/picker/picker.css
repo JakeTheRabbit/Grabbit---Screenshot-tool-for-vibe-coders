@@ -20,21 +20,31 @@ body.leaving { opacity: 0; transition: opacity 60ms; }
 #hint .track { height: 4px; width: 150px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
 #hint .fill { display: block; height: 100%; background: #ff3b30; transition: width 40ms linear; }
 
-#bar { position: fixed; display: flex; flex-wrap: wrap; max-width: calc(100vw - 16px); gap: 4px; padding: 5px; border-radius: calc(var(--radius) + 4px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); }
-#bar.rev { flex-direction: row-reverse; }
-#bar.rev .menu { right: auto; left: 0; }
-#bar .btn { border-color: transparent; background: transparent; height: 34px; }
-#bar .btn:hover { background: var(--hover); }
-#bar .btn.primary { background: var(--accent); color: #fff; }
-#bar select.btn { appearance: none; padding-right: 10px; max-width: 170px; border-color: var(--line); background: transparent; color: var(--fg); }
-#bar .toggle { padding: 0 9px; opacity: 0.45; }
-#bar .toggle.on { opacity: 1; color: var(--accent); }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; padding: 5px; border-radius: calc(var(--radius) + 2px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; }
-.menu button { flex: none; }
-.menu.up { top: auto; bottom: calc(100% + 6px); }
-.menu[hidden] { display: none; }
-.menu button { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: transparent; border-radius: 6px; text-align: left; }
-.menu button:hover { background: var(--accent); color: #fff; }
-.menu button:hover kbd { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
-.menu button span { flex: 1; }
-.menu svg { width: 16px; height: 16px; }
+/* The action wheel: dark glass ring, one slice per action, what the pointed-at one does in the middle. */
+#bar { position: fixed; width: 248px; height: 248px; color: #fff; animation: wheel-in 110ms ease-out; }
+@keyframes wheel-in { from { opacity: 0; transform: scale(0.92); } }
+#bar .disc { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(10, 10, 14, 0.55) 30%, rgba(14, 14, 20, 0.86) 70%); backdrop-filter: blur(14px) saturate(1.4); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1); }
+#bar .wedges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#bar .wedges path { fill: rgba(255, 255, 255, 0.05); stroke: rgba(255, 255, 255, 0.06); transition: fill 70ms; }
+#bar .wedges path.on { fill: var(--accent); fill-opacity: 0.9; filter: drop-shadow(0 0 10px var(--accent)); }
+#bar .slot { position: absolute; z-index: 2; transform: translate(-50%, -50%); width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: rgba(255, 255, 255, 0.82); display: grid; place-items: center; transition: transform 70ms, color 70ms; }
+#bar .slot:hover, #bar .slot.hot { background: transparent; color: #fff; transform: translate(-50%, -50%) scale(1.18); }
+#bar .slot span, #bar .slot kbd { display: none; }
+#bar .slot[data-n]::after { content: attr(data-n); position: absolute; right: -3px; top: -3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: rgba(255, 255, 255, 0.85); font: 700 10px/15px var(--font); text-align: center; }
+#bar .slot.hot[data-n]::after { background: #fff; color: #000; }
+#bar .hub span { display: flex; gap: 4px; }
+#bar .slot svg { width: 21px; height: 21px; }
+#bar .slot.primary { color: #fff; box-shadow: inset 0 0 0 2px var(--accent); }
+#bar .slot.toggle { opacity: 0.45; }
+#bar .slot.toggle.on { opacity: 1; }
+#bar.more-open > .slot { display: none; }
+#bar .menu { position: absolute; inset: 0; pointer-events: none; }
+#bar .menu > .slot { pointer-events: auto; width: 36px; height: 36px; }
+#bar .menu > .slot svg { width: 19px; height: 19px; }
+#bar .menu[hidden] { display: none; }
+#bar .hub { position: absolute; z-index: 2; left: 50%; top: 50%; width: var(--hub); height: var(--hub); transform: translate(-50%, -50%); border-radius: 50%; background: rgba(0, 0, 0, 0.6); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; text-align: center; font: 600 12.5px/1.25 var(--font); }
+#bar.more-open .hub { cursor: pointer; }
+#bar .hub kbd { color: #ddd; border-color: rgba(255, 255, 255, 0.3); }
+#bar .extras { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(14, 14, 20, 0.86); backdrop-filter: blur(14px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+#bar select.btn { appearance: none; height: 30px; padding: 0 12px; max-width: 190px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; background: transparent; color: #fff; }
+#bar select option { color: #111; background: #fff; }

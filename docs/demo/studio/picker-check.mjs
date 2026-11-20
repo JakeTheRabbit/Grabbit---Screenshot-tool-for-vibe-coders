@@ -41,7 +41,7 @@ await sleep(200);
 ok("Add another area keeps the first", (await J(`document.getElementById("hint").textContent`)).includes("1 area kept"));
 await p.drag(700, 150, 1000, 420);
 await sleep(200);
-await ctrlDrag(1100, 500, 1450, 800);
+await ctrlDrag(1200, 500, 1500, 800);
 await sleep(300);
 ok("Ctrl+drag adds a third area (no jump to the editor)", (await J(`document.getElementById("hint").textContent`)).includes("2 areas kept") || (await J(`__studio.calls.filter((c) => c[0] === "picked").length`)) === 0);
 // An area kept on another screen arrives as an event.

@@ -43,25 +43,28 @@ const CLIPS = [
 const tl = [];
 let T = 0;
 const st = { layers: [], ptr: [800, 450], cursor: "arrow", down: false, cap: "", keys: null, keyT: 0, held: false, say: null, card: null, scene: "" };
-const beat = (dur, once = {}) => { tl.push({ t: T, dur, ...JSON.parse(JSON.stringify(st)), ...once }); T += dur; if (once.ptrTo) st.ptr = once.ptrTo; };
+// Pauses, glides and clicks run at PACE of their written length (the spoken lines set the rest of the pace).
+const PACE = 0.75;
+const beat = (dur, once = {}, exact = false) => { if (!exact) dur *= PACE; tl.push({ t: T, dur, ...JSON.parse(JSON.stringify(st)), ...once }); T += dur; if (once.ptrTo) st.ptr = once.ptrTo; };
 
 // ---- the voices: a narrator, and the person talking to the AI. One line at a time, never over each other. ----
-const NARRATOR = "en-US-AndrewNeural", SPEAKER = "en-NZ-MitchellNeural";
+const NARRATOR = "en-US-AndrewNeural", SPEAKER = "en-NZ-MitchellNeural", RATE = "+22%";
 const audio = [];
 let audioEnd = 0;
 function tts(text, voice) {
   mkdirSync(voDir, { recursive: true });
-  const f = join(voDir, createHash("sha1").update(voice + "|" + text).digest("hex").slice(0, 16) + ".mp3");
+  const f = join(voDir, createHash("sha1").update(voice + "|" + RATE + "|" + text).digest("hex").slice(0, 16) + ".mp3");
   if (!existsSync(f) || statSync(f).size < 500) {
     for (let i = 0; ; i++) {
-      try { execFileSync("uvx", ["--from", "edge-tts@latest", "edge-tts", "--voice", voice, "--rate=+4%", "--text", text, "--write-media", f], { stdio: ["ignore", "ignore", "pipe"] }); if (statSync(f).size > 500) break; } catch (e) { if (i >= 3) throw e; }
-      if (i >= 3) throw new Error(`no voice for: ${text}`);
+      try { execFileSync("uvx", ["--from", "edge-tts@latest", "edge-tts", "--voice", voice, `--rate=${RATE}`, "--text", text, "--write-media", f], { stdio: ["ignore", "ignore", "pipe"] }); if (statSync(f).size > 500) break; } catch (e) { if (i >= 8) throw e; }
+      if (i >= 8) throw new Error(`no voice for: ${text}`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500 * (i + 1));   // the service drops requests now and then
     }
   }
   return { f, dur: Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f]).toString().trim()) };
 }
 /** Holds until the line being spoken is over (plus a breath). */
-const wait = (extra = 0.3) => { if (T < audioEnd + extra) beat(audioEnd + extra - T); };
+const wait = (extra = 0.3) => { extra *= PACE; if (T < audioEnd + extra) beat(audioEnd + extra - T, {}, true); };
 /** Says a line from now; anything already being said finishes first. Returns how long it takes. */
 function speak(text, voice = NARRATOR) {
   wait(0.3);
@@ -255,7 +258,7 @@ async function shoot() {
   await pick.waitFor(`!document.getElementById("bar").hidden`);
   st.cursor = "arrow";
   base(await snap(pick, "pick", 120));
-  cap("A menu pops up where you let go. <em>Every button shows its key.</em>", "A menu pops up right where you let go. Every button shows its key, so you can click, or just press it.");
+  cap("A wheel pops up where you let go. <em>Every slice has a number, and most a letter.</em>", "A wheel pops up right where you let go. Point at a slice and the middle shows what it does. Click it, press its number, or press its letter.");
   wait(0.4);
   await tour(pick, FULL, "#bar", [
     ["Copy", "<em>Enter</em> copies the picture.", "Enter copies the picture at full size, ready to paste.", "Enter"],
@@ -395,7 +398,7 @@ async function shoot() {
   const table = await R("table");
   const pm = await openPicker(1);
   st.ptr = [rev.r + 30, rev.cy + 20];
-  keys("PrtScn"); cap("There's more under <em>More</em>.", "The menu has a second half. Grab an area again.");
+  keys("PrtScn"); cap("There's more under <em>More</em>.", "The wheel has a second half. Grab an area again.");
   await grab(pm, [kpis.x - 8, kpis.y - 10], [table.r + 6, table.b - 60], "more");
   keys();
   wait(0.2);
@@ -405,7 +408,7 @@ async function shoot() {
   await sleep(150);
   base(await snap(pm, "more", 100));
   click(0.3);
-  cap("<em>More</em>: the rest, each with its own key.", "Click More for the rest. Each of these has its own key too.");
+  cap("<em>More</em>: a bigger wheel with the rest.", "Click More for a bigger wheel with the rest. Each of these has its own key too.");
   wait(0.3);
   await tour(pm, FULL, "#bar .menu", [
     ["Describe with AI", "<em>X</em> has AI describe the picture.", "X has A.I. write what's in the picture, and copies that text.", "X"],
