@@ -159,6 +159,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 
 - **Light and dark mode**, or follow the system. Every window switches at once, title bars included.
 - Every key is configurable, and all settings **back up and restore** as one file.
+- **Automations:** after every capture or recording, run a command (`{file}` is the file) and/or post JSON to a webhook (n8n, Zapier, Home Assistant, Paperless) with the file, the programs it showed, the text in it and a recording's notes folder (Settings → Automations).
 - **Instant:** the screens freeze the moment you press the key (about a tenth of a second on Windows, even with four screens). Grabbit grabs the screens straight from the graphics card and hands them to the capture screen through shared memory.
 - **Light on your computer:** between captures the capture screens sleep and hand their memory back. Turn off **Instant capture** in Settings → General and Grabbit uses under 10 MB while idle, at the cost of about 2 seconds on the first capture after a minute.
 - **Looks after itself:** Windows restarts Grabbit after a crash or hang, recording helpers close with it, a damaged settings file is replaced with the last good copy, and old temporary files are cleared.

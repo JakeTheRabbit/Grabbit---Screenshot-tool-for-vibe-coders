@@ -131,6 +131,10 @@ pub struct Settings {
     pub obsidian_vault: String,
     pub obsidian_folder: String,
     pub index_text: bool,
+    /// Run after every capture or recording ({file} = the file).
+    pub after_capture_command: String,
+    /// POSTed JSON after every capture or recording.
+    pub after_capture_webhook: String,
 }
 
 pub fn default_hotkeys() -> BTreeMap<HotkeyAction, String> {
@@ -193,6 +197,8 @@ impl Default for Settings {
             obsidian_vault: String::new(),
             obsidian_folder: "Grabbit".into(),
             index_text: true,
+            after_capture_command: String::new(),
+            after_capture_webhook: String::new(),
         }
     }
 }

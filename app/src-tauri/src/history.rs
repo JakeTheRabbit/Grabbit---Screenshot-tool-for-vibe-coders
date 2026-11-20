@@ -161,19 +161,21 @@ pub fn add_described(app: &AppHandle, saved: Option<&std::path::Path>, img: &Rgb
             if let Ok(Ok(d)) = tauri::async_runtime::spawn_blocking(move || crate::ai::describe(&s2, &i2)).await { e.description = format!("{}\nTags: {}", d.summary, d.tags.join(", ")); }
         }
         append(&e);
+        crate::hooks::fire(&s, &e);
     });
 }
 
 /// A finished recording; its notes folder (and the spoken words, for search) follow in the background.
 pub fn add_recording(app: &AppHandle, path: &std::path::Path) {
     let p = path.to_string_lossy().into_owned();
-    append(&Entry { path: p.clone(), time: chrono::Local::now().to_rfc3339(), kind: "recording".into(), ..Default::default() });
+    let e = Entry { path: p.clone(), time: chrono::Local::now().to_rfc3339(), kind: "recording".into(), ..Default::default() };
+    append(&e);
     let s = state(app).settings.lock().unwrap().clone();
-    if !s.recording_notes { return }
+    if !s.recording_notes { crate::hooks::fire(&s, &e); return }
     let path = path.to_path_buf();
     std::thread::spawn(move || match crate::notes::write(&s, &path) {
-        Ok(n) => { change(&p, |e| { e.text = n.text.clone(); e.notes = n.dir.to_string_lossy().into_owned(); }); }
-        Err(e) => eprintln!("recording notes: {e:#}"),
+        Ok(n) => { let e2 = change(&p, |e| { e.text = n.text.clone(); e.notes = n.dir.to_string_lossy().into_owned(); }); crate::hooks::fire(&s, &e2.unwrap_or(e)); }
+        Err(err) => { eprintln!("recording notes: {err:#}"); crate::hooks::fire(&s, &e); }
     });
 }
 

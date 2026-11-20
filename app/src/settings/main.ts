@@ -224,6 +224,11 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "obsidian_folder", label: "Folder in the vault", placeholder: "Grabbit" },
     { kind: "note", html: "Send to Obsidian (in the editor's Share tab) saves the picture there and links it in today's daily note." },
   ],
+  Automations: () => [
+    { kind: "note", html: "After every capture or recording is saved (and its text read), Grabbit can hand it on: file it into Paperless or a synced folder, post it to n8n, Zapier or Home Assistant, or run any script. Both get the file, the programs and windows it showed, the text in it, and the notes folder for a recording." },
+    { kind: "text", key: "after_capture_command", label: "Run a command", placeholder: os === "windows" ? "copy {file} D:\\Inbox" : "cp {file} ~/Inbox/", help: "{file} becomes the file's path. GRABBIT_FILE, GRABBIT_KIND (capture or recording) and GRABBIT_JSON are set too." },
+    { kind: "text", key: "after_capture_webhook", label: "Post to a webhook", placeholder: "https://n8n.example.com/webhook/grabbit", help: "Gets JSON: event, path, name, time, width, height, apps, windows, text, description, notes, full_screen" },
+  ],
   History: () => [
     { kind: "button", label: "Open History", run: () => void invoke("open_history", {}) },
     { kind: "note", html: "History finds any capture or recording again: by the words in it, the programs it showed, where you pasted it, the date, tags and notes. Star things, save them for later, or set a reminder." },
