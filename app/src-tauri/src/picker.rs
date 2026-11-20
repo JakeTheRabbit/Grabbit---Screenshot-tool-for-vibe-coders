@@ -99,7 +99,7 @@ static REPAIRS: AtomicU64 = AtomicU64::new(0);
 static STARTED: Mutex<Option<std::time::Instant>> = Mutex::new(None);
 
 fn drop_pickers(app: &AppHandle) {
-    for w in pickers(app) { let _ = w.destroy(); }
+    for w in pickers(app).into_iter().chain(overs(app)) { let _ = w.destroy(); }
     capture::release();
     EPOCH.fetch_add(1, SeqCst);
     *READY.lock().unwrap() = (Vec::new(), Vec::new());
@@ -176,7 +176,7 @@ pub fn start(app: &AppHandle, mode: Mode) {
 
 fn start_now(app: &AppHandle, mode: Mode) {
     if crate::record::is_recording(app) { crate::record::stop(app, true); return; }
-    if OPEN.load(SeqCst) { return; }
+    if OPEN.load(SeqCst) { return start_over(app, mode); }
     GEN.fetch_add(1, SeqCst);
     *STARTED.lock().unwrap() = Some(std::time::Instant::now());
     // Set first: holding the key can switch it to Record while the screens are still being grabbed.
@@ -299,7 +299,83 @@ fn set_awake(pv: &tauri::webview::PlatformWebview, on: bool) {
 /// be getting ready; it then opens in this mode.)
 pub fn set_mode(app: &AppHandle, mode: Mode) {
     *MODE.lock().unwrap() = mode;
-    let _ = app.emit("picker-mode", mode);
+    let _ = app.emit(&event("picker-mode"), mode);
+}
+
+// ---- a capture over the capture ----
+// The capture key pressed while the picker is up opens a second picker over it, on a frame that shows the first one
+// (its menu and all). What's picked there is done with that frame; then the first picker gets its frame back and
+// carries on, so a recording started from the second one films what you do next in the first.
+
+static OVER: AtomicBool = AtomicBool::new(false);
+/// The first picker's frames, windows and mode while the second one is up.
+static STASH: Mutex<Option<(Vec<capture::Frame>, Vec<capture::WinInfo>, Mode)>> = Mutex::new(None);
+
+fn overs(app: &AppHandle) -> Vec<tauri::WebviewWindow> {
+    app.webview_windows().into_iter().filter(|(l, _)| l.starts_with("over-")).map(|(_, w)| w).collect()
+}
+fn is_over(w: &tauri::WebviewWindow) -> bool { w.label().starts_with("over-") }
+/// Events for the picker pages go to the top layer only: the second picker's carry an "over-" prefix.
+pub fn event(name: &str) -> String { if OVER.load(SeqCst) { format!("over-{name}") } else { name.to_string() } }
+
+fn start_over(app: &AppHandle, mode: Mode) {
+    if OVER.swap(true, SeqCst) { return; }
+    let frames = match capture::freeze_all() {
+        Ok(f) => f,
+        Err(e) => { OVER.store(false, SeqCst); return actions::notify(app, &format!("Couldn't capture the screen: {e}")); }
+    };
+    let st = state(app);
+    let old = (std::mem::replace(&mut *st.frames.lock().unwrap(), frames), std::mem::replace(&mut *st.windows.lock().unwrap(), capture::windows()), *MODE.lock().unwrap());
+    *STASH.lock().unwrap() = Some(old);
+    *MODE.lock().unwrap() = mode;
+    if mode == Mode::Screen {
+        let r = state(app).frames.lock().unwrap().first().map(|f| (f.x, f.y, f.image.width(), f.image.height()));
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Some((x, y, width, height)) = r { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None, extra: vec![], layout: None }).await; }
+            restore(&app);
+        });
+        return;
+    }
+    let origins: Vec<(i32, i32)> = st.frames.lock().unwrap().iter().map(|f| (f.x, f.y)).collect();
+    for (i, m) in app.available_monitors().unwrap_or_default().iter().enumerate() {
+        let label = format!("over-{i}");
+        let w = match app.get_webview_window(&label) {
+            Some(w) => w,
+            None => match WebviewWindowBuilder::new(app, &label, WebviewUrl::App("picker.html".into()))
+                .decorations(false).resizable(false).skip_taskbar(true).always_on_top(true).shadow(false).visible(false).focused(false).build() {
+                Ok(w) => w,
+                Err(e) => { log::warn!("second picker window: {e}"); continue }
+            },
+        };
+        cover(&w, m);
+        let pos = m.position();
+        let frame = origins.iter().position(|&(x, y)| x == pos.x && y == pos.y).unwrap_or(i.min(origins.len().saturating_sub(1)));
+        let mut r = READY.lock().unwrap();
+        if r.0.iter().any(|l| l == w.label()) { send_frame(app, &w, frame); }
+        else { r.1.retain(|(l, _)| l != w.label()); r.1.push((w.label().to_string(), frame)); }
+    }
+}
+
+fn close_over(app: &AppHandle) {
+    for w in overs(app) { let _ = w.hide(); awake(&w, false); let _ = w.emit_to(w.label(), "reset", ()); }
+}
+
+/// The first picker's frame, windows and mode come back, and it has the keyboard again.
+fn restore(app: &AppHandle) {
+    if let Some((frames, windows, mode)) = STASH.lock().unwrap().take() {
+        let st = state(app);
+        *st.frames.lock().unwrap() = frames;
+        *st.windows.lock().unwrap() = windows;
+        *MODE.lock().unwrap() = mode;
+    }
+    OVER.store(false, SeqCst);
+    let cur = app.cursor_position().unwrap_or_default();
+    for w in pickers(app) {
+        if let (Ok(p), Ok(s)) = (w.outer_position(), w.outer_size()) {
+            if cur.x as i32 >= p.x && (cur.x as i32) < p.x + s.width as i32 && cur.y as i32 >= p.y && (cur.y as i32) < p.y + s.height as i32 { let _ = w.set_focus(); }
+        }
+    }
 }
 
 /// Shift+capture key: the same rectangle as last time, straight to the default action.
@@ -342,16 +418,19 @@ fn info(app: &AppHandle, frame: usize) -> Option<PickerInfo> {
 }
 
 #[tauri::command]
-pub async fn picked(app: AppHandle, pick: Picked) -> Result<(), String> {
-    close_pickers(&app);
+pub async fn picked(app: AppHandle, window: tauri::WebviewWindow, pick: Picked) -> Result<(), String> {
+    let over = is_over(&window);
+    if over { close_over(&app) } else { close_pickers(&app) }
     let mut pick = pick;
     if *MODE.lock().unwrap() == Mode::Record && pick.action == "default" { pick.action = "record".into(); }
     actions::run(&app, pick).await;
+    if over { restore(&app); }
     Ok(())
 }
 
 #[tauri::command]
-pub fn picker_cancel(app: AppHandle) {
+pub fn picker_cancel(app: AppHandle, window: tauri::WebviewWindow) {
+    if is_over(&window) { close_over(&app); restore(&app); return; }
     close_pickers(&app);
     state(&app).frames.lock().unwrap().clear();
 }

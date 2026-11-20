@@ -28,6 +28,9 @@ const PRESETS: Preset[] = [
 ];
 
 const MOD = os === "macos" ? "⌘" : "Ctrl+";
+// A second picker can open over this one (the capture key pressed again); its events carry an "over-" prefix so the
+// two layers don't hear each other.
+const ev = (name: string) => (getCurrentWebviewWindow().label.startsWith("over-") ? `over-${name}` : name);
 let frameIdx = 0;
 const canvas = document.getElementById("c") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -199,49 +202,61 @@ const MORE: Item[] = [
   { id: "ocr_csv", label: "Copy the text as CSV", icon: "text", tip: "Read the words and copy the table in the picture as CSV, one row per line." },
   { id: "ocr_html", label: "Copy the text as HTML", icon: "text", tip: "Read the words and copy them as HTML code: headings, paragraphs, lists and tables." },
   { id: "ocr_ai", label: "Copy the text with AI (Markdown)", icon: "sparkles", tip: "Have AI write out the text as Markdown, keeping bold, code blocks and tricky tables. Uses your AI provider." },
+  { id: "share", label: "Share as a link…", icon: "share", tip: "Upload it and copy a link to it." },
+  { id: "delay3", label: "Capture again in 3 s", icon: "timer", tip: "Close this, wait 3 seconds (open a menu meanwhile), then capture again." },
   { id: "qr", label: "Read QR code", icon: "qr", key: "Q", tip: "Read a QR code or barcode in the area and copy what it says." },
   { id: "pin", label: "Pin on top of everything", icon: "pin", key: "I", tip: "Float the picture above all windows, to compare or copy from." },
-  { id: "share", label: "Share as a link…", icon: "share", tip: "Upload it and copy a link to it." },
   { id: "path", label: "Save and copy the file path", icon: "link", key: "P", tip: "Save it to your Grabbit folder and copy where it was saved." },
-  { id: "delay3", label: "Capture again in 3 s", icon: "timer", tip: "Close this, wait 3 seconds (open a menu meanwhile), then capture again." },
   { id: "delay10", label: "Capture again in 10 s", icon: "timer", key: "D", tip: "Close this, wait 10 seconds, then capture again." },
   { id: "folder", label: "Open the Grabbit folder", icon: "folder", key: "O", tip: "Close this and open the folder your captures are saved in." },
   { id: "history", label: "Find an old capture (History)", icon: "history", key: "H", tip: "Close this and open History: search every capture by its words, programs, where you pasted it, dates and tags." },
 ];
 const REC: Item[] = [{ id: "record", label: "Record", icon: "record", key: "Enter", primary: true, tip: "Start recording this area." }];
 
-function button(it: Item) {
+// The actions sit on a wheel: point at a slice to see what it does in the middle, click it or press its number. More swaps the
+// wheel for a bigger one with the rest; the middle (or Esc) goes back.
+type Slot = { el: HTMLElement; label: string; key?: string; run: () => void };
+let mainSlots: Slot[] = [], moreSlots: Slot[] = [], moreOpen = false, active = -1;
+const ring = () => (moreOpen ? moreSlots : mainSlots);
+
+function slot(label: string, ic: Icon, tip: string, run: () => void, key?: string, cls = "") {
   const b = document.createElement("button");
-  b.className = "btn" + (it.primary ? " primary" : "");
-  b.innerHTML = `${icon(it.icon)}<span>${it.label}</span>${it.key ? `<kbd>${it.key}</kbd>` : ""}`;
-  b.title = it.key ? `${it.tip}\nShortcut: ${it.key}` : it.tip;
-  b.onclick = (e) => { e.stopPropagation(); act(it.id); };
-  return b;
+  b.className = `btn slot ${cls}`;
+  b.innerHTML = `${icon(ic)}<span>${label}</span>`;
+  b.title = key ? `${tip}\nShortcut: ${key}` : tip;
+  const s: Slot = { el: b, label, key, run };
+  b.onclick = (e) => { e.stopPropagation(); s.run(); };
+  return s;
 }
+const itemSlot = (it: Item) => slot(it.label, it.icon, it.tip, () => void act(it.id), it.key, it.primary ? "primary" : "");
 
 async function showBar() {
-  bar.innerHTML = "";
+  bar.innerHTML = `<div class="disc"></div><svg class="wedges"></svg><div class="hub"></div><div class="menu" hidden></div><div class="extras"></div>`;
+  const menu = bar.querySelector(".menu")!, extras = bar.querySelector(".extras")!;
   const rec = info.mode === "Record";
-  for (const it of rec ? REC : MAIN) if (it.id !== "add" || keptP.length < MAX_AREAS - 1) bar.append(button(it));
+  mainSlots = (rec ? REC : MAIN).filter((it) => it.id !== "add" || keptP.length < MAX_AREAS - 1).map(itemSlot);
+  moreSlots = rec ? [] : MORE.map(itemSlot);
+  moreOpen = false;
   if (rec) {
     const s = await invoke<{ record_microphone: boolean; record_system_audio: boolean }>("get_settings");
     for (const [key, ic, label] of [["record_system_audio", "sound", "System sound"], ["record_microphone", "mic", "Microphone"]] as const) {
-      const t = document.createElement("button");
-      t.className = "btn toggle" + (s[key] ? " on" : "");
-      t.innerHTML = icon(ic);
       const tip = (on: unknown) => `${label} is ${on ? "ON" : "OFF"} for the recording. Click to turn it ${on ? "off" : "on"}.`;
-      t.title = tip(s[key]);
-      t.onclick = async (e) => {
-        e.stopPropagation();
+      const t: Slot = slot(`${label}: ${s[key] ? "on" : "off"}`, ic, tip(s[key]), async () => {
         const all = await invoke<Record<string, unknown>>("get_settings");
         all[key] = !all[key];
         await invoke("set_settings", { settings: all });
-        t.classList.toggle("on", !!all[key]);
-        t.title = tip(all[key]);
-      };
-      bar.append(t);
+        t.el.classList.toggle("on", !!all[key]);
+        t.el.title = tip(all[key]);
+        t.label = `${label}: ${all[key] ? "on" : "off"}`;
+        focus(active);
+      }, undefined, "toggle" + (s[key] ? " on" : ""));
+      mainSlots.push(t);
     }
+  } else {
+    mainSlots.push(slot("More", "more", "More things to do with this area: copy its text, read a QR code, pin it, share a link, scrolling capture…", () => setMore(true)));
   }
+  bar.prepend(...mainSlots.map((s) => s.el));
+  menu.append(...moreSlots.map((s) => s.el));
   if (keptP.length) {
     const lay = document.createElement("select");
     lay.className = "btn";
@@ -249,7 +264,7 @@ async function showBar() {
     for (const [v, t] of [["separate", "Separate pictures"], ["row", "Join side by side"], ["column", "Join stacked"], ["grid", "Join in a grid"], ["screen", "Join as on screen"]]) lay.add(new Option(t, v, false, v === layout));
     lay.onchange = () => { layout = lay.value; };
     lay.onpointerdown = (e) => e.stopPropagation();
-    bar.append(lay);
+    extras.append(lay);
   }
   const aspect = document.createElement("select");
   aspect.className = "btn";
@@ -257,55 +272,76 @@ async function showBar() {
   for (const [i, p] of PRESETS.entries()) aspect.add(new Option(p.name, String(i), false, p === preset));
   aspect.onchange = () => { preset = PRESETS[Number(aspect.value)]; if (sel) { sel = fitRatio(sel, "se"); draw(); placeBar(); } };
   aspect.onpointerdown = (e) => e.stopPropagation();
-  bar.append(aspect);
-  if (!rec) {
-    const more = document.createElement("button");
-    more.className = "btn";
-    more.innerHTML = `${icon("more")}<span>More</span>`;
-    more.title = "More things to do with this area: copy its text, read a QR code, pin it, share a link, scrolling capture…";
-    const menu = document.createElement("div");
-    menu.className = "menu";
-    menu.hidden = true;
-    for (const it of MORE) {
-      const m = document.createElement("button");
-      m.title = it.tip;
-      m.innerHTML = `${icon(it.icon)}<span>${it.label}</span>${it.key ? `<kbd>${it.key}</kbd>` : ""}`;
-      m.onclick = (e) => { e.stopPropagation(); act(it.id); };
-      menu.append(m);
-    }
-    more.onclick = (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; };
-    bar.append(more, menu);
-  }
+  extras.append(aspect);
+  const hub = bar.querySelector(".hub") as HTMLElement;
+  hub.onclick = (e) => { e.stopPropagation(); if (moreOpen) setMore(false); };
+  bar.onpointermove = (e) => focus(sliceAt(e));
+  bar.onpointerleave = () => focus(-1);
+  bar.onclick = (e) => { const i = sliceAt(e); if (i >= 0) ring()[i].run(); };
   bar.hidden = false;
+  wheel();
   placeBar();
 }
 
-/** Bar under (or over) the area with its main button (Copy / Record) right by the pointer, which is where the drag
- *  ended. Too close to the screen's right edge for that, the bar runs leftwards instead (main button last). */
+function setMore(open: boolean) {
+  if (moreOpen === open) return;
+  moreOpen = open;
+  if (!bar.hidden) { wheel(); placeBar(); }
+}
+
+/** The slice under the pointer, or -1 in the middle, outside the wheel, or over the size list. */
+function sliceAt(e: MouseEvent) {
+  if ((e.target as HTMLElement).closest(".hub, .extras")) return -1;
+  const R = bar.offsetWidth / 2, b = bar.getBoundingClientRect();
+  const dx = e.clientX - b.left - R, dy = e.clientY - b.top - R, d = Math.hypot(dx, dy);
+  if (d > R) return -1;
+  const n = ring().length, a = (Math.atan2(dy, dx) + Math.PI / 2 + 2 * Math.PI) % (2 * Math.PI);
+  return Math.round(a / (2 * Math.PI / n)) % n;
+}
+
+/** Light up slice `i` and say what it does in the middle (-1: the default, Copy / Record, or Back on the More wheel). */
+function focus(i: number) {
+  active = i;
+  bar.querySelectorAll(".wedges path").forEach((p, j) => p.classList.toggle("on", j === i));
+  ring().forEach((s, j) => s.el.classList.toggle("hot", j === i));
+  const s = ring()[i] ?? (moreOpen ? null : mainSlots[0]);
+  const hub = bar.querySelector(".hub")!;
+  const n = s?.el.dataset.n;
+  hub.innerHTML = s ? `<b>${s.label}</b><span>${n ? `<kbd>${n}</kbd>` : ""}${s.key ? `<kbd>${s.key}</kbd>` : ""}</span>` : `<b>Back</b><kbd>Esc</kbd>`;
+}
+
+/** Lay out the current wheel: one slice per action, the first at the top, going clockwise. */
+function wheel() {
+  const slots = ring(), n = slots.length, big = n > 10;
+  const R = big ? 150 : 124, r = big ? 60 : 52, m = (R + r) / 2, gap = 0.018;
+  bar.classList.toggle("more-open", moreOpen);
+  (bar.querySelector(".menu") as HTMLElement).hidden = !moreOpen;
+  bar.style.width = bar.style.height = `${2 * R}px`;
+  bar.style.setProperty("--hub", `${2 * r - 8}px`);
+  const pt = (a: number, d: number) => `${(R + d * Math.cos(a)).toFixed(1)} ${(R + d * Math.sin(a)).toFixed(1)}`;
+  const ang = (i: number) => (i / n) * 2 * Math.PI - Math.PI / 2;
+  const svg = bar.querySelector(".wedges")!;
+  svg.setAttribute("viewBox", `0 0 ${2 * R} ${2 * R}`);
+  svg.innerHTML = slots.map((_, i) => {
+    const a0 = ang(i - 0.5) + gap, a1 = ang(i + 0.5) - gap;
+    return `<path d="M${pt(a0, R - 3)} A${R - 3} ${R - 3} 0 0 1 ${pt(a1, R - 3)} L${pt(a1, r)} A${r} ${r} 0 0 0 ${pt(a0, r)}Z"/>`;
+  }).join("");
+  slots.forEach((s, i) => { if (i < 10) s.el.dataset.n = String((i + 1) % 10); s.el.style.left = `${R + m * Math.cos(ang(i))}px`; s.el.style.top = `${R + m * Math.sin(ang(i))}px`; });
+  focus(-1);
+}
+
+/** The wheel under (or over) the area, centred on the pointer, which is where the drag ended. */
 function placeBar() {
   if (!sel || bar.hidden) return;
-  bar.classList.remove("rev");
-  const r = bar.getBoundingClientRect();
-  const main = bar.querySelector(".btn.primary") as HTMLElement | null;
-  const off = main ? main.offsetLeft + main.offsetWidth / 2 : 0;   // main button's centre from the bar's left
+  const D = bar.offsetWidth, H = D + 46;   // the size list hangs under the wheel
   const px = Math.min(sel.x + sel.w, Math.max(sel.x, mouse.x));
-  let x = px - off;
-  if (x + r.width > innerWidth - 8) { bar.classList.add("rev"); x = px - (r.width - off); }
-  x = Math.min(innerWidth - r.width - 8, Math.max(8, x));
+  const x = Math.min(innerWidth - D - 8, Math.max(8, px - D / 2));
   // Below the area, or above it when the drag ended at its top; whichever fits, else just inside the bottom.
-  const below = sel.y + sel.h + 10, above = sel.y - r.height - 10;
-  const fitsBelow = below + r.height <= innerHeight - 8, fitsAbove = above >= 8;
+  const below = sel.y + sel.h + 10, above = sel.y - H - 10;
+  const fitsBelow = below + H <= innerHeight - 8, fitsAbove = above >= 8;
   const nearTop = Math.abs(mouse.y - sel.y) < Math.abs(mouse.y - sel.y - sel.h);
-  const y = nearTop ? (fitsAbove ? above : fitsBelow ? below : sel.y + 10) : (fitsBelow ? below : fitsAbove ? above : sel.y + sel.h - r.height - 10);
+  const y = nearTop ? (fitsAbove ? above : fitsBelow ? below : sel.y + 10) : (fitsBelow ? below : fitsAbove ? above : Math.max(8, Math.min(innerHeight - H - 8, sel.y + sel.h - H - 10)));
   bar.style.left = `${x}px`; bar.style.top = `${y}px`;
-  const menu = bar.querySelector(".menu") as HTMLElement | null;
-  if (menu) {
-    // Down if it fits, else whichever side has more room, scrolling if even that is too short.
-    const down = innerHeight - (y + r.height) - 14, up = y - 14, need = MORE.length * 32 + 12;
-    const goUp = down < need && up > down;
-    menu.classList.toggle("up", goUp);
-    menu.style.maxHeight = `${Math.max(120, goUp ? up : down)}px`;
-  }
 }
 
 async function act(id: string) {
@@ -332,7 +368,7 @@ function keepSel() {
   if (!sel) return;
   keptP.push(physArr(sel)); sel = null; fromWindow = null; bar.hidden = true;
   showKeptHint();
-  void emit("picker-kept", keptP);
+  void emit(ev("picker-kept"), keptP);
   draw();
 }
 function showKeptHint() {
@@ -409,7 +445,7 @@ canvas.addEventListener("pointerdown", (e) => {
   if (e.button === 2) { if (sel) select(null); else void invoke("picker_cancel"); return; }
   if (e.button !== 0) return;
   canvas.setPointerCapture(e.pointerId);
-  (bar.querySelector(".menu") as HTMLElement | null)?.setAttribute("hidden", "");
+  setMore(false);
   const ed = edgeAt(e.clientX, e.clientY);
   if (sel && ed) drag = { kind: "edge", x0: e.clientX, y0: e.clientY, start: { ...sel }, edge: ed, moved: false };
   else if (sel && inside(e.clientX, e.clientY)) drag = { kind: "move", x0: e.clientX, y0: e.clientY, start: { ...sel }, moved: false };
@@ -420,8 +456,8 @@ canvas.addEventListener("pointerdown", (e) => {
       // Ctrl+drag adds an area: the one selected now, on this screen or another, is kept.
       if (picked.length) { /* Ctrl+click picks several windows */ }
       else if (sel) { if (keptP.length < MAX_AREAS - 1) keepSel(); }
-      else void emit("picker-collect", me.label);
-    } else { sel = null; picked = []; void emit("picker-deselect", me.label); }
+      else void emit(ev("picker-collect"), me.label);
+    } else { sel = null; picked = []; void emit(ev("picker-deselect"), me.label); }
   }
   draw();
 });
@@ -473,9 +509,10 @@ addEventListener("keydown", (e) => {
   if (!live()) return;
   const mod = e.ctrlKey || e.metaKey;
   const key = e.key.toLowerCase();
+  if (e.key === "Escape" && moreOpen && !bar.hidden) { setMore(false); return; }
   if (e.key === "Escape" && !sel && keptP.length) {
     const last = toLocal(keptP.pop()!);
-    void emit("picker-kept", keptP);
+    void emit(ev("picker-kept"), keptP);
     if (last.x + last.w > 0 && last.y + last.h > 0 && last.x < innerWidth && last.y < innerHeight) { sel = last; void showBar(); }
     else if (keptP.length) showKeptHint(); else hint.hidden = true;
     draw(); return;
@@ -490,6 +527,8 @@ addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown") grow ? (r.h += s) : (r.y += s);
     sel = norm(r); draw(); placeBar(); e.preventDefault(); return;
   }
+  // 1–9 and 0 pick the wheel's slices, clockwise from the top.
+  if (/^Digit\d$/.test(e.code) && !mod && !e.shiftKey && !bar.hidden) { const s = ring()[(Number(e.code[5]) + 9) % 10]; if (s) { e.preventDefault(); s.run(); } return; }
   if (key === "c" && !mod && mouse.x >= 0) { void invoke("copy_text", { text: hex(mouse.x, mouse.y) }); flash(`Copied ${hex(mouse.x, mouse.y)}`); return; }
   if (key === "m" && !mod) { measuring = !measuring; flash(measuring ? "Measure: drag between two points" : "Measure off"); select(null); return; }
   if (key === "a" && !mod) { preset = PRESETS[(PRESETS.indexOf(preset) + 1) % PRESETS.length]; flash(`Size: ${preset.name}`); if (sel) { sel = fitRatio(sel, "se"); void showBar(); } draw(); return; }
@@ -532,13 +571,13 @@ const HINT = hint.innerHTML;
 const REC_HINT = `Drag the area to record, click a window, or press <kbd>F</kbd> for the whole screen`;
 // The capture key opens the picker as it goes down; held on, a progress pill fills (`hold` 0–1, or -1 when it was let
 // go in time), and at the end the picker turns into the recording picker (`picker-mode`).
-void listen<number>("hold", (e) => {
+void listen<number>(ev("hold"), (e) => {
   if (!info || sel || keptP.length || info.mode === "Record") return;
   if (e.payload < 0) { hint.innerHTML = HINT; return; }
   hint.hidden = false;
   hint.innerHTML = `<span class="hold"><span class="dot"></span><b>Keep holding to record</b><span class="track"><span class="fill" style="width:${Math.min(100, e.payload * 100)}%"></span></span></span>`;
 });
-void listen<"Pick" | "Record">("picker-mode", (e) => {
+void listen<"Pick" | "Record">(ev("picker-mode"), (e) => {
   if (!info) return;
   info.mode = e.payload;
   if (sel) void showBar(); else if (!keptP.length) { hint.hidden = false; hint.innerHTML = e.payload === "Record" ? REC_HINT : HINT; }
@@ -557,6 +596,6 @@ void me.listen("reset", reset);
 webview?.addEventListener("sharedbufferreceived", (e: { additionalData: Info; getBuffer(): ArrayBuffer }) => open(e.additionalData.frame, { info: e.additionalData, buf: e.getBuffer() }));
 // A multi-area capture can span screens: every picker shares the kept areas, and a new drag on one screen clears the
 // selection on the others (Ctrl+drag keeps it instead).
-void listen<[number, number, number, number][]>("picker-kept", (e) => { if (!info) return; keptP = e.payload; if (!sel && keptP.length && !drag) showKeptHint(); draw(); });
-void listen<string>("picker-collect", (e) => { if (e.payload !== me.label && sel && !picked.length && keptP.length < MAX_AREAS - 1) keepSel(); });
-void listen<string>("picker-deselect", (e) => { if (e.payload !== me.label && (sel || picked.length)) { picked = []; select(null); } });
+void listen<[number, number, number, number][]>(ev("picker-kept"), (e) => { if (!info) return; keptP = e.payload; if (!sel && keptP.length && !drag) showKeptHint(); draw(); });
+void listen<string>(ev("picker-collect"), (e) => { if (e.payload !== me.label && sel && !picked.length && keptP.length < MAX_AREAS - 1) keepSel(); });
+void listen<string>(ev("picker-deselect"), (e) => { if (e.payload !== me.label && (sel || picked.length)) { picked = []; select(null); } });

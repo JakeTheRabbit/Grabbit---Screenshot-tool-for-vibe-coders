@@ -51,7 +51,7 @@ pub fn on_event(app: &AppHandle, sc: &Shortcut, ev: ShortcutEvent) {
 fn tap_or_hold(app: &AppHandle, pressed: bool) {
     if !pressed {
         // Let go before the hold timer fired: the picker stays open for a screenshot.
-        if DOWN.swap(false, Ordering::SeqCst) { let _ = app.emit("hold", -1.0); }
+        if DOWN.swap(false, Ordering::SeqCst) { let _ = app.emit(&picker::event("hold"), -1.0); }
         return;
     }
     if DOWN.swap(true, Ordering::SeqCst) { return; }   // key auto-repeat
@@ -68,7 +68,7 @@ fn tap_or_hold(app: &AppHandle, pressed: bool) {
             std::thread::sleep(Duration::from_millis(25));
             if !DOWN.load(Ordering::SeqCst) || PRESS.load(Ordering::SeqCst) != me { return; }
             let ms = t0.elapsed().as_millis() as u64;
-            if ms >= HINT_AFTER_MS { let _ = app.emit("hold", (ms - HINT_AFTER_MS) as f64 / (hold - HINT_AFTER_MS).max(1) as f64); }
+            if ms >= HINT_AFTER_MS { let _ = app.emit(&picker::event("hold"), (ms - HINT_AFTER_MS) as f64 / (hold - HINT_AFTER_MS).max(1) as f64); }
             if ms >= hold {
                 // Claim the press, so letting go doesn't undo it.
                 if DOWN.swap(false, Ordering::SeqCst) { picker::set_mode(&app, picker::Mode::Record); }

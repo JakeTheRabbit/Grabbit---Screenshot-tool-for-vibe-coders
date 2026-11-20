@@ -67,7 +67,7 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 - Move and resize the selection after you draw it; arrow keys nudge it.
 
 <table><tr>
-<td><a href="docs/screenshots/clip-capture.mp4"><img src="docs/screenshots/clip-capture.webp" width="420" alt="Tap PrtScn, drag over an area, and the bar pops up where you let go. Every button shows its key: Enter copies, Shift+Enter copies smaller, E marks up, Ctrl+S saves, R records, N adds another area, V is Talk to AI."></a><br><sub>The bar after a capture, every button with its key</sub></td>
+<td><a href="docs/screenshots/clip-capture.mp4"><img src="docs/screenshots/clip-capture.webp" width="420" alt="Tap PrtScn, drag over an area, and an action wheel pops up where you let go. Every slice has a number key and most a letter: Enter copies, Shift+Enter copies smaller, E marks up, Ctrl+S saves, R records, N adds another area, V is Talk to AI."></a><br><sub>The action wheel after a capture, every slice with its keys</sub></td>
 <td><a href="docs/screenshots/clip-more-menu.mp4"><img src="docs/screenshots/clip-more-menu.webp" width="420" alt="The More menu, item by item: X describes with AI, B starts a batch, S scrolling capture, T copies text, Q reads a QR code, I pins, Share, P saves and copies the path, D captures again in 10 s."></a><br><sub>Everything under More, each with its key</sub></td>
 </tr><tr>
 <td><a href="docs/screenshots/clip-scrolling-capture.mp4"><img src="docs/screenshots/clip-scrolling-capture.webp" width="420" alt="Press S on a page longer than the window: Grabbit scrolls it and stitches one tall picture, with the sticky header once."></a><br><sub>Scrolling capture</sub></td>
@@ -199,6 +199,7 @@ PrtScn only works when no other screenshot tool has claimed it (Windows: turn of
 |---|---|
 | **Tap** PrtScn (macOS: <kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd>) | The screens freeze. Drag an area, click a window, or press <kbd>F</kbd> for the whole screen. **Enter** copies it. |
 | **Hold** it for 2 s | A pill fills up, then you pick what to record. Press the key again (or Stop) to finish. |
+| Press PrtScn **again** while picking | A second picker opens over the first, menu and all: screenshot it, or record and film what you do next in the first one. |
 | Press **V** on a selection | Talk about it. Your words, the picture and the text on screen go on the clipboard for one paste into an AI chat. |
 
 <details>
@@ -218,6 +219,7 @@ PrtScn only works when no other screenshot tool has claimed it (Windows: turn of
 | <kbd>A</kbd> | Size presets | <kbd>D</kbd> | Again in 10 s |
 | <kbd>O</kbd> | Open the Grabbit folder | <kbd>H</kbd> | History: find a capture |
 | <kbd>Esc</kbd> | Back / close | Right-click | Back / close |
+| <kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd> | The wheel's slices, clockwise from the top | <kbd>PrtScn</kbd> | Capture over the capture |
 
 Holding <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> as you let go of a drag goes straight to the editor / a smaller copy / a chat copy. <kbd>Ctrl</kbd>+click windows to capture several together.
 
