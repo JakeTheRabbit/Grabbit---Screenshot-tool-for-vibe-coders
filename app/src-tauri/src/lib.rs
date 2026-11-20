@@ -9,6 +9,7 @@ mod editor;
 mod export;
 mod guard;
 mod history;
+mod hooks;
 mod hotkey;
 mod mark;
 mod notes;
