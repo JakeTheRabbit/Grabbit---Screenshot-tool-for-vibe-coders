@@ -127,7 +127,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
         &PredefinedMenuItem::separator(app)?,
         &item("open", "Open picture or video…")?,
         &item("folder", "Open Grabbit folder")?,
-        &item("history", "Search captures…")?,
+        &item("history", "History: find a capture…")?,
         &item("settings", "Settings…")?,
         &PredefinedMenuItem::separator(app)?,
         &item("quit", "Quit Grabbit")?,
@@ -149,7 +149,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
             "open" => editor::open_dialog(app),
             "folder" => { let _ = tauri_plugin_opener::open_path(&state(app).settings.lock().unwrap().save_folder, None::<&str>); }
             "settings" => editor::open_settings(app, None),
-            "history" => editor::open_settings(app, Some("History")),
+            "history" => history::open(app, None),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -240,6 +240,11 @@ pub fn run() {
             batch::batch_clear,
             batch::batch_start,
             ai::ai_describe,
+            history::history_list,
+            history::history_update,
+            history::history_remove,
+            history::open_history,
+            history::open_captures_folder,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -258,6 +263,7 @@ pub fn run() {
                 });
             }
             tray(app.handle())?;
+            history::start_reminders(app.handle());
             hotkey::register_all(app.handle());
             let h = app.handle().clone();
             // With instant capture the capture screens are made now, so even the first capture opens at once.

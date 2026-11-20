@@ -125,12 +125,26 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 
 <a href="docs/screenshots/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, and Captions are made on your computer."></a>
 
+### Find it again
+
+**History** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>, <kbd>H</kbd> in the picker, or the tray) keeps every capture and recording, and finds any of them again by:
+
+- **the words in it**, read on your computer in the background, with the matches highlighted;
+- **the programs and windows it showed**, and **where you pasted it** (Grabbit notes the window you pressed <kbd>Ctrl</kbd>+<kbd>V</kbd> in while the capture was still on the clipboard);
+- **when**: today, yesterday, last week, or words like *tuesday*, *november* or *2026-11-21*;
+- **tags, a note**, and the AI description if Describe is on.
+
+**Star** things, **save them for later**, or set a **reminder** (in an hour, this evening, tomorrow morning, next week, or any time) and Grabbit shows the capture to you then. Search tips: `app:chrome`, `pasted:slack`, `tag:invoice`, `is:starred`, `is:later`, `before:2026-11-01`, `"exact phrase"`.
+
+- **Files named after what's in them:** `Google Chrome – Fernhill admin Orders 2026-11-21 14.32.05`, not `Grabbit 2026-11-21 14.32.05` (Settings → General).
+- **Keep the whole screen too:** every capture can also save the full screen it came from, in *Full screens*, linked from History.
+- **The folder is one key away:** <kbd>O</kbd> in the picker, **Open Grabbit folder** in History and Settings, and **Show in folder** on every capture.
+
 ### Share and protect
 
 - **Share** uploads and copies the link: **OneDrive**, **Immich**, **MEGA**, any **S3-compatible** storage (AWS, Cloudflare R2, Backblaze B2, MinIO; the link is copied before the upload finishes), or **Send to Obsidian**.
 - **Logo or watermark** on pictures and videos, plus an **invisible watermark**: your name and the capture's id hidden in the pixels. It survives JPEG, re-saving and cropping, and **Check image** names the original capture.
 - **Metadata** is stripped from everything by default; add author, copyright and your own fields when you want them.
-- **History:** search old captures by the words in them or what they show.
 
 ### Make it yours
 
@@ -201,6 +215,7 @@ PrtScn only works when no other screenshot tool has claimed it (Windows: turn of
 | <kbd>F</kbd> | Whole screen | <kbd>L</kbd> | Last area again |
 | <kbd>C</kbd> | Copy the colour | <kbd>M</kbd> | Measure |
 | <kbd>A</kbd> | Size presets | <kbd>D</kbd> | Again in 10 s |
+| <kbd>O</kbd> | Open the Grabbit folder | <kbd>H</kbd> | History: find a capture |
 | <kbd>Esc</kbd> | Back / close | Right-click | Back / close |
 
 Holding <kbd>Ctrl</kbd> / <kbd>Shift</kbd> / <kbd>Alt</kbd> as you let go of a drag goes straight to the editor / a smaller copy / a chat copy. <kbd>Ctrl</kbd>+click windows to capture several together.
@@ -215,6 +230,7 @@ Global keys (all changeable in Settings → Keys):
 | Record (again to stop) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>PrtScn</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>R</kbd> |
 | Save the replay buffer | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>B</kbd> |
 | Step recorder on / off | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>T</kbd> |
+| History: find a capture | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> | <kbd>⌘</kbd><kbd>⇧</kbd><kbd>⌥</kbd><kbd>H</kbd> |
 
 </details>
 

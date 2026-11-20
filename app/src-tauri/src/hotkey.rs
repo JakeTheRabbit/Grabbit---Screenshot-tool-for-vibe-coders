@@ -41,6 +41,7 @@ pub fn on_event(app: &AppHandle, sc: &Shortcut, ev: ShortcutEvent) {
         HotkeyAction::Record => picker::start(app, picker::Mode::Record),
         HotkeyAction::ReplaySave => crate::replay::save_now(app),
         HotkeyAction::Steps => crate::steps::toggle(app),
+        HotkeyAction::History => crate::history::open(app, None),
     }
 }
 

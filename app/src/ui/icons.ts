@@ -28,7 +28,14 @@ import sparkles from "lucide-static/icons/sparkles.svg?raw";
 import check from "lucide-static/icons/check.svg?raw";
 import plus from "lucide-static/icons/plus.svg?raw";
 import scroll from "lucide-static/icons/arrow-down-to-line.svg?raw";
+import star from "lucide-static/icons/star.svg?raw";
+import bookmark from "lucide-static/icons/bookmark.svg?raw";
+import bell from "lucide-static/icons/bell.svg?raw";
+import history from "lucide-static/icons/history.svg?raw";
+import tag from "lucide-static/icons/tag.svg?raw";
+import trash from "lucide-static/icons/trash-2.svg?raw";
+import monitor from "lucide-static/icons/monitor.svg?raw";
 
-const all = { plus, check, scroll, copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
+const all = { star, bookmark, bell, history, tag, trash, monitor, plus, check, scroll, copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
 export type Icon = keyof typeof all;
 export const icon = (n: Icon) => all[n];
