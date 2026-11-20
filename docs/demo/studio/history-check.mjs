@@ -20,7 +20,10 @@ const items = [
   { path: r("desk-bug.png"), name: "Visual Studio Code – RevenueCard.tsx 2026-11-12 14.05.10", time: t(9, 14, 5), width: 2560, height: 1440, kind: "capture",
     text: "export function RevenueCard", apps: ["Visual Studio Code", "Google Chrome"], windows: ["RevenueCard.tsx - fernhill - Visual Studio Code"],
     pasted: [], starred: true, later: false, remind: "", tags: [], note: "" },
-].map((i) => ({ bytes: 412000, description: "", full: "", folder: "C:\\Users\\you\\Pictures\\Grabbit", ...i }));
+  { path: join(demo, "../screenshots/reel.mp4"), name: "Grabbit tour", time: t(0, 10, 2), width: 0, height: 0, kind: "recording",
+    text: "This is Grabbit, a screenshot and screen recording tool built for people who paste things into AI. Tap Print Screen.", apps: [], windows: [],
+    pasted: [], starred: false, later: false, remind: "", tags: [], note: "", notes: "C:\\Users\\you\\Videos\\Grabbit\\Grabbit tour notes" },
+].map((i) => ({ bytes: 412000, description: "", full: "", notes: "", folder: "C:\\Users\\you\\Pictures\\Grabbit", ...i }));
 
 const p = await open("history.html", { width: 1240, height: 800, dpr: 1.5, setup: `__studio.handlers = { history_list: ${JSON.stringify(items)}, history_update: null };` });
 await sleep(900);
@@ -39,6 +42,14 @@ await sleep(300);
 await p.ev(`[...document.querySelectorAll(".side-row")].find((b) => b.textContent.includes("Saved for later")).click()`);
 await sleep(300);
 console.log("saved for later →", await p.ev(`document.querySelectorAll(".card").length`));
+await p.ev(`[...document.querySelectorAll(".side-row")].find((b) => b.textContent.includes("Everything")).click()`);
+await p.ev(`(() => { const q = document.getElementById("q"); q.value = "print screen"; q.dispatchEvent(new Event("input")); })()`);
+await sleep(400);
+console.log("said 'print screen' →", await p.ev(`document.querySelectorAll(".card").length`));
+await p.ev(`document.querySelector(".card").click()`);
+await sleep(600);
+console.log("recording detail →", await p.ev(`[...document.querySelectorAll("#detail .label, #detail .btn")].map((b) => b.textContent.trim()).filter(Boolean).join(" | ")`));
+await p.shot(join(demo, "out/history-3.png"));
 console.log(p.errors.join("\n") || "no errors");
 await p.close();
 process.exit(0);

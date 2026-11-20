@@ -12,7 +12,7 @@ type Paste = { app: string; title: string; time: string };
 type Item = {
   path: string; name: string; folder: string; time: string; width: number; height: number; bytes: number;
   kind: string; text: string; description: string; apps: string[]; windows: string[]; pasted: Paste[];
-  starred: boolean; later: boolean; remind: string; tags: string[]; note: string; full: string;
+  starred: boolean; later: boolean; remind: string; tags: string[]; note: string; full: string; notes: string;
 };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -186,6 +186,7 @@ async function act(what: string, i: Item) {
     if (what === "copy") { await invoke(i.kind === "recording" ? "quick_action" : "copy_file_image", i.kind === "recording" ? { action: "folder", path: i.path } : { path: i.path }); toast(i.kind === "recording" ? "Shown in its folder" : "Copied"); }
     else if (what === "text") { await invoke("copy_text", { text: i.text }); toast("Copied the text"); }
     else if (what === "full") await invoke("open_file", { path: i.full });
+    else if (what === "notes") await invoke("open_recording_notes", { path: i.path });
     else await invoke("quick_action", { action: what, path: i.path });
   } catch (e) { toast(String(e)); }
 }
@@ -248,7 +249,8 @@ function showDetail() {
     image ? btn("pin", "Pin", "Float it on top of every window (I)", () => void act("pin", i)) : null,
     btn("share", "Share", "Upload it and copy a link", () => void act("share", i)),
     btn("folder", "Show in folder", "Show the file in Explorer / Finder (O)", () => void act("folder", i)),
-    i.full ? btn("monitor", "Whole screen", "Open the full screen this was taken from", () => void act("full", i)) : null);
+    i.full ? btn("monitor", "Whole screen", "Open the full screen this was taken from", () => void act("full", i)) : null,
+    i.notes ? btn("text", "Notes", "Open the notes folder: transcript, captions and stills, ready for a coding agent", () => void act("notes", i)) : null);
 
   const words = parse($<HTMLInputElement>("#q").value).words;
   const text = i.text ? h("div", { class: "ocr", html: words.length ? esc(i.text).replace(new RegExp(words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "gi"), (m) => `<mark>${m}</mark>`) : esc(i.text) }) : null;
@@ -264,7 +266,7 @@ function showDetail() {
     section("Tags", tags),
     section("Note", note),
     i.description ? section("AI description", h("div", { class: "desc" }, i.description)) : null,
-    text ? section("Text in it", text, btn("text", "Copy the text", "Copy all the words read from it", () => void act("text", i), "btn small")) : null,
+    text ? section(image ? "Text in it" : "What was said", text, btn("text", "Copy the text", "Copy all the words read from it", () => void act("text", i), "btn small")) : null,
     h("div", { class: "row end" }, btn("trash", "Remove from History", "Forget it here. The file itself stays where it is.", async () => {
       if (!confirm("Remove this from History? The file stays in its folder.")) return;
       await invoke("history_remove", { path: i.path }); items = items.filter((x) => x !== i); sel = null; filter();
