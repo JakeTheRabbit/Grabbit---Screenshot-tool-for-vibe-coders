@@ -12,6 +12,7 @@ mod history;
 mod hotkey;
 mod mark;
 mod ocr;
+mod textfmt;
 mod picker;
 mod record;
 mod replay;

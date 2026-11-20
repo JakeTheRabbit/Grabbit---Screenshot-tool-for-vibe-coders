@@ -29,7 +29,8 @@ body.leaving { opacity: 0; transition: opacity 60ms; }
 #bar select.btn { appearance: none; padding-right: 10px; max-width: 170px; border-color: var(--line); background: transparent; color: var(--fg); }
 #bar .toggle { padding: 0 9px; opacity: 0.45; }
 #bar .toggle.on { opacity: 1; color: var(--accent); }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; padding: 5px; border-radius: calc(var(--radius) + 2px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); display: flex; flex-direction: column; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 230px; padding: 5px; border-radius: calc(var(--radius) + 2px); background: var(--panel); backdrop-filter: blur(20px) saturate(1.6); box-shadow: var(--shadow); border: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; }
+.menu button { flex: none; }
 .menu.up { top: auto; bottom: calc(100% + 6px); }
 .menu[hidden] { display: none; }
 .menu button { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; background: transparent; border-radius: 6px; text-align: left; }
