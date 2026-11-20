@@ -72,9 +72,24 @@ function pin() {
   root.title = "Drag to move · scroll to zoom · double-click or Esc to close";
 }
 
+/** Calls `show` with the seconds left of the countdown before recording (?count=N), then once with 0. */
+function countdown(show: (n: number) => void) {
+  const total = Number(q.get("count") ?? 0);
+  if (total <= 0) return;
+  let n = total;
+  const t0 = performance.now();
+  document.body.classList.add("counting");
+  show(n);
+  const id = setInterval(() => {
+    const left = total - Math.floor((performance.now() - t0) / 1000);
+    if (left <= 0) { clearInterval(id); document.body.classList.remove("counting"); show(0); } else if (left !== n) { n = left; show(n); }
+  }, 100);
+}
+
 /** The red frame. While paused it can be dragged (inside) or resized (edges); resume records the new spot. */
 function recframe() {
-  root.innerHTML = `<div class="frame"></div><div class="tip">Paused · drag to move, drag an edge to resize, then resume</div>`;
+  root.innerHTML = `<div class="frame"></div><div class="tip">Paused · drag to move, drag an edge to resize, then resume</div><div class="count"></div>`;
+  countdown((n) => { root.querySelector(".count")!.textContent = n ? String(n) : ""; });
   void listen<boolean>("rec-state", (e) => document.body.classList.toggle("editable", e.payload));
   const edge = (x: number, y: number) => {
     const m = 10, w = innerWidth, h = innerHeight;
@@ -121,13 +136,17 @@ function recbar() {
   if (q.get("mode") === "batch") return batchbar();
   root.innerHTML = `<div class="rec"><span class="live"></span><span class="time">0:00</span>
     <button class="ic" data-a="pause" title="Pause">${icon("pause")}</button>
+    <button class="ic" data-a="restart" title="Start over: throw this take away and record again">${icon("restart")}</button>
     <button class="stop" data-a="stop" title="Stop and keep">${icon("stop")}<span>Stop</span></button>
     <button class="ic" data-a="discard" title="Throw away">${icon("close")}</button></div>`;
   const time = root.querySelector(".time")!;
+  let counting = false;
+  countdown((n) => { counting = n > 0; if (counting) time.textContent = `Starting in ${n}…`; });
   const pause = root.querySelector('[data-a="pause"]') as HTMLButtonElement;
   root.querySelectorAll<HTMLButtonElement>("button").forEach((b) => (b.onclick = () => void invoke("rec_control", { what: b.dataset.a })));
   root.addEventListener("mousedown", (e) => { if (!(e.target as HTMLElement).closest("button")) void win.startDragging(); });
   const tick = async () => {
+    if (counting) return;
     const s = await invoke<{ elapsed: number; paused: boolean; recording: boolean }>("rec_status");
     const t = Math.floor(s.elapsed);
     time.textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;

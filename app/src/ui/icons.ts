@@ -35,7 +35,8 @@ import history from "lucide-static/icons/history.svg?raw";
 import tag from "lucide-static/icons/tag.svg?raw";
 import trash from "lucide-static/icons/trash-2.svg?raw";
 import monitor from "lucide-static/icons/monitor.svg?raw";
+import restart from "lucide-static/icons/rotate-ccw.svg?raw";
 
-const all = { star, bookmark, bell, history, tag, trash, monitor, plus, check, scroll, copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
+const all = { restart, star, bookmark, bell, history, tag, trash, monitor, plus, check, scroll, copy, smaller, chat, edit, save, link, text, qr, pin, share, ruler, timer, record, more, mic, sound, stop, pause, play, close, ratio, palette, folder, shield, search, sparkles };
 export type Icon = keyof typeof all;
 export const icon = (n: Icon) => all[n];

@@ -105,7 +105,8 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 <img src="docs/screenshots/record.webp" alt="Recording an area: the red frame and the Stop bar, which never appear in the video">
 
 - **Hold PrtScn for 2 s** (or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>PrtScn</kbd>, or Record on the bar). Let go early and you get a screenshot instead.
-- The red frame and Stop bar **never appear in the video**. **Pause**, then move or resize the frame before you carry on.
+- The red frame and Stop bar **never appear in the video**. **Pause**, then move or resize the frame before you carry on. **Start over** throws the take away and records the same area again.
+- A **3-second countdown** in the frame before it starts (0–10 s, or off, in Settings → Recording).
 - **System sound and microphone on separate tracks**, picked per copy later. Optional **webcam bubble**. Your clicks and keys are recorded for the studio effects.
 - Hardware encoding where available (NVIDIA, Intel, AMD, Apple), x264 everywhere else. Crash-safe, and it stops by itself before the disk fills.
 - **Replay buffer:** always keeps the last 10 s to 10 min; one key saves it.

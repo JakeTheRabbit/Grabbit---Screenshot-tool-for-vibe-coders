@@ -116,6 +116,8 @@ pub struct Settings {
     pub edit_after_recording: bool,
     /// A notes folder next to each recording: transcript, captions, stills, JSON.
     pub recording_notes: bool,
+    /// Seconds shown in the frame before recording starts (0 = straight away).
+    pub record_countdown: u32,
     pub ffmpeg_path: String,
     pub replay_seconds: u32,
     pub replay_enabled: bool,
@@ -178,6 +180,7 @@ impl Default for Settings {
             copy_recording: true,
             edit_after_recording: true,
             recording_notes: true,
+            record_countdown: 3,
             ffmpeg_path: String::new(),
             replay_seconds: 60,
             replay_enabled: false,

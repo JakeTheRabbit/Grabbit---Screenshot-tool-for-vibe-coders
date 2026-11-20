@@ -160,6 +160,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "toggle", key: "record_cursor", label: "Mouse pointer" },
     { kind: "toggle", key: "record_webcam", label: "Webcam bubble", help: "Your camera in a circle in the bottom-right corner" },
     ...(os === "windows" ? [{ kind: "toggle", key: "hide_desktop_icons", label: "Hide desktop icons while recording" } as Field] : []),
+    { kind: "number", key: "record_countdown", label: "Countdown before recording", min: 0, max: 10, unit: "seconds (0 = start straight away)" },
     { kind: "select", key: "record_fps", label: "Frame rate", options: [["30", "30 fps"], ["60", "60 fps"]] },
     { kind: "number", key: "record_quality", label: "Quality", min: 14, max: 35, unit: "(lower = sharper, bigger)" },
     { kind: "toggle", key: "show_keys", label: "Record key presses", help: "Shown as captions in the video editor" },

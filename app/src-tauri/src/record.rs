@@ -25,7 +25,8 @@ struct Session { tx: mpsc::Sender<Cmd>, area: Area, started: Instant, paused: Op
 
 static SESSION: Mutex<Option<Session>> = Mutex::new(None);
 
-pub fn is_recording(_app: &AppHandle) -> bool { SESSION.lock().unwrap().is_some() }
+/// Recording, or counting down to it (so the Record key stops either).
+pub fn is_recording(_app: &AppHandle) -> bool { SESSION.lock().unwrap().is_some() || COUNTING.load(std::sync::atomic::Ordering::SeqCst) }
 
 /// Seconds recorded so far, not counting pauses.
 pub fn elapsed() -> f64 {
@@ -445,11 +446,45 @@ fn track_cursor(area: Area, scale: f64, stop: std::sync::Arc<std::sync::atomic::
     })
 }
 
+/// True during the countdown before recording starts.
+static COUNTING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Start recording an area, after the countdown (Settings → Recording) when there is one.
 pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
+    use std::sync::atomic::Ordering::SeqCst;
     if is_recording(app) { return Ok(()); }
     if wayland_only() { bail!("Recording on Wayland isn't supported yet. Log in with an X11 session (or set GRABBIT_FORCE_X11=1 under XWayland).") }
     let s = state(app).settings.lock().unwrap().clone();
     video::ffmpeg(&s)?;
+    let (area, _) = fit(app, rect.0, rect.1, rect.2, rect.3)?;
+    let n = s.record_countdown.min(10);
+    if n == 0 { return begin(app, rect, true); }
+    COUNTING.store(true, SeqCst);
+    show_overlays(app, area, n);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        for _ in 0..n * 10 { std::thread::sleep(Duration::from_millis(100)); if !COUNTING.load(SeqCst) { return; } }
+        // The frame and bar stay up; the bar learns recording has begun from rec_status.
+        if COUNTING.swap(false, SeqCst) {
+            if let Err(e) = begin(&app, rect, false) { close_overlays(&app); actions::notify(&app, &format!("{e}")); }
+        }
+    });
+    Ok(())
+}
+
+/// Throw the recording away and start again on the same area.
+pub fn restart(app: &AppHandle) {
+    let Some(a) = SESSION.lock().unwrap().as_ref().map(|s| s.area) else { return };
+    stop(app, false);
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(300));
+        if let Err(e) = start(&app, (a.x, a.y, a.width, a.height)) { actions::notify(&app, &format!("{e}")); }
+    });
+}
+
+fn begin(app: &AppHandle, rect: (i32, i32, u32, u32), overlays: bool) -> Result<()> {
+    let s = state(app).settings.lock().unwrap().clone();
     let (area, scr) = fit(app, rect.0, rect.1, rect.2, rect.3)?;
     let dir = std::env::temp_dir().join("Grabbit").join(export::stamp_name("rec").replace(' ', "-"));
     std::fs::create_dir_all(&dir)?;
@@ -495,7 +530,7 @@ pub fn start(app: &AppHandle, rect: (i32, i32, u32, u32)) -> Result<()> {
     *SESSION.lock().unwrap() = Some(Session { tx, area, started, paused: None, paused_total: Duration::ZERO });
     if state(app).settings.lock().unwrap().hide_desktop_icons { desktop_icons(false); }
     watch(app);
-    show_overlays(app, area);
+    if overlays { show_overlays(app, area, 0); }
     Ok(())
 }
 
@@ -538,6 +573,8 @@ pub fn pause_resume(app: &AppHandle) {
 }
 
 pub fn stop(app: &AppHandle, keep: bool) {
+    // Stopped during the countdown: nothing was recorded yet.
+    if COUNTING.swap(false, std::sync::atomic::Ordering::SeqCst) { close_overlays(app); return; }
     let Some(sess) = SESSION.lock().unwrap().take() else { return };
     close_overlays(app);
     if state(app).settings.lock().unwrap().hide_desktop_icons { desktop_icons(true); }
@@ -560,13 +597,14 @@ pub fn stop(app: &AppHandle, keep: bool) {
 }
 
 /// The red frame (just outside the recorded area) and the Stop bar. Both are kept out of the video.
-fn show_overlays(app: &AppHandle, a: Area) {
+/// `count`: seconds of countdown both show before recording begins.
+fn show_overlays(app: &AppHandle, a: Area, count: u32) {
     let a2 = app.clone();
     let _ = std::thread::spawn(move || {
         let scale = a2.monitor_from_point(a.x as f64, a.y as f64).ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0);
         let b = 3.0;
         let (lx, ly, lw, lh) = (a.x as f64 / scale, a.y as f64 / scale, a.width as f64 / scale, a.height as f64 / scale);
-        if let Ok(w) = WebviewWindowBuilder::new(&a2, "recframe", WebviewUrl::App("recframe.html".into()))
+        if let Ok(w) = WebviewWindowBuilder::new(&a2, "recframe", WebviewUrl::App(format!("recframe.html?count={count}").into()))
             .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(false).resizable(true)
             .position(lx - b, ly - b).inner_size(lw + 2.0 * b, lh + 2.0 * b).build() {
             let _ = w.set_ignore_cursor_events(true);
@@ -574,9 +612,9 @@ fn show_overlays(app: &AppHandle, a: Area) {
         }
         let mon = a2.monitor_from_point(a.x as f64, a.y as f64).ok().flatten();
         let mon_bottom = mon.as_ref().map(|m| (m.position().y as f64 + m.size().height as f64) / scale).unwrap_or(f64::MAX);
-        let (bw, bh) = (300.0, 44.0);
+        let (bw, bh) = (340.0, 44.0);
         let by = if ly + lh + b + bh + 8.0 < mon_bottom { ly + lh + b + 8.0 } else if ly - bh - b - 8.0 > 0.0 { ly - bh - b - 8.0 } else { ly + lh - bh - 12.0 };
-        if let Ok(w) = WebviewWindowBuilder::new(&a2, "recbar", WebviewUrl::App("recbar.html".into()))
+        if let Ok(w) = WebviewWindowBuilder::new(&a2, "recbar", WebviewUrl::App(format!("recbar.html?count={count}").into()))
             .decorations(false).transparent(true).shadow(false).always_on_top(true).skip_taskbar(true).focused(false).resizable(false)
             .position(lx + (lw - bw) / 2.0, by).inner_size(bw, bh).build() { exclude_from_capture(&w); }
     });
@@ -645,6 +683,7 @@ pub fn rec_control(app: AppHandle, what: String) {
         "stop" => stop(&app, true),
         "discard" => stop(&app, false),
         "pause" => pause_resume(&app),
+        "restart" => restart(&app),
         _ => {}
     }
 }
