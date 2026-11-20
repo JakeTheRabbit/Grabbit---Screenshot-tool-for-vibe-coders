@@ -146,9 +146,33 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
                     if let Err(e) = r { notify(&app2, &format!("Couldn't save: {e}")); }
                 });
         }
-        "ocr" => {
-            let text = ocr::recognize(&img).await?;
-            if text.trim().is_empty() { notify(app, "No text found"); } else { export::copy_text(&text)?; notify(app, &format!("Copied text: {}", first_line(&text))); }
+        "ocr" | "ocr_md" | "ocr_csv" | "ocr_html" => {
+            let words = ocr::words(&img).await?;
+            let b = crate::textfmt::blocks(&words);
+            if b.is_empty() { notify(app, "No text found"); return Ok(()); }
+            let tables = b.iter().filter(|x| matches!(x, crate::textfmt::Block::Table(_))).count();
+            let (what, text) = match action {
+                // Plain text and HTML together: a spreadsheet or document takes the HTML (real table cells, headings,
+                // lists), a plain text box takes the text.
+                "ocr" => {
+                    let plain = crate::textfmt::plain(&b);
+                    export::set_clipboard(export::Clip { image: None, png: None, files: &[], text: Some(&plain), html: Some(&crate::textfmt::html(&b)) })?;
+                    (if tables > 0 { "Copied text and table" } else { "Copied text" }, plain)
+                }
+                "ocr_md" => ("Copied as Markdown", crate::textfmt::markdown(&b)),
+                "ocr_csv" => ("Copied as CSV", crate::textfmt::csv(&words, &b)),
+                _ => ("Copied as HTML", crate::textfmt::html(&b)),
+            };
+            if action != "ocr" { export::copy_text(&text)?; }
+            notify(app, &format!("{what}: {}", first_line(&text)));
+        }
+        "ocr_ai" => {
+            let (s2, i2) = (s.clone(), img.clone());
+            notify(app, "Asking AI to write out the text…");
+            let md = tauri::async_runtime::spawn_blocking(move || crate::ai::ask(&s2, &i2, OCR_AI)).await??;
+            let md = md.trim().trim_start_matches("```markdown").trim_start_matches("```md").trim_start_matches("```").trim_end_matches("```").trim().to_string();
+            export::copy_text(&md)?;
+            notify(app, &format!("Copied as Markdown: {}", first_line(&md)));
         }
         "describe" => {
             let (s2, i2) = (s.clone(), img.clone());
@@ -168,6 +192,8 @@ async fn run_inner(app: &AppHandle, p: Picked) -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+const OCR_AI: &str = "Write out all the text in this picture as Markdown, keeping its layout: headings as headings, lists as lists, tables as Markdown tables with every cell in its column, code in fenced code blocks, and bold or italic where the picture has it. Copy the words exactly as they are; don't add, summarise or explain anything. Reply with only the Markdown.";
 
 fn first_line(t: &str) -> String {
     let l = t.lines().next().unwrap_or("").trim();

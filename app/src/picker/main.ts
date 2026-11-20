@@ -194,7 +194,11 @@ const MORE: Item[] = [
   { id: "describe", label: "Describe with AI", icon: "sparkles", key: "X", tip: "Have AI write what's in the picture, and copy that text." },
   { id: "batch", label: "Start an AI batch (talk through several)", icon: "mic", key: "B", tip: "Take several screenshots and talk about each one; they all paste into an AI chat together." },
   { id: "scroll", label: "Scrolling capture", icon: "scroll", key: "S", tip: "Capture a page longer than the screen by scrolling it." },
-  { id: "ocr", label: "Copy the text in it", icon: "text", key: "T", tip: "Read the words in the picture and copy them as text." },
+  { id: "ocr", label: "Copy the text in it", icon: "text", key: "T", tip: "Read the words in the picture and copy them, keeping the layout: tables paste into Excel, Sheets or Word as real cells, headings and lists stay headings and lists, and plain text boxes get clean text." },
+  { id: "ocr_md", label: "Copy the text as Markdown", icon: "text", key: "Shift+T", tip: "Read the words and copy them as Markdown: headings, lists and tables, for Obsidian, Notion, GitHub or an AI chat." },
+  { id: "ocr_csv", label: "Copy the text as CSV", icon: "text", tip: "Read the words and copy the table in the picture as CSV, one row per line." },
+  { id: "ocr_html", label: "Copy the text as HTML", icon: "text", tip: "Read the words and copy them as HTML code: headings, paragraphs, lists and tables." },
+  { id: "ocr_ai", label: "Copy the text with AI (Markdown)", icon: "sparkles", tip: "Have AI write out the text as Markdown, keeping bold, code blocks and tricky tables. Uses your AI provider." },
   { id: "qr", label: "Read QR code", icon: "qr", key: "Q", tip: "Read a QR code or barcode in the area and copy what it says." },
   { id: "pin", label: "Pin on top of everything", icon: "pin", key: "I", tip: "Float the picture above all windows, to compare or copy from." },
   { id: "share", label: "Share as a link…", icon: "share", tip: "Upload it and copy a link to it." },
@@ -293,7 +297,13 @@ function placeBar() {
   const y = nearTop ? (fitsAbove ? above : fitsBelow ? below : sel.y + 10) : (fitsBelow ? below : fitsAbove ? above : sel.y + sel.h - r.height - 10);
   bar.style.left = `${x}px`; bar.style.top = `${y}px`;
   const menu = bar.querySelector(".menu") as HTMLElement | null;
-  if (menu) menu.classList.toggle("up", y + r.height + 280 > innerHeight);
+  if (menu) {
+    // Down if it fits, else whichever side has more room, scrolling if even that is too short.
+    const down = innerHeight - (y + r.height) - 14, up = y - 14, need = MORE.length * 32 + 12;
+    const goUp = down < need && up > down;
+    menu.classList.toggle("up", goUp);
+    menu.style.maxHeight = `${Math.max(120, goUp ? up : down)}px`;
+  }
 }
 
 async function act(id: string) {
@@ -490,6 +500,7 @@ addEventListener("keydown", (e) => {
   const map: Record<string, string> = info.mode === "Record" ? { enter: "record", r: "record" } : { enter: "copy", e: "edit", v: "voice", x: "describe", b: "batch", n: "add", r: "record", s: "scroll", t: "ocr", q: "qr", i: "pin", p: "path", d: "delay10" };
   if (mod && key === "s") { e.preventDefault(); void act("save"); return; }
   if (key === "enter" && e.shiftKey && info.mode !== "Record") { void act("reduced"); return; }
+  if (key === "t" && e.shiftKey && !mod && info.mode !== "Record") { e.preventDefault(); void act("ocr_md"); return; }
   if (!mod && map[key]) { e.preventDefault(); void act(map[key]); }
 });
 
