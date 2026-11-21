@@ -31,10 +31,18 @@ const CLIPS = [
   ["more-menu", ["more"]],
   ["scrolling-capture", ["scroll"]],
   ["copy-text-and-pin", ["text", "pin"]],
+  ["capture-over-capture", ["layer"]],
   ["hide-private-details", ["hide"]],
+  ["mark-up", ["markup"]],
   ["record", ["record"]],
   ["video-editor", ["video"]],
+  ["history", ["history"]],
+  ["automations", ["automate"]],
 ];
+// Chapter names in the full tour (its scenes, in order).
+const CHAPTERS = { title: "Grabbit", grab: "Capture and the wheel", talk: "Talk to AI", paste: "Paste into AI", more: "The More wheel", scroll: "Scrolling capture",
+  text: "Copy the text", pin: "Pin on top", layer: "Capture over a capture", hide: "Hide private details", markup: "Mark up", record: "Record",
+  video: "The video editor", history: "History", automate: "Automations", end: "Free and open source" };
 
 // ---------------------------------------------------------------------------------------------------------------
 // The timeline: a list of beats. Each beat is what's on the stage (layers, pointer, caption, keys) for `dur` seconds.
@@ -104,7 +112,7 @@ async function snap(p, tag, pause = 40) {
 const J = async (p, code) => JSON.parse(await p.ev(`JSON.stringify(${code})`));
 /** Centre of the first button (in `scope`) whose text or title starts with `text`, in page pixels. */
 const button = async (p, text, scope = "body") => {
-  const c = await J(p, `(() => { const b = [...document.querySelectorAll(${JSON.stringify(scope + " button")})].find((b) => (b.textContent.trim() || b.title).startsWith(${JSON.stringify(text)})); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  const c = await J(p, `(() => { const b = [...document.querySelectorAll(${JSON.stringify(scope + " button")})].find((b) => (b.getAttribute("aria-label") || b.textContent.trim() || b.title).startsWith(${JSON.stringify(text)})); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
   if (!c) throw new Error(`no button "${text}" in ${scope}`);
   return c;
 };
@@ -537,6 +545,53 @@ async function shoot() {
   await desk.ev("desk.type('Message the assistant')");
   await desk.ev(`document.getElementById("compose").classList.remove("has")`);
 
+  // ================================= capture over a capture =================================
+  scene("layer");
+  base(deskFixed);
+  const l1 = await openPicker(1);
+  st.ptr = [kpis.cx, kpis.b + 80];
+  keys("PrtScn"); cap("Showing someone how something works?", "Showing someone how something works, even Grabbit itself? You can take a capture of a capture.");
+  beat(0.4, { cut: true });
+  await grab(l1, [kpis.x - 6, kpis.y - 6], [kpis.r + 6, kpis.b + 6], "layer");
+  wait(0.2);
+  // The first picker, wheel and all, frozen: what the second one opens on.
+  const l1Png = join(out, "layer1.png");
+  await l1.shot(l1Png);
+  ff("-i", l1Png, "-f", "rawvideo", "-pix_fmt", "rgba", join(out, "layer1.rgba"));
+  extra.set("grabbit/frame/3", { bytes: readFileSync(join(out, "layer1.rgba")), type: "application/octet-stream" });
+  const wb = await J(l1, `(() => { const a = document.querySelector("#bar").getBoundingClientRect(), b = document.querySelector("#bar .extras")?.getBoundingClientRect() ?? a; return [Math.min(a.left, b.left), a.top, Math.max(a.right, b.right), Math.max(a.bottom, b.bottom)]; })()`);
+  const l2 = await openPicker(3);
+  keys("PrtScn"); cap("Press <em>PrtScn</em> again: a second capture opens on top.", "While the wheel is up, press Print Screen again. A second capture opens on top, with the first one frozen underneath, wheel and all.");
+  await l2.mouse("mouseMoved", ...st.ptr);
+  st.cursor = "cross";
+  base(await snap(l2, "layer"));
+  wait(0.3);
+  keys(); cap("Drag over the wheel itself.", "Drag over the first capture, wheel included.");
+  const la = [Math.min(kpis.x, wb[0]) - 14, kpis.y - 14], lb = [Math.max(kpis.r, wb[2]) + 14, Math.min(886, wb[3] + 14)];
+  await liveMove(l2, FULL, la, 0.7, { tag: "layer" });
+  await l2.mouse("mousePressed", la[0], la[1], 1);
+  st.down = true;
+  await liveMove(l2, FULL, lb, 1.2, { down: true, tag: "layer" });
+  await l2.mouse("mouseReleased", lb[0], lb[1]);
+  st.down = false;
+  await l2.waitFor(`!document.getElementById("bar").hidden`);
+  st.cursor = "arrow";
+  base(await snap(l2, "layer", 120));
+  cap("Copy it for a how-to. Or hold <em>PrtScn</em> and film what you do next.", "Copy that for a how-to guide. Or hold the key instead, and record yourself using the first one.");
+  wait(0.3);
+  keys("Enter");
+  await l2.key("Enter", "Enter", 13);
+  await l2.close();
+  const layerCap = crop(l1Png, { x: la[0], y: la[1], w: lb[0] - la[0], h: lb[1] - la[1] }, "layer-cap.png");
+  const quickLayer = await part(`quick.html?t=${encodeURIComponent(`Copied ${Math.round((lb[0] - la[0]) * K)}×${Math.round((lb[1] - la[1]) * K)}`)}&p=${encodeURIComponent(layerCap)}`, 300, 230, "quick-layer");
+  await l1.mouse("mouseMoved", ...st.ptr);
+  base(await snap(l1, "layer", 80));
+  layer("quick", quickLayer, 1276, 646, 300, 230);
+  keys(); cap("Then you're back in the first one, where you left off.", "Then you're straight back in the first capture, right where you left off.");
+  wait(0.6);
+  drop("quick");
+  await l1.close();
+
   // ================================= 8. hide private details =================================
   scene("hide");
   const sec = await open(page("secrets.html"), { width: 1100, height: 640, dpr: K });
@@ -585,6 +640,53 @@ async function shoot() {
   cap("Keys, emails, IPs and phone numbers, pixelated for you.", "Grabbit finds the keys, emails, addresses and phone numbers, and pixelates each one. It all happens on your computer.");
   glide(E.at(stage[0] + stage[2] * 0.8, stage[1] + stage[3] * 0.9), 0.9);
   wait(0.8);
+
+  // ================================= mark it up =================================
+  scene("markup");
+  cap("The editor has the rest. <em>Every tool has a letter.</em>", "The editor has the rest of what you'd expect, and every tool has a one letter key.");
+  wait(0.2);
+  await tour(ed, E, ".mk-tools", [
+    ["Arrow", "<em>A</em> arrow", "A for an arrow.", "A"],
+    ["Box", "<em>R</em> box", "R for a box.", "R"],
+    ["Text", "<em>T</em> text", "T for text.", "T"],
+    ["Numbered step", "<em>N</em> numbered steps", "N for numbered steps.", "N"],
+    ["Spotlight", "<em>S</em> spotlight", "S dims everything but what matters.", "S"],
+    ["Crop", "<em>C</em> crop", "And C to crop.", "C"],
+  ], "editor");
+  const onStage = (u, v) => [stage[0] + stage[2] * u, stage[1] + stage[3] * v];
+  // An arrow, dragged onto the picture.
+  const arrowBtn = await button(ed, "Arrow", ".mk-tools");
+  glide(E.at(...arrowBtn), 0.5);
+  await ed.click(...arrowBtn);
+  click(0.3);
+  keys("A"); cap("Drag an arrow at what matters.", "Drag an arrow at what matters.");
+  const a0 = onStage(0.82, 0.16), a1 = onStage(0.6, 0.36);
+  glide(E.at(...a0), 0.8);
+  await ed.mouse("mouseMoved", ...a0);
+  await ed.mouse("mousePressed", ...a0, 1);
+  st.down = true;
+  await liveMove(ed, E, E.at(...a1), 0.8, { down: true, tag: "editor", every: 2, pause: 40 });
+  await ed.mouse("mouseReleased", ...a1);
+  st.down = false;
+  E.show(await snap(ed, "editor", 150));
+  wait(0.2);
+  // Numbered steps: one click each, they count up by themselves.
+  const stepBtn = await button(ed, "Numbered step", ".mk-tools");
+  glide(E.at(...stepBtn), 0.6);
+  await ed.click(...stepBtn);
+  click(0.3);
+  keys("N"); cap("Click, click: numbered steps count up by themselves.", "Click, click, click. Numbered steps count up by themselves.");
+  for (const [u, v] of [[0.08, 0.3], [0.08, 0.5], [0.08, 0.7]]) {
+    const c = onStage(u, v);
+    glide(E.at(...c), 0.5);
+    await ed.click(...c);
+    E.show(await snap(ed, "editor", 120));
+    click(0.3);
+  }
+  keys();
+  await ed.mouse("mouseMoved", ...onStage(0.5, 1.02));
+  E.show(await snap(ed, "editor", 100));
+  wait(0.6);
   console.log("editor:", ed.errors.join("\n"));
   await ed.close();
 
@@ -625,11 +727,27 @@ async function shoot() {
   keys("Enter");
   beat(0.4);
   await rec.close();
+  // The countdown (Settings → Recording), then the bar. Where its Stop and Start over buttons sit, from the real page.
+  const barAt = [app.cx - 170, app.b + 14];
+  const rb = await open("recbar.html", { width: 340, height: 44, dpr: K, setup: `__studio.handlers = { rec_status: { elapsed: 0, paused: false, recording: true } };` });
+  await sleep(500);
+  const rbBtn = (t) => J(rb, `(() => { const b = [...document.querySelectorAll("button")].find((b) => (b.title || b.dataset.tip || "").startsWith(${JSON.stringify(t)})); const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  const stopAt = await rbBtn("Stop"), againAt = await rbBtn("Start over");
+  await rb.close();
+  const counts = [];
+  for (const c of [3, 2, 1]) counts.push([await part(`recframe.html?count=${c}`, app.w + 8, app.h + 8, `recframe-c${c}`), await part(`recbar.html?count=${c}`, 340, 44, `recbar-c${c}`, `__studio.handlers = { rec_status: { elapsed: 0, paused: false, recording: true } };`)]);
+  base(deskFixed);
+  keys(); cap("A countdown gives you a moment to get ready.", "Turn on a countdown in Settings, and you get a few seconds to get ready before it starts.");
+  for (const [f, b] of counts) {
+    layer("recframe", f, app.x - 4, app.y - 4, app.w + 8, app.h + 8);
+    layer("recbar", b, barAt[0], barAt[1], 340, 44);
+    beat(1, {}, true);
+  }
+
   // Recording: the red frame and the Stop bar, laid over the live desktop (they're never in the video).
   const framePng = await part("recframe.html", app.w + 8, app.h + 8, "recframe");
   const bars = [];
-  for (let s = 0; s <= 9; s++) bars.push(await part("recbar.html", 300, 44, `recbar${s}`, `__studio.handlers = { rec_status: { elapsed: ${s}, paused: false, recording: true } };`));
-  const barAt = [app.cx - 150, app.b + 14];
+  for (let s = 0; s <= 9; s++) bars.push(await part("recbar.html", 340, 44, `recbar${s}`, `__studio.handlers = { rec_status: { elapsed: ${s}, paused: false, recording: true } };`));
   base(deskFixed);
   layer("recframe", framePng, app.x - 4, app.y - 4, app.w + 8, app.h + 8);
   keys(); cap("The red frame and Stop bar never show up in the video.", "A red frame shows what's being recorded. The frame and the Stop bar never show up in the video itself.");
@@ -637,12 +755,15 @@ async function shoot() {
   const stops = [[row.cx - 100, row.cy], [exp.cx, cta.cy], [rev.cx + 20, rev.cy], [row.cx + 60, row.cy + 70], [kpis.cx, kpis.cy], [exp.cx - 20, exp.cy], [row.cx, row.cy + 30]];
   let bi = 0;
   for (; bi < 7 || T < audioEnd; bi++) {
-    layer("recbar", bars[Math.min(9, bi)], barAt[0], barAt[1], 300, 44);
+    layer("recbar", bars[Math.min(9, bi)], barAt[0], barAt[1], 340, 44);
     glide(stops[bi % stops.length], 1.0);
   }
+  cap("Fluffed it? <em>Start over</em> throws the take away.", "Fluffed a line? Start over throws that take away and records again, without starting from scratch.");
+  glide([barAt[0] + againAt[0], barAt[1] + againAt[1]], 0.9);
+  wait(0.3);
   cap("Press <em>Stop</em> when you're done.", "Press Stop when you're done.");
-  layer("recbar", bars[Math.min(9, bi)], barAt[0], barAt[1], 300, 44);
-  glide([barAt[0] + 196, barAt[1] + 22], 0.9);
+  layer("recbar", bars[Math.min(9, bi)], barAt[0], barAt[1], 340, 44);
+  glide([barAt[0] + stopAt[0], barAt[1] + stopAt[1]], 0.6);
   wait(0.2);
   click(0.5);
 
@@ -682,6 +803,9 @@ async function shoot() {
   // Scrubbing: press on the timeline and drag; the picture follows.
   const tr = await J(ve, `(() => { const t = document.querySelector(".track"), r = t.getBoundingClientRect(), p = t.parentElement.getBoundingClientRect(); return [r.left, r.top, Math.min(r.width, p.right - r.left - 8), r.height]; })()`);
   const onTrack = (u) => VE.at(tr[0] + tr[2] * u, tr[1] + 52);
+  cap("Laid out like an editing suite: a monitor, and a timeline with video and sound tracks.", "It's laid out like an editing suite. The picture on top, and a timeline underneath, with the video on one track and the sound, as a waveform, on the other.");
+  glide(VE.at(tr[0] - 26, tr[1] + 62), 1.0);
+  wait(0.3);
   cap("Drag along the timeline to <em>scrub</em>.", "Press anywhere on the timeline and drag to scrub. The picture follows your pointer, so you can find the exact moment.");
   glide(onTrack(0.06), 0.9);
   await ve.mouse("mouseMoved", ...onTrack(0.06).map((v, i) => v - [VE.x, VE.y][i]));
@@ -694,7 +818,7 @@ async function shoot() {
   st.down = false;
   VE.show(await snap(ve, "video", 200));
   wait(0.4);
-  const tools = async (label, html, line, ...ks) => { const c = await button(ve, label); glide(VE.at(...c), 0.6); await ve.mouse("mouseMoved", ...c); VE.show(await snap(ve, "video", 120)); cap(html, line); keys(...ks); wait(0.3); return c; };
+  const tools = async (label, html, line, ...ks) => { const c = await button(ve, label); glide(VE.at(...c), 0.6); await ve.mouse("mouseMoved", ...c); VE.show(await snap(ve, "video", 520)); cap(html, line); keys(...ks); wait(0.3); return c; };
   await tools("Split", "<em>S</em> splits at the playhead.", "S splits the video where the playhead is.", "S");
   await tools("Trim start", "<em>I</em> and <em>O</em> trim the start and the end.", "I cuts everything before it, and O cuts everything after.", "I");
   keys();
@@ -719,8 +843,145 @@ async function shoot() {
   VE.show(await snap(ve, "video", 200));
   click(0.4);
   wait(1.0);
+  // Close the captions, then the rest of the tools: each is an icon, and its name shows when you point at it.
+  await ve.click(...capBtn);
+  await ve.mouse("mouseMoved", capBtn[0], capBtn[1] - 80);
+  VE.show(await snap(ve, "video", 150));
+  click(0.3);
+  cap("Every tool is an icon. <em>Point at one to see its name and key.</em>", "Every tool is an icon. Point at one and its name and key pop up.");
+  wait(0.2);
+  await tools("Cut part", "<em>Delete</em> cuts the selected part.", "Delete cuts out the selected part.", "Delete");
+  await tools("Draw", "<em>D</em> draws on the video.", "D draws on the video. Each drawing shows for four seconds, and gets its own bar on the timeline.", "D");
+  await tools("Blur box", "<em>Blur box</em> hides a face or a key.", "Blur box hides a face, an email or a key, for as long as you need.");
+  await tools("Zoom on clicks", "<em>Zoom on clicks</em> zooms in wherever you clicked.", "Zoom on clicks zooms in wherever you clicked while recording.");
+  await tools("Click rings", "<em>Click rings</em> and <em>keys</em> show what you pressed.", "Click rings and key presses show your viewer exactly what you did.");
+  keys();
+  // Speed up the middle part.
+  const segs = await J(ve, `[...document.querySelectorAll(".strip .seg")].map((s) => { const r = s.getBoundingClientRect(); return [r.left + r.width / 2, r.top + 40]; })`);
+  const midSeg = segs[Math.min(1, segs.length - 1)];
+  cap("Click a part and pick its <em>speed</em>.", "Click a part, and pick its speed. Two times, four, even eight, for the slow bits.");
+  glide(VE.at(...midSeg), 0.8);
+  await ve.click(...midSeg);
+  VE.show(await snap(ve, "video", 150));
+  click(0.3);
+  const sp = await J(ve, `(() => { const r = document.querySelector(".speed select").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  glide(VE.at(...sp), 0.7);
+  await ve.ev(`(() => { const s = document.querySelector(".speed select"); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "2"); s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
+  await ve.mouse("mouseMoved", ...sp);
+  VE.show(await snap(ve, "video", 200));
+  click(0.3);
+  wait(0.4);
+  // Turn the click effects on.
+  for (const label of ["Zoom on clicks", "Click rings"]) {
+    const c = await button(ve, label);
+    glide(VE.at(...c), 0.5);
+    await ve.click(...c);
+    VE.show(await snap(ve, "video", 120));
+    click(0.3);
+  }
+  // Copying: the menu of ways out.
+  const caret = await J(ve, `(() => { const r = document.querySelector(".drop .caret").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  cap("<em>Copy</em> pastes the edit anywhere. Or copy it small for chat, or as a GIF.", "Copy puts the finished edit on the clipboard. Or copy it small enough for chat, as a GIF, or as an animated WebP.");
+  glide(VE.at(...caret), 0.8);
+  await ve.click(...caret);
+  await ve.mouse("mouseMoved", caret[0] - 120, caret[1] + 66);
+  VE.show(await snap(ve, "video", 200));
+  click(0.3);
+  glide(VE.at(caret[0] - 120, caret[1] + 66), 0.5);
+  keys("Ctrl", "C");
+  wait(0.8);
+  keys();
   console.log("video:", ve.errors.join("\n"));
   await ve.close();
+
+  // ================================= history =================================
+  scene("history");
+  drop("video");
+  base(deskFixed); dim();
+  const ago = (d, h, m) => { const x = new Date(); x.setDate(x.getDate() - d); x.setHours(h, m, 0, 0); return x.toISOString(); };
+  const hist = [
+    { path: capBug, name: "Google Chrome – Fernhill admin Orders 09.41", time: ago(0, 9, 41), width: 2064, height: 1493, kind: "capture",
+      text: "Revenue today $NaN Orders 128 TypeError: Cannot read properties of undefined (reading 'total') at RevenueCard (RevenueCard.tsx:42)", apps: ["Google Chrome"], windows: ["Fernhill admin – Orders - Google Chrome"],
+      pasted: [{ app: "Claude", title: "Fix the orders page - Claude", time: ago(0, 9, 43) }], starred: true, tags: ["bug", "orders"], note: "Revenue shows NaN for pending orders" },
+    { path: secPng, name: "Microsoft Edge – Settings Integrations 08.15", time: ago(0, 8, 15), width: 1760, height: 1024, kind: "capture",
+      text: "Settings Integrations Owner Payments key Order webhook Roastery server", apps: ["Microsoft Edge"], windows: ["Settings · Integrations - Microsoft Edge"], later: true, tags: ["keys"] },
+    { path: pinPng, name: "Google Chrome – Fernhill admin Orders 16.02", time: ago(1, 16, 2), width: 1270, height: 220, kind: "capture",
+      text: "Revenue today $3,178.40 Orders 128 Avg. basket $24.83", apps: ["Google Chrome"], windows: ["Fernhill admin – Orders - Google Chrome"],
+      pasted: [{ app: "Slack", title: "#roastery - Slack", time: ago(1, 16, 3) }] },
+    { path: tallPng, name: "Google Chrome – Fernhill admin Orders 11.30", time: ago(3, 11, 30), width: 1584, height: 3224, kind: "capture",
+      text: "Latest orders #1046 Aroha T. Ridgeline Espresso 1 kg Pending", apps: ["Google Chrome"], windows: ["Fernhill admin – Orders - Google Chrome"], tags: ["orders"] },
+    { path: layerCap, name: "Grabbit – capture over a capture 10.02", time: ago(0, 10, 2), width: 1200, height: 900, kind: "capture",
+      text: "Revenue today Orders Avg. basket Copy", apps: ["Grabbit"], windows: ["Grabbit"] },
+  ].map((i) => ({ bytes: 412000, description: "", full: "", notes: "", folder: "C:\\Users\\you\\Pictures\\Grabbit", pasted: [], starred: false, later: false, remind: "", tags: [], note: "", ...i }));
+  const HI = win("history", 140, 40, 1320, 820);
+  const hp = await open("history.html", { width: HI.w, height: HI.h, dpr: K, setup: `__studio.handlers = { history_list: ${JSON.stringify(hist)}, history_update: null };` });
+  await hp.waitFor(`document.querySelectorAll(".card").length >= 4`, 15000);
+  await sleep(700);
+  HI.show(await snap(hp, "history"));
+  st.ptr = HI.at(700, 420);
+  cap("<em>History</em> finds any capture again.", "History finds any capture or recording again. By the words in it, the app it showed, or where you pasted it.");
+  beat(0.4, { cut: true });
+  const q = await J(hp, `(() => { const r = document.getElementById("q").getBoundingClientRect(); return [r.left + 40, r.top + r.height / 2]; })()`);
+  glide(HI.at(...q), 0.9);
+  await hp.click(...q);
+  click(0.3);
+  wait(0.2);
+  cap("Search the words <em>in</em> the pictures.", "Type a word that was on screen, like the error.");
+  for (const n of [1, 3, 5, 7, 9]) {
+    await hp.ev(`(() => { const q = document.getElementById("q"); q.value = ${JSON.stringify("typeerror")}.slice(0, ${n}); q.dispatchEvent(new Event("input")); })()`);
+    HI.show(await snap(hp, "history", 120));
+    beat(0.18);
+  }
+  wait(0.3);
+  const card = await J(hp, `(() => { const r = document.querySelector(".card").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
+  glide(HI.at(...card), 0.8);
+  await hp.click(...card);
+  await hp.waitFor(`document.querySelector("#detail .preview img")?.naturalWidth > 0`, 8000).catch(() => {});
+  await sleep(300);
+  HI.show(await snap(hp, "history", 100));
+  click(0.3);
+  cap("It knows where you pasted it, with stars, tags and notes.", "It shows where you pasted it, and you can star it, tag it, add a note, or set a reminder.");
+  wait(0.4);
+  await hp.ev(`(() => { const q = document.getElementById("q"); q.value = "pasted:slack"; q.dispatchEvent(new Event("input")); })()`);
+  HI.show(await snap(hp, "history", 200));
+  cap("<em>pasted:slack</em> finds what you sent to Slack.", "Pasted colon Slack finds everything you ever pasted into Slack.");
+  wait(0.6);
+  console.log("history:", hp.errors.join("\n"));
+  await hp.close();
+
+  // ================================= automations =================================
+  scene("automate");
+  drop("history");
+  const SE = win("settings", 220, 70, 1160, 760);
+  const se = await open("settings.html#Automations", { width: SE.w, height: SE.h, dpr: K, setup: `__studio.handlers = { autostart_get: false, set_settings: null, get_settings: { hotkeys: {}, ai: {}, metadata: {}, branding: {}, share: {},
+    after_capture_command: "", after_capture_webhook: "" } };` });
+  await se.waitFor(`document.querySelectorAll("input").length >= 2`, 10000);
+  await sleep(400);
+  SE.show(await snap(se, "settings"));
+  st.ptr = SE.at(600, 300);
+  cap("<em>Automations</em>: hand every capture on to something else.", "And Automations hand every capture on, the moment it's saved.");
+  beat(0.4, { cut: true });
+  const fields = await J(se, `[...document.querySelectorAll("input")].filter((i) => i.offsetParent && i.type === "text").map((i) => { const r = i.getBoundingClientRect(); return [r.left + 30, r.top + r.height / 2]; })`);
+  const typeIn = async (i, text, html, line) => {
+    glide(SE.at(...fields[i]), 0.8);
+    await se.click(...fields[i]);
+    click(0.3);
+    cap(html, line);
+    for (let n = 2; n <= text.length; n += Math.ceil(text.length / 14)) {
+      await se.ev(`(() => { const f = [...document.querySelectorAll("input")].filter((i) => i.offsetParent && i.type === "text")[${i}]; f.value = ${JSON.stringify(text)}.slice(0, ${n}); })()`);
+      SE.show(await snap(se, "settings", 30));
+      beat(0.1);
+    }
+    await se.ev(`(() => { const f = [...document.querySelectorAll("input")].filter((i) => i.offsetParent && i.type === "text")[${i}]; f.value = ${JSON.stringify(text)}; })()`);
+    SE.show(await snap(se, "settings", 60));
+    wait(0.3);
+  };
+  await typeIn(0, "copy {file} D:\\Paperless\\consume", "Run a command: file it into <em>Paperless</em>, a synced folder, anything.", "Run a command, to file it into Paperless or a synced folder.");
+  await typeIn(1, "https://n8n.fernhill.example/webhook/grabbit", "Or post it to a webhook: <em>n8n, Zapier, Home Assistant</em>.", "Or post it to a webhook, for n8n, Zapier or Home Assistant. It gets the file, the apps on screen, and the text in it.");
+  wait(0.6);
+  console.log("settings:", se.errors.join("\n"));
+  await se.close();
+  drop("settings", "dim");
   await desk.close();
 
   // ================================= end =================================
@@ -804,7 +1065,9 @@ function encode() {
   ff(...ins.flatMap((a) => ["-i", a.f]), "-filter_complex_script", join(out, "audio.graph"), "-map", "[out]", "-t", total.toFixed(3), "-ar", "48000", wav);
   const x264 = ["-c:v", "libx264", "-preset", "slow", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"];
   const frames = join(framesDir, "f%05d.jpg");
-  ff("-framerate", String(FPS), "-i", frames, "-i", wav, ...x264, "-shortest", join(dest, "reel.mp4"));
+  const sp0 = spans(beats), chapters = join(out, "chapters.txt");
+  writeFileSync(chapters, ";FFMETADATA1\ntitle=Grabbit tour\n" + [...sp0].map(([s, [a, b]]) => `[CHAPTER]\nTIMEBASE=1/1000\nSTART=${Math.round(a * 1000)}\nEND=${Math.round(b * 1000)}\ntitle=${CHAPTERS[s] ?? s}\n`).join(""));
+  ff("-framerate", String(FPS), "-i", frames, "-i", wav, "-i", chapters, "-map", "0:v", "-map", "1:a", "-map_metadata", "2", "-map_chapters", "2", ...x264, "-shortest", join(dest, "reel.mp4"));
   console.log("saved reel.mp4");
   const sp = spans(beats);
   for (const [name, scenes] of CLIPS) {

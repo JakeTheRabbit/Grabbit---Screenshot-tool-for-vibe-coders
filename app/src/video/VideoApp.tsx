@@ -4,6 +4,7 @@ import type { DrawingHandle, Timed } from "./VideoDrawing";
 const VideoDrawing = lazy(() => import("./VideoDrawing").then((m) => ({ default: m.VideoDrawing })));
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { call, fileUrl, inTauri, onHostEvent, send } from "../bridge";
+import { Icon, type IconName } from "../icons";
 
 // Recording timeline: scrub, trim the ends, split, cut parts out. The edit is just a list of kept ranges;
 // Grabbit's core (video.rs) renders them with ffmpeg, so nothing here touches the video file.
@@ -28,6 +29,15 @@ function fmt(t: number, fine = true) {
   t = Math.max(0, t);
   const m = Math.floor(t / 60), s = t - m * 60;
   return `${m}:${fine ? s.toFixed(2).padStart(5, "0") : String(Math.floor(s)).padStart(2, "0")}`;
+}
+/** Timecode, hours:minutes:seconds:frames. */
+const tc = (t: number, fps: number) => {
+  const f = Math.max(0, Math.round(t * fps)), r = Math.max(1, Math.round(fps)), s = Math.floor(f / r);
+  return [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60, f % r].map((n) => String(n).padStart(2, "0")).join(":");
+};
+/** An editing tool: an icon, its name on hover (the first line of `tip`). */
+function Tool({ icon, tip, on, big, ...b }: { icon: IconName; tip: string; on?: boolean; big?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button {...b} className={"tool" + (on ? " on" : "") + (big ? " big" : "")} aria-label={tip.split("\n")[0].replace(/ \(.*\)$/, "")} title={tip}><Icon name={icon} /></button>;
 }
 const key = (k: Seg[]) => k.map((g) => `${g.s.toFixed(3)}-${g.e.toFixed(3)}x${g.v ?? 1}`).join(",");
 /** Take [a, b] ranges out of the kept parts (cut silences, cut a caption's stretch). */
@@ -200,6 +210,22 @@ export function VideoApp() {
     makeThumbs(meta.url, meta.duration, thumbCount, (i, c) => { list[i] = c; setThumbs([...list]); }, () => alive).catch(() => {});
     return () => { alive = false; };
   }, [meta, thumbCount]);
+
+  // ---- the sound's waveform for the A1 track (decoded at 8 kHz; long recordings skip it) ----
+  const [wave, setWave] = useState("");
+  useEffect(() => {
+    if (!meta?.hasAudio || meta.duration > 900) return;
+    let alive = true;
+    (async () => {
+      const a = await new OfflineAudioContext(1, 1, 8000).decodeAudioData(await (await fetch(meta.url)).arrayBuffer());
+      const ch = a.getChannelData(0), n = Math.max(1, Math.ceil(meta.duration * 40)), step = ch.length / n, p: number[] = [];
+      for (let i = 0; i < n; i++) { let m = 0; for (let j = Math.floor(i * step); j < (i + 1) * step; j++) m = Math.max(m, Math.abs(ch[j])); p.push(m); }
+      const top = Math.max(...p, 1e-4);
+      const y = p.map((v) => 0.48 * Math.sqrt(v / top));
+      if (alive) setWave(`M0 .5${y.map((v, i) => `L${i} ${(0.5 - v).toFixed(3)}`).join("")}L${n} .5${[...y].reverse().map((v, k) => `L${n - 1 - k} ${(0.5 + v).toFixed(3)}`).join("")}Z|${n}`);
+    })().catch(() => {});
+    return () => { alive = false; };
+  }, [meta]);
 
   // ---- zoom: fit the whole video unless the user zoomed ----
   useLayoutEffect(() => {
@@ -452,6 +478,7 @@ export function VideoApp() {
   const tw = dur / thumbCount;
   // Drawing bars stack in rows so overlapping spans stay readable.
   const rows: number[] = [];
+  const A1 = 102, LANES = meta.hasAudio ? 142 : 104;
   const lanes = items.map((n) => {
     let r = rows.findIndex((end) => end <= n.from + 1e-6);
     if (r < 0) { r = rows.length; rows.push(0); }
@@ -498,92 +525,123 @@ export function VideoApp() {
         </div>
       </header>
 
-      <main ref={stage} onClick={() => !drawing && togglePlay()}>
-        <video ref={video} src={meta.url} preload="auto" style={{ left: box.left, top: box.top, width: box.width, height: box.height }} />
-        {(drawEver.current ||= drawing) && <Suspense fallback={null}><VideoDrawing box={box} width={meta.width} height={meta.height} t={t} duration={dur} drawing={drawing}
-          onItems={(list, sel) => {
-            setItems(list);
-            setPicked(sel);
-            const k = list.map((n) => `${n.id}@${n.from.toFixed(3)}-${n.to.toFixed(3)}`).join();
-            if (k !== itemsKey.current) { itemsKey.current = k; setDrawVersion((v) => v + 1); }   // selecting isn't an edit
-          }}
-          handle={(h) => { draw.current = h; if (h && wantBlur.current) { wantBlur.current = false; setTimeout(() => h.addBlur(), 50); } }} /></Suspense>}
-        {!playing && !drawing && <div className="bigplay">▶</div>}
-      </main>
-
-      <div className="controls">
-        <button className="icon" onClick={togglePlay} title="Play / pause (Space)">{playing ? "❚❚" : "▶"}</button>
-        <button className="icon" onClick={() => seek(t - 1 / meta.fps)} title="Back one frame (←)">‹</button>
-        <button className="icon" onClick={() => seek(t + 1 / meta.fps)} title="Forward one frame (→)">›</button>
-        <span className="time">{fmt(t)} <em>/ {fmt(dur)}</em></span>
-        <span className="sep" />
-        <button className={drawing ? "primary" : ""} onClick={() => { video.current?.pause(); setDrawing(!drawing); }}
-          title="Draw on the video with Excalidraw (D). Each drawing shows for 4 s from the playhead; drag its bar on the timeline to change when.">
-          {drawing ? "Done drawing" : "Draw"}
-        </button>
-        <button onClick={() => { video.current?.pause(); setDrawing(true); if (draw.current) setTimeout(() => draw.current?.addBlur(), 50); else wantBlur.current = true; }}
-          title="Blur a box (faces, emails, keys) while its bar is under the playhead. Move and resize it like a drawing.">Blur box</button>
-        <span className="sep" />
-        <button onClick={split} title="Split the part under the playhead (S)">Split</button>
-        <button onClick={remove} disabled={keep.length < 2} title="Cut out the selected part (Delete)">Cut part</button>
-        <button onClick={trimBefore} title="Cut everything before the playhead (I)">Trim start</button>
-        <button onClick={trimAfter} title="Cut everything after the playhead (O)">Trim end</button>
-        <button onClick={undo} disabled={!past.current.length} title="Undo (Ctrl+Z)">Undo</button>
-        <button onClick={redo} disabled={!future.current.length} title="Redo (Ctrl+Y)">Redo</button>
-        {edited && <button onClick={reset} title="Back to the whole recording">Reset</button>}
-        <span className="sep" />
-        <select className="speed" value={sel !== null ? String(keep[sel]?.v ?? 1) : ""} onChange={(e) => setSpeed(Number(e.target.value))} title="Speed of the selected part">
-          {sel === null && <option value="">Speed…</option>}
-          {[0.5, 1, 1.5, 2, 4, 8].map((v) => <option key={v} value={v}>{v}×</option>)}
-        </select>
-        {meta.hasAudio && <button onClick={cutSilences} title="Cut every quiet stretch longer than about a second">Cut silences</button>}
-        {meta.hasAudio && <button className={captionsOpen ? "on" : ""} onClick={() => (captionsOpen ? setCaptionsOpen(false) : makeCaptions())} title="Captions from the speech; edit them, cut lines out, burn them in">Captions</button>}
-        {meta.cursor && (
-          <span className="fx" title="Effects from the recorded mouse and keys, applied when you copy or save">
-            <label><input type="checkbox" checked={fx.zoom} onChange={(e) => setFx({ ...fx, zoom: e.target.checked })} />Zoom on clicks</label>
-            <label><input type="checkbox" checked={fx.clicks} onChange={(e) => setFx({ ...fx, clicks: e.target.checked })} />Click rings</label>
-            {(meta.cursor.keys?.length ?? 0) > 0 && <label><input type="checkbox" checked={fx.keys} onChange={(e) => setFx({ ...fx, keys: e.target.checked })} />Keys</label>}
-          </span>
-        )}
-        <span className="grow" />
-        <span className="kept">{edited ? <>Keeps <b>{fmt(total(keep))}</b> of {fmt(dur)} · {keep.length} part{keep.length > 1 ? "s" : ""}</> : "Whole recording"}</span>
-        <span className="sep" />
-        <button className="icon" onClick={() => zoom(1 / 1.5)} title="Zoom out (−, Ctrl+wheel)">−</button>
-        <button className="icon" onClick={() => setFit(true)} title="Fit (0)">⤢</button>
-        <button className="icon" onClick={() => zoom(1.5)} title="Zoom in (+, Ctrl+wheel)">+</button>
-      </div>
-
-      <div className="timeline" ref={scroller} onWheel={onWheel}>
-        <div className="track" ref={track} style={{ width, height: 104 + rows.length * 22 }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
-          <div className="ruler">
-            {ticks.map((x) => <span key={x} style={{ left: x * pps }}>{fmt(x, tick < 1)}</span>)}
-          </div>
-          <div className="strip">
-            {Array.from({ length: thumbCount }, (_, i) => (
-              <div key={i} className="thumb" style={{ left: i * tw * pps, width: tw * pps + 0.5 }}
-                ref={(el) => { const c = thumbs[i]; if (el && c && el.firstChild !== c) el.replaceChildren(c); }} />
-            ))}
-            {gaps.map((g, i) => <div key={`g${i}`} className="gap" style={{ left: g.s * pps, width: (g.e - g.s) * pps }} />)}
-            {keep.map((g, i) => (
-              <div key={`k${i}`} className={"seg" + (sel === i ? " sel" : "")} style={{ left: g.s * pps, width: (g.e - g.s) * pps }}>
-                {(g.v ?? 1) !== 1 && <span className="speedtag">{g.v}×</span>}
-                <div className="edge l" data-edge="s" data-i={i} title="Drag to trim" />
-                <div className="edge r" data-edge="e" data-i={i} title="Drag to trim" />
-              </div>
-            ))}
-          </div>
-          {lanes.map((n) => (
-            <div key={n.id} className={"note" + (picked.includes(n.id) ? " sel" : "")} data-note={n.id}
-              style={{ left: n.from * pps, width: Math.max(6, (n.to - n.from) * pps), top: 104 + n.row * 22 }}
-              title={`${n.label}: ${fmt(n.from)} – ${fmt(n.to)}. Drag to move, drag an end to change when it shows.`}>
-              <div className="nedge l" data-note={n.id} data-side="s" />
-              <span data-note={n.id}>{n.label}</span>
-              <div className="nedge r" data-note={n.id} data-side="e" />
-            </div>
-          ))}
-          <div className="playhead" style={{ left: t * pps }}><i /></div>
+      <section className="panel monitor">
+        <div className="ptab"><span className="on">Program: {meta.name}</span></div>
+        <main ref={stage} onClick={() => !drawing && togglePlay()}>
+          <video ref={video} src={meta.url} preload="auto" style={{ left: box.left, top: box.top, width: box.width, height: box.height }} />
+          {(drawEver.current ||= drawing) && <Suspense fallback={null}><VideoDrawing box={box} width={meta.width} height={meta.height} t={t} duration={dur} drawing={drawing}
+            onItems={(list, sel) => {
+              setItems(list);
+              setPicked(sel);
+              const k = list.map((n) => `${n.id}@${n.from.toFixed(3)}-${n.to.toFixed(3)}`).join();
+              if (k !== itemsKey.current) { itemsKey.current = k; setDrawVersion((v) => v + 1); }   // selecting isn't an edit
+            }}
+            handle={(h) => { draw.current = h; if (h && wantBlur.current) { wantBlur.current = false; setTimeout(() => h.addBlur(), 50); } }} /></Suspense>}
+          {!playing && !drawing && <div className="bigplay"><Icon name="play" /></div>}
+        </main>
+        <div className="transport">
+          <span className="tc" title="Playhead (hours:minutes:seconds:frames)">{tc(t, meta.fps)}</span>
+          <span className="grow" />
+          <Tool icon="skipBack" tip={"Go to start (Home)\nJump to the first kept frame"} onClick={() => seek(keep[0].s)} />
+          <Tool icon="frameBack" tip={"Back one frame (←)\nShift+← goes back one second"} onClick={() => seek(t - 1 / meta.fps)} />
+          <Tool big icon={playing ? "pause" : "play"} tip={playing ? "Pause (Space)" : "Play (Space)\nSkips the parts you cut"} onClick={togglePlay} />
+          <Tool icon="frameFwd" tip={"Forward one frame (→)\nShift+→ goes forward one second"} onClick={() => seek(t + 1 / meta.fps)} />
+          <Tool icon="skipFwd" tip={"Go to end (End)\nJump to the last kept frame"} onClick={() => seek(keep[keep.length - 1].e)} />
+          <span className="grow" />
+          <span className="tc dur" title="Length of the recording">{tc(dur, meta.fps)}</span>
         </div>
-      </div>
+      </section>
+
+      <section className="panel tlpanel">
+        <div className="ptab">
+          <span className="on">Timeline</span>
+          <span className="kept">{edited ? <>Keeps <b>{fmt(total(keep))}</b> of {fmt(dur)} · {keep.length} part{keep.length > 1 ? "s" : ""}</> : "Whole recording"}</span>
+        </div>
+        <div className="controls">
+          <Tool icon="scissors" tip={"Split (S)\nSplit the part under the playhead in two"} onClick={split} />
+          <Tool icon="trash" tip={"Cut part (Delete)\nCut the selected part out of the video"} onClick={remove} disabled={keep.length < 2} />
+          <Tool icon="trimStart" tip={"Trim start (I)\nCut everything before the playhead"} onClick={trimBefore} />
+          <Tool icon="trimEnd" tip={"Trim end (O)\nCut everything after the playhead"} onClick={trimAfter} />
+          <span className="sep" />
+          <Tool icon="undo" tip="Undo (Ctrl+Z)" onClick={undo} disabled={!past.current.length} />
+          <Tool icon="redo" tip="Redo (Ctrl+Y)" onClick={redo} disabled={!future.current.length} />
+          <Tool icon="reset" tip={"Reset\nBack to the whole recording"} onClick={reset} disabled={!edited} />
+          <span className="sep" />
+          <Tool icon="pen" on={drawing} tip={drawing ? "Done drawing\nBack to the video keys" : "Draw (D)\nDraw on the video with Excalidraw. Each drawing shows for 4 s from the playhead; drag its bar on the timeline to change when."}
+            onClick={() => { video.current?.pause(); setDrawing(!drawing); }} />
+          <Tool icon="blur" tip={"Blur box\nBlur faces, emails and keys while its bar is under the playhead. Move and resize it like a drawing."}
+            onClick={() => { video.current?.pause(); setDrawing(true); if (draw.current) setTimeout(() => draw.current?.addBlur(), 50); else wantBlur.current = true; }} />
+          <span className="sep" />
+          <label className="speed" title={"Speed\nPlayback speed of the selected part (click a part first)"}>
+            <Icon name="gauge" />
+            <select value={sel !== null ? String(keep[sel]?.v ?? 1) : ""} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Speed">
+              {sel === null && <option value="">–</option>}
+              {[0.5, 1, 1.5, 2, 4, 8].map((v) => <option key={v} value={v}>{v}×</option>)}
+            </select>
+          </label>
+          {meta.hasAudio && <Tool icon="mute" tip={"Cut silences\nCut every quiet stretch longer than about a second"} onClick={cutSilences} />}
+          {meta.hasAudio && <Tool icon="captions" on={captionsOpen} tip={"Captions\nWrite captions from the speech; edit them, cut lines out, burn them in"} onClick={() => (captionsOpen ? setCaptionsOpen(false) : makeCaptions())} />}
+          {meta.cursor && (
+            <span className="fx">
+              <span className="sep" />
+              <Tool icon="magnify" on={fx.zoom} tip={"Zoom on clicks\nZooms in where you clicked, applied when you copy or save"} onClick={() => setFx({ ...fx, zoom: !fx.zoom })} />
+              <Tool icon="clickRing" on={fx.clicks} tip={"Click rings\nA ring wherever you clicked"} onClick={() => setFx({ ...fx, clicks: !fx.clicks })} />
+              {(meta.cursor.keys?.length ?? 0) > 0 && <Tool icon="keyboard" on={fx.keys} tip={"Keys\nShows the keys you pressed"} onClick={() => setFx({ ...fx, keys: !fx.keys })} />}
+            </span>
+          )}
+          <span className="grow" />
+          <Tool icon="zoomOut" tip={"Zoom out (−)\nCtrl+wheel zooms too"} onClick={() => zoom(1 / 1.5)} />
+          <Tool icon="fit" tip={"Fit (0)\nThe whole recording in view"} onClick={() => setFit(true)} />
+          <Tool icon="magnify" tip={"Zoom in (+)\nCtrl+wheel zooms too"} onClick={() => zoom(1.5)} />
+        </div>
+
+        <div className="tl">
+          <div className="heads">
+            <span className="h v" style={{ top: 26, height: 72 }} title="Video track">V1</span>
+            {meta.hasAudio && <span className="h a" style={{ top: A1, height: 34 }} title="Sound track">A1</span>}
+            {rows.length > 0 && <span className="h d" style={{ top: LANES, height: rows.length * 22 - 4 }} title="Drawings and blur boxes">T1</span>}
+          </div>
+          <div className="timeline" ref={scroller} onWheel={onWheel}>
+            <div className="track" ref={track} style={{ width, height: LANES + rows.length * 22 }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+              <div className="ruler">
+                {ticks.map((x) => <span key={x} style={{ left: x * pps }}>{fmt(x, tick < 1)}</span>)}
+              </div>
+              <div className="strip">
+                {Array.from({ length: thumbCount }, (_, i) => (
+                  <div key={i} className="thumb" style={{ left: i * tw * pps, width: tw * pps + 0.5 }}
+                    ref={(el) => { const c = thumbs[i]; if (el && c && el.firstChild !== c) el.replaceChildren(c); }} />
+                ))}
+                {gaps.map((g, i) => <div key={`g${i}`} className="gap" style={{ left: g.s * pps, width: (g.e - g.s) * pps }} />)}
+                {keep.map((g, i) => (
+                  <div key={`k${i}`} className={"seg" + (sel === i ? " sel" : "")} style={{ left: g.s * pps, width: (g.e - g.s) * pps }}>
+                    <span className="clipname">{meta.name}</span>
+                    {(g.v ?? 1) !== 1 && <span className="speedtag">{g.v}×</span>}
+                    <div className="edge l" data-edge="s" data-i={i} title="Drag to trim" />
+                    <div className="edge r" data-edge="e" data-i={i} title="Drag to trim" />
+                  </div>
+                ))}
+              </div>
+              {meta.hasAudio && (
+                <div className="alane" style={{ top: A1 }}>
+                  {keep.map((g, i) => <div key={i} className={"aclip" + (sel === i ? " sel" : "")} style={{ left: g.s * pps, width: (g.e - g.s) * pps }} />)}
+                  {wave && <svg viewBox={`0 0 ${wave.split("|")[1]} 1`} preserveAspectRatio="none"><path d={wave.split("|")[0]} /></svg>}
+                  {gaps.map((g, i) => <div key={`g${i}`} className="gap" style={{ left: g.s * pps, width: (g.e - g.s) * pps }} />)}
+                </div>
+              )}
+              {lanes.map((n) => (
+                <div key={n.id} className={"note" + (picked.includes(n.id) ? " sel" : "")} data-note={n.id}
+                  style={{ left: n.from * pps, width: Math.max(6, (n.to - n.from) * pps), top: LANES + n.row * 22 }}
+                  title={`${n.label}: ${fmt(n.from)} – ${fmt(n.to)}. Drag to move, drag an end to change when it shows.`}>
+                  <div className="nedge l" data-note={n.id} data-side="s" />
+                  <span data-note={n.id}>{n.label}</span>
+                  <div className="nedge r" data-note={n.id} data-side="e" />
+                </div>
+              ))}
+              <div className="playhead" style={{ left: t * pps }}><i /></div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {captionsOpen && cues && (
         <aside className="captions">

@@ -56,12 +56,29 @@ import eyeOff from "lucide-static/icons/eye-off.svg?raw";
 import up from "lucide-static/icons/chevron-up.svg?raw";
 import down from "lucide-static/icons/chevron-down.svg?raw";
 import frame from "lucide-static/icons/frame.svg?raw";
+import play from "lucide-static/icons/play.svg?raw";
+import pause from "lucide-static/icons/pause.svg?raw";
+import skipBack from "lucide-static/icons/skip-back.svg?raw";
+import skipFwd from "lucide-static/icons/skip-forward.svg?raw";
+import frameBack from "lucide-static/icons/chevron-left.svg?raw";
+import frameFwd from "lucide-static/icons/chevron-right.svg?raw";
+import scissors from "lucide-static/icons/scissors.svg?raw";
+import trimStart from "lucide-static/icons/arrow-left-to-line.svg?raw";
+import trimEnd from "lucide-static/icons/arrow-right-to-line.svg?raw";
+import reset from "lucide-static/icons/rotate-ccw.svg?raw";
+import mute from "lucide-static/icons/volume-x.svg?raw";
+import captions from "lucide-static/icons/captions.svg?raw";
+import zoomOut from "lucide-static/icons/zoom-out.svg?raw";
+import clickRing from "lucide-static/icons/mouse-pointer-click.svg?raw";
+import keyboard from "lucide-static/icons/keyboard.svg?raw";
+import gauge from "lucide-static/icons/gauge.svg?raw";
 
 const svgs = {
   copy, shrink, chat, check, save, link, saveAs, editable, close, step, pixelate, blur, black, spot, smile, sparkles, info, mic, layout,
   pointer, arrow, line, rect, ellipse, pen, highlight, text, magnify, crop, pipette, undo, redo, trash, duplicate, front, back, fit, shadow,
   list, gridSmall, gridLarge, calendar, folder, folderPlus, folderInput, film, image, images, panelLeft, panelClose, panelOpen,
   layers, eye, eyeOff, up, down, frame,
+  play, pause, skipBack, skipFwd, frameBack, frameFwd, scissors, trimStart, trimEnd, reset, mute, captions, zoomOut, clickRing, keyboard, gauge,
 };
 export type IconName = keyof typeof svgs;
 

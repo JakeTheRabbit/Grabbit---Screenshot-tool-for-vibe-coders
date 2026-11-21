@@ -30,7 +30,7 @@
 
 <p align="center">
   <a href="docs/screenshots/clip-talk-to-ai.mp4"><img src="docs/screenshots/clip-talk-to-ai.webp" width="880" alt="A bug in a half-built app: press V, click and drag to mark it while saying what is wrong, Ctrl+Enter, paste into an AI chat. The AI gets the picture, the words, the marks and the text on screen, and fixes it."></a><br>
-  <sub>A bug, from "something's off" to fixed, without typing a word. <a href="docs/screenshots/reel.mp4"><b>Watch the full tour with sound</b></a> (about 5 minutes, every feature below). Click any clip for its narrated version.</sub>
+  <sub>A bug, from "something's off" to fixed, without typing a word. <a href="docs/screenshots/reel.mp4"><b>Watch the full tour with sound</b></a> (about 6 minutes, in chapters, every feature below). Click any clip for its narrated version.</sub>
 </p>
 
 ## Why Grabbit
@@ -72,6 +72,9 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 </tr><tr>
 <td><a href="docs/screenshots/clip-scrolling-capture.mp4"><img src="docs/screenshots/clip-scrolling-capture.webp" width="420" alt="Press S on a page longer than the window: Grabbit scrolls it and stitches one tall picture, with the sticky header once."></a><br><sub>Scrolling capture</sub></td>
 <td><a href="docs/screenshots/clip-copy-text-and-pin.mp4"><img src="docs/screenshots/clip-copy-text-and-pin.webp" width="420" alt="Press T to copy the words in an area as text and paste them anywhere; press I to pin a picture on top of every window."></a><br><sub>Copy the text (T) and pin on top (I)</sub></td>
+</tr><tr>
+<td><a href="docs/screenshots/clip-capture-over-capture.mp4"><img src="docs/screenshots/clip-capture-over-capture.webp" width="420" alt="With the action wheel up, PrtScn again opens a second capture over the first, wheel and all; drag over it and copy it, then you're back in the first one."></a><br><sub>PrtScn again: a capture of a capture, for how-tos</sub></td>
+<td><a href="docs/screenshots/clip-mark-up.mp4"><img src="docs/screenshots/clip-mark-up.webp" width="420" alt="The editor's tools, each with its letter, then an arrow dragged onto a screenshot and three numbered steps that count up by themselves."></a><br><sub>Mark up: every tool has a letter</sub></td>
 </tr></table>
 
 ### Ready to paste, everywhere
@@ -113,19 +116,20 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Step recorder:** click through a task and get a **how-to** as Markdown and a Word document, with a numbered picture per step.
 - **Notes for every recording**, for you or a coding agent that can't watch video: a `<video> notes` folder with `transcript.md` (what was said, with times, and a still every few seconds), `captions.vtt`, the stills, and `recording.json`. History then finds the recording by what was said.
 
-<a href="docs/screenshots/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it. The red frame and Stop bar stay out of the video."></a>
+<a href="docs/screenshots/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it after a 3-2-1 countdown. The red frame and Stop bar stay out of the video, and Start over throws a take away."></a>
 
 ### Edit the video
 
 <img src="docs/screenshots/video.webp" alt="The video editor: captions, silences cut on the timeline, a part sped up 2×">
 
+- **Laid out like an editing suite:** a Program monitor with timecode and transport, and a timeline with the video on V1, the sound's **waveform** on A1 and drawings on T1. Every tool is an icon that shows its name and key when you point at it.
 - Filmstrip timeline: split, cut parts out, trim, **speed a part up or down**, undo.
 - **Cut silences** in one click. **Captions** made on your computer (or with OpenAI): edit lines, ✂ cut a line's stretch out of the video, cut filler words, burn them in or keep the `.srt`.
 - **Studio effects** from what was recorded: **auto-zoom on clicks**, **click rings** and **key captions**, all changeable after recording.
 - **Draw** on the video and add **blur boxes** that hide a region for exactly as long as you choose.
 - Copy, Copy for chat (under 94 MB), GIF, animated WebP, a styled copy on a background, and every social size.
 
-<a href="docs/screenshots/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, and Captions are made on your computer."></a>
+<a href="docs/screenshots/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, Captions are made on your computer, a part is sped up 2×, zoom on clicks and click rings go on, and Copy offers chat, GIF and WebP."></a>
 
 ### Find it again
 
@@ -135,6 +139,8 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **the programs and windows it showed**, and **where you pasted it** (Grabbit notes the window you pressed <kbd>Ctrl</kbd>+<kbd>V</kbd> in while the capture was still on the clipboard);
 - **when**: today, yesterday, last week, or words like *tuesday*, *november* or *2026-11-21*;
 - **tags, a note**, and the AI description if Describe is on.
+
+<a href="docs/screenshots/clip-history.mp4"><img src="docs/screenshots/clip-history.webp" width="720" alt="History: typing typeerror finds the screenshot with that error in it, its details show where it was pasted, and pasted:slack finds everything sent to Slack."></a>
 
 **Star** things, **save them for later**, or set a **reminder** (in an hour, this evening, tomorrow morning, next week, or any time) and Grabbit shows the capture to you then. Search tips: `app:chrome`, `pasted:slack`, `tag:invoice`, `is:starred`, `is:later`, `before:2026-11-01`, `"exact phrase"`.
 
@@ -160,6 +166,8 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Light and dark mode**, or follow the system. Every window switches at once, title bars included.
 - Every key is configurable, and all settings **back up and restore** as one file.
 - **Automations:** after every capture or recording, run a command (`{file}` is the file) and/or post JSON to a webhook (n8n, Zapier, Home Assistant, Paperless) with the file, the programs it showed, the text in it and a recording's notes folder (Settings → Automations).
+
+  <a href="docs/screenshots/clip-automations.mp4"><img src="docs/screenshots/clip-automations.webp" width="560" alt="Settings, Automations: a command that files every capture into Paperless, and a webhook for n8n."></a>
 - **Instant:** the screens freeze the moment you press the key (about a tenth of a second on Windows, even with four screens). Grabbit grabs the screens straight from the graphics card and hands them to the capture screen through shared memory.
 - **Light on your computer:** between captures the capture screens sleep and hand their memory back. Turn off **Instant capture** in Settings → General and Grabbit uses under 10 MB while idle, at the cost of about 2 seconds on the first capture after a minute.
 - **Looks after itself:** Windows restarts Grabbit after a crash or hang, recording helpers close with it, a damaged settings file is replaced with the last good copy, and old temporary files are cleared.
