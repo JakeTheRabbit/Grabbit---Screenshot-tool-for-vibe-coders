@@ -1,0 +1,34 @@
+{
+    "version": "@V@",
+    "description": "Screenshots and screen recordings, straight to the clipboard. Tap PrtScn to grab, hold to record.",
+    "homepage": "https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/",
+    "license": "MIT",
+    "notes": "Recording needs ffmpeg: scoop install ffmpeg",
+    "suggest": {
+        "ffmpeg": "ffmpeg"
+    },
+    "architecture": {
+        "64bit": {
+            "url": "@URL@",
+            "hash": "@SHA@"
+        }
+    },
+    "extract_dir": "PFiles\\Grabbit",
+    "bin": "grabbit.exe",
+    "shortcuts": [
+        [
+            "grabbit.exe",
+            "Grabbit"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/download/v$version/Grabbit_$version_x64_en-US.msi"
+            }
+        }
+    }
+}
