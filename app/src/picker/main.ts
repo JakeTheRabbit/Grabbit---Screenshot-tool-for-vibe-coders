@@ -49,6 +49,7 @@ let raw: Uint8ClampedArray<ArrayBuffer> | null = null; // the frame's RGBA pixel
 let shared: ArrayBuffer | null = null; // Windows: the frame arrives in shared memory, released when the picker closes
 const webview = (window as any).chrome?.webview;
 let mouse = { x: -1, y: -1 };
+let anchor = { x: -1, y: -1 };   // where the pointer was when the wheel opened: it stays put when the wheel changes
 let sel: R | null = null;
 let hoverWin: Win | null = null;
 let picked: number[] = []; // multi-window
@@ -279,6 +280,7 @@ async function showBar() {
   bar.onpointerleave = () => focus(-1);
   bar.onclick = (e) => { const i = sliceAt(e); if (i >= 0) ring()[i].run(); };
   bar.hidden = false;
+  anchor = { x: mouse.x, y: mouse.y };
   wheel();
   placeBar();
 }
@@ -330,17 +332,12 @@ function wheel() {
   focus(-1);
 }
 
-/** The wheel under (or over) the area, centred on the pointer, which is where the drag ended. */
+/** The wheel centred right on the pointer, where the drag ended, pulled in only as far as the screen edge needs. */
 function placeBar() {
   if (!sel || bar.hidden) return;
   const D = bar.offsetWidth, H = D + 46;   // the size list hangs under the wheel
-  const px = Math.min(sel.x + sel.w, Math.max(sel.x, mouse.x));
-  const x = Math.min(innerWidth - D - 8, Math.max(8, px - D / 2));
-  // Below the area, or above it when the drag ended at its top; whichever fits, else just inside the bottom.
-  const below = sel.y + sel.h + 10, above = sel.y - H - 10;
-  const fitsBelow = below + H <= innerHeight - 8, fitsAbove = above >= 8;
-  const nearTop = Math.abs(mouse.y - sel.y) < Math.abs(mouse.y - sel.y - sel.h);
-  const y = nearTop ? (fitsAbove ? above : fitsBelow ? below : sel.y + 10) : (fitsBelow ? below : fitsAbove ? above : Math.max(8, Math.min(innerHeight - H - 8, sel.y + sel.h - H - 10)));
+  const x = Math.min(innerWidth - D - 8, Math.max(8, anchor.x - D / 2));
+  const y = Math.min(innerHeight - H - 8, Math.max(8, anchor.y - D / 2));
   bar.style.left = `${x}px`; bar.style.top = `${y}px`;
 }
 
