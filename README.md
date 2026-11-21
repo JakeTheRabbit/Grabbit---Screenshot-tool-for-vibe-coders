@@ -31,8 +31,8 @@
 ---
 
 <p align="center">
-  <a href="docs/screenshots/clip-talk-to-ai.mp4"><img src="docs/screenshots/clip-talk-to-ai.webp" width="880" alt="A bug in a half-built app: press V, click and drag to mark it while saying what is wrong, Ctrl+Enter, paste into an AI chat. The AI gets the picture, the words, the marks and the text on screen, and fixes it."></a><br>
-  <sub>A bug, from "something's off" to fixed, without typing a word. <a href="docs/screenshots/reel.mp4"><b>Watch the full tour with sound</b></a> (about 6 minutes, in chapters, every feature below). Click any clip for its narrated version.</sub>
+  <a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-talk-to-ai.mp4"><img src="docs/screenshots/clip-talk-to-ai.webp" width="880" alt="A bug in a half-built app: press V, click and drag to mark it while saying what is wrong, Ctrl+Enter, paste into an AI chat. The AI gets the picture, the words, the marks and the text on screen, and fixes it."></a><br>
+  <sub>A bug, from "something's off" to fixed, without typing a word. <a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/reel.mp4"><b>Watch the full tour with sound</b></a> (about 6 minutes, in chapters, every feature below). Click any clip for its narrated version.</sub>
 </p>
 
 ## Why Grabbit
@@ -46,22 +46,22 @@
 
 ## Video walkthroughs
 
-**[The full tour](docs/screenshots/reel.mp4)** runs 6:21 with sound, and has a chapter per feature, so most players let you jump straight to one. Or watch a single feature (each one is narrated, 15 s to just over a minute):
+**[The full tour](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/reel.mp4)** runs 6:21 with sound, and has a chapter per feature, so most players let you jump straight to one. Or watch a single feature (each one is narrated, 15 s to just over a minute):
 
 | Feature | In the tour | Walkthrough |
 |---|---|---|
-| Capture and the action wheel | 0:06 | [Wheel and its keys](docs/screenshots/clip-capture.mp4) |
-| Talk to AI, then paste into AI | 0:52 | [Talk to AI](docs/screenshots/clip-talk-to-ai.mp4) |
-| The More wheel | 1:30 | [Everything under More](docs/screenshots/clip-more-menu.mp4) |
-| Scrolling capture | 2:11 | [Scrolling capture](docs/screenshots/clip-scrolling-capture.mp4) |
-| Copy the text, pin on top | 2:28 | [Copy text and pin](docs/screenshots/clip-copy-text-and-pin.mp4) |
-| Capture over a capture | 2:51 | [A capture of a capture](docs/screenshots/clip-capture-over-capture.mp4) |
-| Hide private details | 3:13 | [Hide private details](docs/screenshots/clip-hide-private-details.mp4) |
-| Mark up | 3:30 | [Mark-up tools](docs/screenshots/clip-mark-up.mp4) |
-| Record your screen | 3:56 | [Record](docs/screenshots/clip-record.mp4) |
-| The video editor | 4:28 | [Video editor](docs/screenshots/clip-video-editor.mp4) |
-| History | 5:40 | [Find it again](docs/screenshots/clip-history.mp4) |
-| Automations | 5:58 | [Automations](docs/screenshots/clip-automations.mp4) |
+| Capture and the action wheel | 0:06 | [Wheel and its keys](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-capture.mp4) |
+| Talk to AI, then paste into AI | 0:52 | [Talk to AI](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-talk-to-ai.mp4) |
+| The More wheel | 1:30 | [Everything under More](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-more-menu.mp4) |
+| Scrolling capture | 2:11 | [Scrolling capture](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-scrolling-capture.mp4) |
+| Copy the text, pin on top | 2:28 | [Copy text and pin](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-copy-text-and-pin.mp4) |
+| Capture over a capture | 2:51 | [A capture of a capture](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-capture-over-capture.mp4) |
+| Hide private details | 3:13 | [Hide private details](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-hide-private-details.mp4) |
+| Mark up | 3:30 | [Mark-up tools](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-mark-up.mp4) |
+| Record your screen | 3:56 | [Record](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-record.mp4) |
+| The video editor | 4:28 | [Video editor](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-video-editor.mp4) |
+| History | 5:40 | [Find it again](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-history.mp4) |
+| Automations | 5:58 | [Automations](https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-automations.mp4) |
 
 ## Features
 
@@ -90,14 +90,14 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 - Move and resize the selection after you draw it; arrow keys nudge it.
 
 <table><tr>
-<td><a href="docs/screenshots/clip-capture.mp4"><img src="docs/screenshots/clip-capture.webp" width="420" alt="Tap PrtScn, drag over an area, and an action wheel pops up where you let go. Every slice has a number key and most a letter: Enter copies, Shift+Enter copies smaller, E marks up, Ctrl+S saves, R records, N adds another area, V is Talk to AI."></a><br><sub>The action wheel after a capture, every slice with its keys</sub></td>
-<td><a href="docs/screenshots/clip-more-menu.mp4"><img src="docs/screenshots/clip-more-menu.webp" width="420" alt="The More menu, item by item: X describes with AI, B starts a batch, S scrolling capture, T copies text, Q reads a QR code, I pins, Share, P saves and copies the path, D captures again in 10 s."></a><br><sub>Everything under More, each with its key</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-capture.mp4"><img src="docs/screenshots/clip-capture.webp" width="420" alt="Tap PrtScn, drag over an area, and an action wheel pops up where you let go. Every slice has a number key and most a letter: Enter copies, Shift+Enter copies smaller, E marks up, Ctrl+S saves, R records, N adds another area, V is Talk to AI."></a><br><sub>The action wheel after a capture, every slice with its keys</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-more-menu.mp4"><img src="docs/screenshots/clip-more-menu.webp" width="420" alt="The More menu, item by item: X describes with AI, B starts a batch, S scrolling capture, T copies text, Q reads a QR code, I pins, Share, P saves and copies the path, D captures again in 10 s."></a><br><sub>Everything under More, each with its key</sub></td>
 </tr><tr>
-<td><a href="docs/screenshots/clip-scrolling-capture.mp4"><img src="docs/screenshots/clip-scrolling-capture.webp" width="420" alt="Press S on a page longer than the window: Grabbit scrolls it and stitches one tall picture, with the sticky header once."></a><br><sub>Scrolling capture</sub></td>
-<td><a href="docs/screenshots/clip-copy-text-and-pin.mp4"><img src="docs/screenshots/clip-copy-text-and-pin.webp" width="420" alt="Press T to copy the words in an area as text and paste them anywhere; press I to pin a picture on top of every window."></a><br><sub>Copy the text (T) and pin on top (I)</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-scrolling-capture.mp4"><img src="docs/screenshots/clip-scrolling-capture.webp" width="420" alt="Press S on a page longer than the window: Grabbit scrolls it and stitches one tall picture, with the sticky header once."></a><br><sub>Scrolling capture</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-copy-text-and-pin.mp4"><img src="docs/screenshots/clip-copy-text-and-pin.webp" width="420" alt="Press T to copy the words in an area as text and paste them anywhere; press I to pin a picture on top of every window."></a><br><sub>Copy the text (T) and pin on top (I)</sub></td>
 </tr><tr>
-<td><a href="docs/screenshots/clip-capture-over-capture.mp4"><img src="docs/screenshots/clip-capture-over-capture.webp" width="420" alt="With the action wheel up, PrtScn again opens a second capture over the first, wheel and all; drag over it and copy it, then you're back in the first one."></a><br><sub>PrtScn again: a capture of a capture, for how-tos</sub></td>
-<td><a href="docs/screenshots/clip-mark-up.mp4"><img src="docs/screenshots/clip-mark-up.webp" width="420" alt="The editor's tools, each with its letter, then an arrow dragged onto a screenshot and three numbered steps that count up by themselves."></a><br><sub>Mark up: every tool has a letter</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-capture-over-capture.mp4"><img src="docs/screenshots/clip-capture-over-capture.webp" width="420" alt="With the action wheel up, PrtScn again opens a second capture over the first, wheel and all; drag over it and copy it, then you're back in the first one."></a><br><sub>PrtScn again: a capture of a capture, for how-tos</sub></td>
+<td><a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-mark-up.mp4"><img src="docs/screenshots/clip-mark-up.webp" width="420" alt="The editor's tools, each with its letter, then an arrow dragged onto a screenshot and three numbered steps that count up by themselves."></a><br><sub>Mark up: every tool has a letter</sub></td>
 </tr></table>
 
 ### Ready to paste, everywhere
@@ -114,7 +114,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 
 - **Hide** private details in one click: finds and pixelates **emails, IP addresses, phone and card numbers, API keys and tokens**. Or pixelate, blur, black out or spotlight any box.
 
-  <a href="docs/screenshots/clip-hide-private-details.mp4"><img src="docs/screenshots/clip-hide-private-details.webp" width="720" alt="A settings screenshot with an email, a live key, a webhook link, an IP address and a phone number. Hide, then Hide private details, pixelates all of them."></a>
+  <a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-hide-private-details.mp4"><img src="docs/screenshots/clip-hide-private-details.webp" width="720" alt="A settings screenshot with an email, a live key, a webhook link, an IP address and a phone number. Hide, then Hide private details, pixelates all of them."></a>
 
 - **Beautify:** padding, gradient or solid background, rounded corners, shadow, exact social sizes. Use it on every copy, or **apply it to the picture** you're editing.
 - **Pictures on pictures:** drag any capture from the side panel onto the canvas, then give it a **frame**: border colour, width and opacity, rounded corners, and how see-through it is.
@@ -139,7 +139,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Step recorder:** click through a task and get a **how-to** as Markdown and a Word document, with a numbered picture per step.
 - **Notes for every recording**, for you or a coding agent that can't watch video: a `<video> notes` folder with `transcript.md` (what was said, with times, and a still every few seconds), `captions.vtt`, the stills, and `recording.json`. History then finds the recording by what was said.
 
-<a href="docs/screenshots/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it after a 3-2-1 countdown. The red frame and Stop bar stay out of the video, and Start over throws a take away."></a>
+<a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-record.mp4"><img src="docs/screenshots/clip-record.webp" width="720" alt="Holding PrtScn fills a pill and turns the picker into the recording picker; a click on a window and Enter start recording it after a 3-2-1 countdown. The red frame and Stop bar stay out of the video, and Start over throws a take away."></a>
 
 ### Edit the video
 
@@ -152,7 +152,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **Draw** on the video and add **blur boxes** that hide a region for exactly as long as you choose.
 - Copy, Copy for chat (under 94 MB), GIF, animated WebP, a styled copy on a background, and every social size.
 
-<a href="docs/screenshots/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, Captions are made on your computer, a part is sped up 2×, zoom on clicks and click rings go on, and Copy offers chat, GIF and WebP."></a>
+<a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-video-editor.mp4"><img src="docs/screenshots/clip-video-editor.webp" width="720" alt="The video editor: dragging along the timeline scrubs the video, S splits, I and O trim, Cut silences takes the dead air out, Captions are made on your computer, a part is sped up 2×, zoom on clicks and click rings go on, and Copy offers chat, GIF and WebP."></a>
 
 ### Find it again
 
@@ -163,7 +163,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - **when**: today, yesterday, last week, or words like *tuesday*, *november* or *2026-11-21*;
 - **tags, a note**, and the AI description if Describe is on.
 
-<a href="docs/screenshots/clip-history.mp4"><img src="docs/screenshots/clip-history.webp" width="720" alt="History: typing typeerror finds the screenshot with that error in it, its details show where it was pasted, and pasted:slack finds everything sent to Slack."></a>
+<a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-history.mp4"><img src="docs/screenshots/clip-history.webp" width="720" alt="History: typing typeerror finds the screenshot with that error in it, its details show where it was pasted, and pasted:slack finds everything sent to Slack."></a>
 
 **Star** things, **save them for later**, or set a **reminder** (in an hour, this evening, tomorrow morning, next week, or any time) and Grabbit shows the capture to you then. Search tips: `app:chrome`, `pasted:slack`, `tag:invoice`, `is:starred`, `is:later`, `before:2026-11-01`, `"exact phrase"`.
 
@@ -190,7 +190,7 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 - Every key is configurable, and all settings **back up and restore** as one file.
 - **Automations:** after every capture or recording, run a command (`{file}` is the file) and/or post JSON to a webhook (n8n, Zapier, Home Assistant, Paperless) with the file, the programs it showed, the text in it and a recording's notes folder (Settings → Automations).
 
-  <a href="docs/screenshots/clip-automations.mp4"><img src="docs/screenshots/clip-automations.webp" width="560" alt="Settings, Automations: a command that files every capture into Paperless, and a webhook for n8n."></a>
+  <a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/media/clip-automations.mp4"><img src="docs/screenshots/clip-automations.webp" width="560" alt="Settings, Automations: a command that files every capture into Paperless, and a webhook for n8n."></a>
 - **Instant:** the screens freeze the moment you press the key (about a tenth of a second on Windows, even with four screens). Grabbit grabs the screens straight from the graphics card and hands them to the capture screen through shared memory.
 - **Light on your computer:** idle, Grabbit is one process using about 15 MB, with no browser windows loaded. The capture screens open in under a second when you press the key and close a minute after the last capture. Turn on **Instant capture** in Settings → General to keep them loaded so the wheel opens in about 0.1 s; that holds roughly 200–1000 MB of RAM, depending on how many screens you have.
 - **Updates itself:** new versions download quietly in the background and install when you pick **Restart to update** in the tray menu (Settings → General turns it off). Updates are signed, so only real releases install.
