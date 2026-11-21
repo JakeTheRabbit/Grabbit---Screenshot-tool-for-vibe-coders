@@ -128,7 +128,7 @@ function field(f: Field): HTMLElement {
 const SECTIONS: Record<string, () => Field[]> = {
   General: () => [
     { kind: "custom", render: themeRow },
-    { kind: "toggle", key: "instant_capture", label: "Instant capture", help: "The capture screen opens the moment you press the key. Off: Grabbit uses almost no memory between captures, but the first capture after a minute takes about 2 seconds" },
+    { kind: "toggle", key: "instant_capture", label: "Instant capture (uses more memory)", help: "Keeps the capture screens loaded so the wheel opens in about 0.1 s instead of under a second. Uses roughly 200–1000 MB of RAM all the time, depending on how many screens you have. Off: Grabbit idles at about 15 MB" },
     { kind: "toggle", key: "auto_update", label: "Update automatically", help: "Grabbit looks for a new version when it starts and twice a day, downloads it quietly, and asks before restarting. Or use Check for updates in the tray menu" },
     { kind: "select", key: "after_capture", label: "After picking an area", options: [["Ask", "Show the action bar"], ["Copy", "Copy straight away"], ["Edit", "Open the editor"]] },
     { kind: "toggle", key: "auto_save", label: "Keep a copy of every capture", help: "Full size, in the Grabbit folder below" },
@@ -219,6 +219,13 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "ai.openai_base", label: "OpenAI-compatible URL", placeholder: "Leave empty for api.openai.com", help: "Local and free: Ollama's http://localhost:11434/v1 with a vision model (key: any text)" },
     { kind: "text", key: "ai.chat_model", label: "Model for describing and questions", placeholder: "Provider default", help: "e.g. qwen2.5vl or llava with Ollama" },
     { kind: "toggle", key: "ai.auto_describe", label: "Describe every capture", help: "A paragraph and tags for each capture, saved in History so you can search by meaning" },
+  ],
+  "Coding agents": () => [
+    { kind: "note", html: "Let coding agents find and look at your screenshots and recordings: Claude Code, Codex, Cursor, and T3 Code (which runs Claude Code and Codex). The agent can search captures by the text in them, open one, read a recording's transcript, and take a screenshot itself. It all runs on your computer; nothing is uploaded by Grabbit." },
+    { kind: "button", label: "Add to Claude Code", run: (b) => connectAgent(b, "claude") },
+    { kind: "button", label: "Add to Codex", run: (b) => connectAgent(b, "codex") },
+    { kind: "button", label: "Copy setup for Cursor or another agent", run: (b) => connectAgent(b, "other") },
+    { kind: "note", html: "Then ask the agent things like <i>\"find my screenshot of the checkout error and fix it\"</i> or <i>\"take a screenshot of localhost:5173 and check the layout\"</i>. In the video editor, <b>Copy → Copy for a coding agent</b> copies a recording under 48 MB with its transcript, ready to paste into T3 Code." },
   ],
   Obsidian: () => [
     { kind: "folder", key: "obsidian_vault", label: "Vault" },
@@ -317,6 +324,15 @@ async function checkImage(b: HTMLButtonElement) {
       r.yours ? `This is your capture${r.capture ? ` from ${new Date(r.capture.time).toLocaleString()}\n${r.capture.path}` : ` (id ${r.id})`}.` :
       `It carries a Grabbit watermark from someone else (id ${r.id}).`);
   } finally { b.disabled = false; b.textContent = "Check an image for a watermark…"; }
+}
+
+/** Settings → Coding agents: register Grabbit's MCP server with an agent, or copy its setup. */
+async function connectAgent(b: HTMLButtonElement, agent: string) {
+  const label = b.textContent;
+  b.disabled = true; b.textContent = "Adding…";
+  try { alert(await invoke<string>("connect_agent", { agent })); }
+  catch (e) { alert(String(e)); }
+  finally { b.disabled = false; b.textContent = label; }
 }
 
 function show(name: string) {

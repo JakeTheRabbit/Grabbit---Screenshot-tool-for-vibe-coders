@@ -18,6 +18,8 @@ pub const SYSTEM_TRACK: &str = "System sound";
 pub const MIC_TRACK: &str = "Microphone";
 /// Signal compares its 100 MiB limit against the encrypted, padded size; this leaves room for that.
 pub const CHAT_MAX_BYTES: u64 = 94 * 1024 * 1024;
+/// Coding agents' file limit (T3 Code takes 50 MiB per file), with room to spare.
+pub const AGENT_MAX_BYTES: u64 = 48 * 1024 * 1024;
 
 /// Social presets: name → output size. The picture is fitted inside and the rest filled with a blurred copy.
 pub const SOCIAL: &[(&str, u32, u32)] = &[
@@ -178,7 +180,7 @@ pub fn tracks(info: &Info, sound: Sound) -> Vec<usize> {
 pub struct Part { pub start: f64, pub end: f64, pub speed: f64 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Target { Full, Chat, Gif, Webp, Social(u32, u32), Beautify }
+pub enum Target { Full, Chat(u64), Gif, Webp, Social(u32, u32), Beautify }
 
 pub struct Overlay { pub png: PathBuf, pub from: f64, pub to: f64 }
 
@@ -273,9 +275,9 @@ pub fn render_args(s: &Settings, input: &Path, info: &Info, keep: &[Part], targe
     match target {
         Target::Gif => g += &format!("{vc}fps=12,scale='min(960,iw)':-2:flags=lanczos,split[ga][gb];[ga]palettegen=stats_mode=diff[gp];[gb][gp]paletteuse=dither=sierra2_4a[vo]"),
         Target::Webp => { g += &format!("{vc}fps=15,scale='min(1280,iw)':-2:flags=lanczos[vo]"); codec.extend(["-c:v", "libwebp_anim", "-lossless", "0", "-q:v", "75", "-loop", "0"].map(String::from)); }
-        Target::Chat => {
+        Target::Chat(max) => {
             g += &format!("{vc}scale='trunc(min(iw,1920*iw/max(iw,ih))/2)*2':-2,format=yuv420p[vo]");
-            let budget = ((CHAT_MAX_BYTES as f64 * 8.0 * 0.97 / total.max(1.0) - if audio { 128_000.0 } else { 0.0 }) / 1000.0) as u32;
+            let budget = ((*max as f64 * 8.0 * 0.97 / total.max(1.0) - if audio { 128_000.0 } else { 0.0 }) / 1000.0) as u32;
             codec = h264(s, 0, budget.clamp(200, 6000));
             if audio { codec.extend(["-c:a", "aac", "-b:a", "128k"].map(String::from)); }
         }
@@ -444,7 +446,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
         .filter(|p| p.end - p.start > 0.01).collect();
     anyhow::ensure!(!keep.is_empty(), "nothing left to export");
     let target = match m["target"].as_str().unwrap_or("Full") {
-        "Chat" => Target::Chat, "Gif" => Target::Gif, "Webp" => Target::Webp, "Beautify" => Target::Beautify,
+        "Chat" => Target::Chat(CHAT_MAX_BYTES), "Agent" => Target::Chat(AGENT_MAX_BYTES), "Gif" => Target::Gif, "Webp" => Target::Webp, "Beautify" => Target::Beautify,
         t if t.starts_with("Social:") => { let (a, b) = t[7..].split_once('x').unwrap_or(("1080", "1080")); Target::Social(a.parse()?, b.parse()?) }
         _ => Target::Full,
     };
@@ -462,7 +464,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     let name = path.file_stem().unwrap_or_default().to_string_lossy().into_owned();
     let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
     let ext = match target { Target::Gif => "gif", Target::Webp => "webp", _ => "mp4" };
-    let suffix = match &target { Target::Chat => " chat".to_string(), Target::Beautify => " styled".to_string(), Target::Social(w, h) => format!(" {w}x{h}"), Target::Gif | Target::Webp => String::new(), Target::Full => if edited { " edited".into() } else { String::new() } };
+    let suffix = match &target { Target::Chat(m) => if *m == AGENT_MAX_BYTES { " for agent".into() } else { " chat".into() }, Target::Beautify => " styled".to_string(), Target::Social(w, h) => format!(" {w}x{h}"), Target::Gif | Target::Webp => String::new(), Target::Full => if edited { " edited".into() } else { String::new() } };
     let action = m["action"].as_str().unwrap_or("copy");
     let output = match action {
         "saveAs" => PathBuf::from(m["saveTo"].as_str().context("no file chosen")?),
@@ -481,7 +483,7 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
     }
     let result = (|| -> Result<String> {
         if output != path {
-            let label = match target { Target::Beautify => "Adding the background", Target::Chat => "Making a chat-sized copy", Target::Gif => "Making a GIF", Target::Webp => "Making an animated WebP", Target::Social(..) => "Making the social-size copy", _ => "Rendering" };
+            let label = match target { Target::Beautify => "Adding the background", Target::Chat(_) => "Making a chat-sized copy", Target::Gif => "Making a GIF", Target::Webp => "Making an animated WebP", Target::Social(..) => "Making the social-size copy", _ => "Rendering" };
             let mut last = -1.0;
             render(s, &path, &keep, &target, &output, sound, &overlays, &extras, Some(w.label()), |v| {
                 if v - last >= 0.01 { last = v; let _ = w.emit_to(w.label(), "host", json!({ "type": "progress", "value": v, "label": label })); }
@@ -489,11 +491,18 @@ fn export_video(app: &AppHandle, w: &WebviewWindow, m: &Value, s: &Settings) -> 
         }
         let size = format!("{:.1} MB", std::fs::metadata(&output)?.len() as f64 / 1048576.0);
         let mut note = match action {
+            "copy" if target == Target::Chat(AGENT_MAX_BYTES) => {
+                // The video and, when the recording has notes, its transcript: the agent gets both as files.
+                let notes = crate::history::all().into_iter().rev().find(|e| e.path == path.to_string_lossy() && !e.notes.is_empty()).map(|e| Path::new(&e.notes).join("transcript.md")).filter(|t| t.exists());
+                let files: Vec<String> = std::iter::once(output.clone()).chain(notes.clone()).map(|p| p.to_string_lossy().into_owned()).collect();
+                export::set_clipboard(export::Clip { image: None, png: None, files: &files, text: None, html: None })?;
+                format!("Copied {size}{}", if notes.is_some() { " and the transcript" } else { "" })
+            }
             "copy" => { export::copy_file(&output)?; format!("Copied {size}") }
             "copyPath" => { export::copy_text(&output.to_string_lossy())?; format!("Saved {}, path copied", output.file_name().unwrap_or_default().to_string_lossy()) }
             _ => format!("Saved {} ({size})", output.file_name().unwrap_or_default().to_string_lossy()),
         };
-        if target == Target::Chat && std::fs::metadata(&output)?.len() > CHAT_MAX_BYTES { note += " — still over 94 MB, cut it shorter for Signal"; }
+        if let Target::Chat(max) = target { if std::fs::metadata(&output)?.len() > max { note += &format!(" — still over {} MB, cut it shorter", max / 1048576); } }
         if action == "closeSave" { let _ = w.destroy(); actions::notify(app, &format!("Edits saved: {}", output.display())); }
         if action == "share" {
             let link = crate::share::share(app, &output, m["shareTo"].as_str())?;

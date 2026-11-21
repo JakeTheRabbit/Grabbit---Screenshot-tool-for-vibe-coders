@@ -85,9 +85,9 @@ pub struct Ai {
 #[serde(default)]
 pub struct Settings {
     pub after_capture: AfterCapture,
-    /// Keep the capture screens loaded (hidden, trimmed) between captures, so the key freezes the screens at once.
-    /// Off: they're closed a minute after the last capture and the next one takes about 2 s. (A new name, so
-    /// everyone gets the new default instead of the old "off".)
+    /// Keep the capture screens loaded (hidden, trimmed) between captures, so the wheel opens at once. Off (the
+    /// default): they're closed a minute after the last capture, Grabbit idles at about 15 MB in one process, and the
+    /// wheel takes under a second to open (the screens still freeze the moment the key is pressed).
     pub instant_capture: bool,
     /// Look for a new version at start and twice a day; download it quietly and offer a restart.
     pub auto_update: bool,
@@ -162,7 +162,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             after_capture: AfterCapture::Ask,
-            instant_capture: true,
+            instant_capture: false,
             auto_update: true,
             auto_save: true,
             smart_names: true,

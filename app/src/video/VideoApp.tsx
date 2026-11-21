@@ -13,7 +13,7 @@ type Seg = { s: number; e: number; v?: number };   // v: playback speed of the p
 type Cue = { start: number; end: number; text: string };
 type Social = { name: string; width: number; height: number };
 type Meta = { social?: Social[]; cursor?: { moves: unknown[]; keys: unknown[] } | null; hasCaptions?: boolean; name: string; path?: string; url: string; duration: number; fps: number; width: number; height: number; hasAudio: boolean; bytes: number; hasSystem?: boolean; hasMic?: boolean };
-type Target = "Full" | "Chat" | "Gif" | "Webp" | "Beautify" | `Social:${number}x${number}`;
+type Target = "Full" | "Chat" | "Agent" | "Gif" | "Webp" | "Beautify" | `Social:${number}x${number}`;
 type Action = "copy" | "save" | "saveAs" | "copyPath" | "closeSave" | "share";
 type Sound = "All" | "System" | "Mic" | "None";
 type HostMsg =
@@ -508,6 +508,7 @@ export function VideoApp() {
           <span className="sep" />
           <Drop label="Copy" primary disabled={!!busy} onMain={() => exportAs("copy", "Full")} items={[
             ["Copy for chat (≤ 94 MB)", () => exportAs("copy", "Chat")],
+            ["Copy for a coding agent (≤ 48 MB, with transcript)", () => exportAs("copy", "Agent")],
             ["Copy as GIF", () => exportAs("copy", "Gif")],
             ["Copy as animated WebP", () => exportAs("copy", "Webp")],
             ["Copy path (saves first)", () => exportAs("copyPath", "Full")],
