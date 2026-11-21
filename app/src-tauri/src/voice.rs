@@ -111,7 +111,38 @@ pub fn copy_for_ai(images: Vec<String>, text: String, files: Vec<String>) -> Res
         let mut html = format!("<div>{}</div>", esc(&text).replace('\n', "<br>"));
         for p in &pngs { html += &format!("<p><img src=\"data:image/png;base64,{}\"></p>", B64.encode(std::fs::read(p)?)); }
         let first = first.map(|i| i.to_rgba8());
-        export::set_clipboard(export::Clip { image: first.as_ref(), png: None, files: &all, text: Some(&text), html: Some(&html) })?;
+        // Chromium-based apps (T3 Code, Claude, ChatGPT in a browser) take only the files when the clipboard has any, and
+        // drop the text. One picture goes as pixels + text, so both arrive. Several pictures (or a video) must go as
+        // files, so the words go as a Markdown file with them.
+        let files: Vec<String> = if all.len() <= 1 { Vec::new() } else {
+            let notes = dir.join(format!("{stamp} notes.md"));
+            std::fs::write(&notes, &text)?;
+            all.iter().cloned().chain([notes.to_string_lossy().into_owned()]).collect()
+        };
+        export::set_clipboard(export::Clip { image: first.as_ref(), png: None, files: &files, text: Some(&text), html: Some(&html) })?;
         Ok(all)
     })().map_err(|e| e.to_string())
+}
+
+/// Puts real Talk to AI copies on the clipboard, to paste into a browser or chat app and see what arrives:
+/// `cargo test --lib paste_probe -- --ignored --test-threads 1`, then paste after each.
+#[cfg(test)]
+mod paste_probe {
+    use base64::Engine;
+    #[test]
+    #[ignore]
+    fn copy_one_picture_for_ai() {
+        let img = image::RgbaImage::from_pixel(64, 40, image::Rgba([255, 95, 109, 255]));
+        let png = crate::export::png_bytes(&img, None).unwrap();
+        let url = format!("data:image/png;base64,{}", super::B64.encode(png));
+        super::copy_for_ai(vec![url], "Here the total says NaN. [1] the revenue card.".into(), vec![]).unwrap();
+    }
+
+    #[test]
+    #[ignore]
+    fn copy_two_pictures_for_ai() {
+        let img = image::RgbaImage::from_pixel(64, 40, image::Rgba([40, 140, 230, 255]));
+        let url = format!("data:image/png;base64,{}", super::B64.encode(crate::export::png_bytes(&img, None).unwrap()));
+        super::copy_for_ai(vec![url.clone(), url], "Two pictures. [1] first, [2] second.".into(), vec![]).unwrap();
+    }
 }

@@ -14,6 +14,10 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 - **Copy for a coding agent** in the video editor: a copy under 48 MB plus the recording's transcript file, which fits T3 Code's attachment limit.
 - Install with **Scoop** or **Homebrew** (taps kept in this repository), and **winget** once its listing is approved.
 
+### Fixed
+
+- **Talk to AI now pastes your words into T3 Code, Claude, ChatGPT and other browser-based apps.** They take only the files when the clipboard has any, so the words and the screen text were dropped. One picture now goes as the picture plus text; several pictures (or a video) go as files with a `notes.md` holding the words.
+
 ### Changed
 
 - **Much lighter by default.** Instant capture is now off: idle, Grabbit is one process using about 15 MB. The wheel opens in under a second, and the screens still freeze the moment you press the key. Turning Instant capture on (Settings → General) says what it costs: roughly 200–1000 MB of RAM to open the wheel in about 0.1 s.
