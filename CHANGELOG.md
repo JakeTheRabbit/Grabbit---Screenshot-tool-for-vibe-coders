@@ -6,6 +6,19 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.18] - 2026-11-22
+
+### Added
+
+- **Coding agents can use your captures.** `grabbit --mcp` is an MCP server with four tools: `search_captures` (by the text in a capture, what was said, the apps it showed, tags, notes, date), `get_capture` (the picture and all its text, or a recording's transcript and stills), `take_screenshot` (every screen, one screen or one window) and `list_windows`. **Settings → Coding agents** adds it to Claude Code or Codex in one click (T3 Code runs both), or copies the setup for Cursor and others.
+- **Copy for a coding agent** in the video editor: a copy under 48 MB plus the recording's transcript file, which fits T3 Code's attachment limit.
+- Install with **Scoop** or **Homebrew** (taps kept in this repository), and **winget** once its listing is approved.
+
+### Changed
+
+- **Much lighter by default.** Instant capture is now off: idle, Grabbit is one process using about 15 MB. The wheel opens in under a second, and the screens still freeze the moment you press the key. Turning Instant capture on (Settings → General) says what it costs: roughly 200–1000 MB of RAM to open the wheel in about 0.1 s.
+- The website's comparison table shows each app's icon, price and score, groups the rows, marks what only Grabbit has, and can hide the rows where the apps are the same.
+
 ## [2.0.17] - 2026-11-22
 
 ### Added
@@ -217,7 +230,8 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.17...HEAD
+[Unreleased]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.18...HEAD
+[2.0.18]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.17...v2.0.18
 [2.0.17]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.16...v2.0.17
 [2.0.16]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.14...v2.0.16
 [2.0.14]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.13...v2.0.14
