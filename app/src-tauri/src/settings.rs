@@ -89,6 +89,8 @@ pub struct Settings {
     /// Off: they're closed a minute after the last capture and the next one takes about 2 s. (A new name, so
     /// everyone gets the new default instead of the old "off".)
     pub instant_capture: bool,
+    /// Look for a new version at start and twice a day; download it quietly and offer a restart.
+    pub auto_update: bool,
     pub auto_save: bool,
     /// Name files after what's in them ("Google Chrome – Orders 2026-11-21 14.32.05") instead of "Grabbit <time>".
     pub smart_names: bool,
@@ -161,6 +163,7 @@ impl Default for Settings {
         Settings {
             after_capture: AfterCapture::Ask,
             instant_capture: true,
+            auto_update: true,
             auto_save: true,
             smart_names: true,
             keep_full_screen: false,

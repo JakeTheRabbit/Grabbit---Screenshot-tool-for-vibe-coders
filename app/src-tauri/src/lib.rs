@@ -25,6 +25,7 @@ mod share;
 mod steps;
 mod studio;
 mod timelapse;
+mod update;
 mod video;
 mod voice;
 
@@ -119,6 +120,8 @@ fn serve(app: &AppHandle, path: &str, range: Option<&str>) -> Response<Vec<u8>> 
 
 fn tray(app: &AppHandle) -> tauri::Result<()> {
     let item = |id: &str, text: &str| MenuItem::with_id(app, id, text, true, None::<&str>);
+    let upd = item("update", "Check for updates")?;
+    let _ = update::ITEM.set(upd.clone());
     let menu = Menu::with_items(app, &[
         &item("capture", "Capture")?,
         &item("capture_screen", "Capture whole screen")?,
@@ -132,6 +135,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
         &item("folder", "Open Grabbit folder")?,
         &item("history", "History: find a capture…")?,
         &item("settings", "Settings…")?,
+        &upd,
         &PredefinedMenuItem::separator(app)?,
         &item("quit", "Quit Grabbit")?,
     ])?;
@@ -153,6 +157,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
             "folder" => { let _ = tauri_plugin_opener::open_path(&state(app).settings.lock().unwrap().save_folder, None::<&str>); }
             "settings" => editor::open_settings(app, None),
             "history" => history::open(app, None),
+            "update" => update::tray_click(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -193,6 +198,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--background"])))
         .manage(AppState { settings: Mutex::new(Settings::load()), ..Default::default() })
         .register_asynchronous_uri_scheme_protocol("grabbit", |ctx, req, responder| {
@@ -273,6 +279,7 @@ pub fn run() {
             // With instant capture the capture screens are made now, so even the first capture opens at once.
             if state(&h).settings.lock().unwrap().instant_capture { std::thread::spawn(move || picker::prepare(&h)); }
             replay::sync(app.handle());
+            update::start(app.handle());
             let args: Vec<String> = std::env::args().collect();
             editor::handle_args(app.handle(), &args);
             Ok(())

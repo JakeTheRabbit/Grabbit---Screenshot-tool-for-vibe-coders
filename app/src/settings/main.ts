@@ -129,6 +129,7 @@ const SECTIONS: Record<string, () => Field[]> = {
   General: () => [
     { kind: "custom", render: themeRow },
     { kind: "toggle", key: "instant_capture", label: "Instant capture", help: "The capture screen opens the moment you press the key. Off: Grabbit uses almost no memory between captures, but the first capture after a minute takes about 2 seconds" },
+    { kind: "toggle", key: "auto_update", label: "Update automatically", help: "Grabbit looks for a new version when it starts and twice a day, downloads it quietly, and asks before restarting. Or use Check for updates in the tray menu" },
     { kind: "select", key: "after_capture", label: "After picking an area", options: [["Ask", "Show the action bar"], ["Copy", "Copy straight away"], ["Edit", "Open the editor"]] },
     { kind: "toggle", key: "auto_save", label: "Keep a copy of every capture", help: "Full size, in the Grabbit folder below" },
     { kind: "folder", key: "save_folder", label: "Grabbit folder" },

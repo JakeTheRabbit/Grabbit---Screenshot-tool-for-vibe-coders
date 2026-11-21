@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the [latest release](https://github.com/JakeTheRabbit/grabbit/releases/latest) gets security fixes. Please update before reporting.
+Only the [latest release](https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest) gets security fixes. Please update before reporting.
 
 | Version | Supported |
 |---|---|
@@ -12,7 +12,7 @@ Only the [latest release](https://github.com/JakeTheRabbit/grabbit/releases/late
 
 ## Reporting a vulnerability
 
-Please don't open a public issue. Report it privately through GitHub: **[Security → Report a vulnerability](https://github.com/JakeTheRabbit/grabbit/security/advisories/new)**.
+Please don't open a public issue. Report it privately through GitHub: **[Security → Report a vulnerability](https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/security/advisories/new)**.
 
 Include what's affected, how to reproduce it, and what an attacker could do with it. You'll get a reply within 7 days. Once a fix is released, the advisory is published and you're credited unless you'd rather not be.
 

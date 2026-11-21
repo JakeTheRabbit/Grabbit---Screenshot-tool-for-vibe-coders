@@ -4,7 +4,7 @@ Thanks for helping. Bug reports, ideas and pull requests are all welcome. By tak
 
 ## Reporting a bug
 
-Open an [issue](https://github.com/JakeTheRabbit/grabbit/issues/new/choose) with the bug form. The most useful things to include:
+Open an [issue](https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues/new/choose) with the bug form. The most useful things to include:
 
 - Grabbit version (the installer name, or the exe's file properties), OS and version, and how many screens you have.
 - What you did, what you expected, and what happened instead.
@@ -17,7 +17,7 @@ Don't attach captures of anything private. Security problems go through [SECURIT
 Needs [Rust](https://rustup.rs) (stable), [Bun](https://bun.sh), and ffmpeg for recording. Linux also needs the WebKitGTK and capture libraries listed in [the CI workflow](.github/workflows/build.yml).
 
 ```bash
-git clone https://github.com/JakeTheRabbit/grabbit
+git clone https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders
 cd grabbit/app
 bun install
 bunx tauri dev

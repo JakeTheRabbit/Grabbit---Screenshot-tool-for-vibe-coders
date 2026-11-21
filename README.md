@@ -8,15 +8,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JakeTheRabbit/grabbit/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/JakeTheRabbit/grabbit?style=for-the-badge&color=ff5f6d&label=download"></a>
+  <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders?style=for-the-badge&color=ff5f6d&label=download"></a>
   <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1f2330?style=for-the-badge">
-  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/JakeTheRabbit/grabbit?style=for-the-badge&color=1f2330"></a>
-  <a href="https://github.com/JakeTheRabbit/grabbit/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/JakeTheRabbit/grabbit?style=for-the-badge&color=1f2330"></a>
-  <a href="https://github.com/JakeTheRabbit/grabbit/actions/workflows/build.yml"><img alt="Build and test" src="https://img.shields.io/github/actions/workflow/status/JakeTheRabbit/grabbit/build.yml?branch=main&style=for-the-badge&label=tests"></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/github/license/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders?style=for-the-badge&color=1f2330"></a>
+  <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders?style=for-the-badge&color=1f2330"></a>
+  <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/actions/workflows/build.yml"><img alt="Build and test" src="https://img.shields.io/github/actions/workflow/status/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/build.yml?branch=main&style=for-the-badge&label=tests"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/JakeTheRabbit/grabbit/releases/latest"><b>⬇ Download Grabbit</b></a> &nbsp;·&nbsp;
+  <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest"><b>⬇ Download Grabbit</b></a> &nbsp;·&nbsp;
+  <a href="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/">Website</a> &nbsp;·&nbsp;
   <a href="#install">Install</a> &nbsp;·&nbsp;
   <a href="#video-walkthroughs">Walkthroughs</a> &nbsp;·&nbsp;
   <a href="#features">Features</a> &nbsp;·&nbsp;
@@ -192,12 +193,13 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
   <a href="docs/screenshots/clip-automations.mp4"><img src="docs/screenshots/clip-automations.webp" width="560" alt="Settings, Automations: a command that files every capture into Paperless, and a webhook for n8n."></a>
 - **Instant:** the screens freeze the moment you press the key (about a tenth of a second on Windows, even with four screens). Grabbit grabs the screens straight from the graphics card and hands them to the capture screen through shared memory.
 - **Light on your computer:** between captures the capture screens sleep and hand their memory back. Turn off **Instant capture** in Settings → General and Grabbit uses under 10 MB while idle, at the cost of about 2 seconds on the first capture after a minute.
+- **Updates itself:** new versions download quietly in the background and install when you pick **Restart to update** in the tray menu (Settings → General turns it off). Updates are signed, so only real releases install.
 - **Looks after itself:** Windows restarts Grabbit after a crash or hang, recording helpers close with it, a damaged settings file is replaced with the last good copy, and old temporary files are cleared.
 - `grabbit://capture`, `grabbit://record`, `grabbit://replay`, `grabbit://open/<file>` and the same words on the command line, for launchers and scripts.
 
 ## Install
 
-Download from **[Releases](https://github.com/JakeTheRabbit/grabbit/releases/latest)**. The apps aren't signed with a paid certificate yet, so each OS asks once:
+Download from **[Releases](https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest)**. The apps aren't signed with a paid certificate yet, so each OS asks once:
 
 | | Download | First launch |
 |---|---|---|
@@ -297,7 +299,7 @@ Everything above works on all three, with these exceptions:
 Needs [Rust](https://rustup.rs), [Bun](https://bun.sh) and, for recording, ffmpeg. Linux also needs the WebKitGTK and capture libraries listed in [the CI workflow](.github/workflows/build.yml).
 
 ```bash
-git clone https://github.com/JakeTheRabbit/grabbit
+git clone https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders
 cd grabbit/app
 bun install
 bunx tauri dev      # run it with live reload

@@ -2,12 +2,16 @@
 
 All notable changes to Grabbit are listed here, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Grabbit uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Installers for every version are on the [Releases](https://github.com/JakeTheRabbit/grabbit/releases) page.
+Installers for every version are on the [Releases](https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases) page.
 
 ## [Unreleased]
 
+## [2.0.17] - 2026-11-22
+
 ### Added
 
+- **Grabbit updates itself.** It looks for a new version when it starts and twice a day, downloads it quietly, and installs it when you choose **Restart to update** in the tray menu. **Check for updates** is in the tray menu too, and **Update automatically** can be turned off in Settings → General. Updates are signed, so only real releases install. (Linux: the AppImage updates itself; .deb and .rpm installs are told where to get the new version.)
+- **A website**, with the tour, a narrated clip for each feature, and a download button that picks the right installer for your computer: <https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/>
 - **Action wheel** after a capture, in place of the long bar: it opens centred right under the pointer where the drag ended, every slice has a number key (1–9, 0) and most a letter, and **More** swaps in a second wheel without moving.
 - **Capture over a capture:** press PrtScn again while the wheel is up and a second capture opens on top of the first, wheel and all. Hold the key instead to record yourself using the first one.
 - **History** finds any capture or recording again by the words in it, what was said, the programs it showed, where you pasted it (`pasted:slack`), dates, tags and notes. Stars, save for later and reminders.
@@ -213,19 +217,20 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.16...HEAD
-[2.0.16]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.14...v2.0.16
-[2.0.14]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.13...v2.0.14
-[2.0.13]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.12...v2.0.13
-[2.0.12]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.11...v2.0.12
-[2.0.11]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.10...v2.0.11
-[2.0.10]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.9...v2.0.10
-[2.0.9]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.8...v2.0.9
-[2.0.8]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.7...v2.0.8
-[2.0.7]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.6...v2.0.7
-[2.0.6]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.5...v2.0.6
-[2.0.5]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.4...v2.0.5
-[2.0.4]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.2...v2.0.4
-[2.0.2]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.1...v2.0.2
-[2.0.1]: https://github.com/JakeTheRabbit/grabbit/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/JakeTheRabbit/grabbit/releases/tag/v2.0.0
+[Unreleased]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.17...HEAD
+[2.0.17]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.16...v2.0.17
+[2.0.16]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.14...v2.0.16
+[2.0.14]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.13...v2.0.14
+[2.0.13]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.12...v2.0.13
+[2.0.12]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.11...v2.0.12
+[2.0.11]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.10...v2.0.11
+[2.0.10]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.9...v2.0.10
+[2.0.9]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.8...v2.0.9
+[2.0.8]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.7...v2.0.8
+[2.0.7]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.6...v2.0.7
+[2.0.6]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.5...v2.0.6
+[2.0.5]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.4...v2.0.5
+[2.0.4]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.2...v2.0.4
+[2.0.2]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/tag/v2.0.0
