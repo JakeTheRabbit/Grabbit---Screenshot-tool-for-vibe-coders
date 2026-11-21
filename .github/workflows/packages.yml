@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: main
+      - name: Point latest.json at the normal download links
+        run: python3 packaging/fix-latest-json.py "$REPO" "$TAG"
       - name: Write the Scoop and Homebrew manifests
         run: |
           V="${TAG#v}"
