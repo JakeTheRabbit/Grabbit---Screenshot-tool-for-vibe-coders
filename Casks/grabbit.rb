@@ -1,9 +1,9 @@
 cask "grabbit" do
   arch arm: "aarch64", intel: "x64"
 
-  version "2.0.17"
-  sha256 arm:   "4df7ec1f767fd1d56dfa392c13fe14d36abae9717dfd3e7dfacf978b3b23c62e",
-         intel: "45b3bf1e25c40eb3c4e6a57a56eef6771aed1a29f43517458af3c95834cdcd1b"
+  version "2.0.18"
+  sha256 arm:   "0181481d754187986182785cf5a0807444fabbc83e941f978c98527f9a12bee5",
+         intel: "0c4d5399e79b9028c65157415a2b445f55786fe5f4cd10760e3da1bb2d05f1b9"
 
   url "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/download/v#{version}/Grabbit_#{version}_#{arch}.dmg"
   name "Grabbit"

@@ -1,5 +1,5 @@
 {
-    "version": "2.0.17",
+    "version": "2.0.18",
     "description": "Screenshots and screen recordings, straight to the clipboard. Tap PrtScn to grab, hold to record.",
     "homepage": "https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/",
     "license": "MIT",
@@ -9,8 +9,8 @@
     },
     "architecture": {
         "64bit": {
-            "url": "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/download/v2.0.17/Grabbit_2.0.17_x64_en-US.msi",
-            "hash": "9efa97bb985c7c17c4d6bc09af489ec9c0dab504b7ce159a63dfde48a937293d"
+            "url": "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/download/v2.0.18/Grabbit_2.0.18_x64_en-US.msi",
+            "hash": "ed233185c8c8c3eadb204febf644157e825a2af89bf0cc7b6d7a33e3c897be92"
         }
     },
     "extract_dir": "PFiles\\Grabbit",
