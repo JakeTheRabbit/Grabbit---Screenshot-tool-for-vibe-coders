@@ -120,12 +120,15 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signs the update bundles and latest.json, so installed copies only accept real releases.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: app
           tauriScript: bunx tauri
           args: ${{ matrix.args }}
           tagName: ${{ inputs.tag || github.ref_name }}
           releaseName: Grabbit ${{ inputs.tag || github.ref_name }}
-          releaseBody: "Install steps for each OS: https://github.com/JakeTheRabbit/grabbit#install"
+          releaseBody: "What changed: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/blob/main/CHANGELOG.md · Install steps for each OS: https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/#install"
           releaseDraft: true
           prerelease: false

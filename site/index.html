@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grabbit: free screenshot and screen recorder for Windows, macOS and Linux</title>
+<meta name="description" content="Tap PrtScn for a screenshot, hold it to record. Talk over a capture and paste the picture, your words and the text on screen into ChatGPT, Claude or Gemini. Free and open source.">
+<meta property="og:title" content="Grabbit">
+<meta property="og:description" content="Free screenshot and screen recorder. Tap PrtScn to grab, hold to record, paste straight into an AI chat.">
+<meta property="og:image" content="media/social-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="media/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --coral: #ff5f6d; --coral-2: #ffc371; --ink: #17151c; --ink-2: #25222c; --paper: #fbf6ef; --text: #2a2730; --muted: #6c6673;
+  --on-ink: #f4f0ea; --on-ink-muted: #b4adb9; --line: #e8dfd3;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--paper); color: var(--text); font: 17px/1.6 Inter, system-ui, sans-serif; }
+a { color: inherit; }
+h1, h2, h3 { font-family: "Bricolage Grotesque", Inter, sans-serif; line-height: 1.05; margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+nav { display: flex; align-items: center; gap: 22px; padding: 18px 0; }
+nav .logo { display: flex; align-items: center; gap: 10px; font: 800 22px "Bricolage Grotesque", sans-serif; text-decoration: none; }
+nav .logo img { width: 34px; height: 34px; }
+nav .links { margin-left: auto; display: flex; gap: 22px; font-weight: 500; }
+nav .links a { text-decoration: none; opacity: .8; }
+nav .links a:hover { opacity: 1; }
+
+/* Top band: the app, working, first. */
+.top { background: var(--ink); color: var(--on-ink); padding-bottom: 72px; }
+.top h1 { font-size: clamp(44px, 7.4vw, 96px); font-weight: 800; letter-spacing: -.02em; margin: 40px 0 18px; max-width: 13ch; }
+.top h1 em { font-style: normal; background: linear-gradient(90deg, var(--coral), var(--coral-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.top p.lead { font-size: 20px; color: var(--on-ink-muted); max-width: 60ch; margin: 0 0 30px; }
+.dl { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-bottom: 44px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; background: var(--coral); color: #1b0f12; font-weight: 600; font-size: 18px;
+  padding: 15px 26px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 30px -10px rgba(255, 95, 109, .7); }
+.btn:hover { filter: brightness(1.06); }
+.dl small { color: var(--on-ink-muted); font-size: 15px; }
+.dl small a { color: var(--on-ink); }
+.screen { border-radius: 14px; overflow: hidden; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .8); background: #000; }
+.screen video { display: block; width: 100%; height: auto; }
+
+/* The full tour. */
+.tour { background: var(--coral); color: #1b0f12; padding: 64px 0; }
+.tour h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 10px; }
+.tour p { max-width: 62ch; margin: 0 0 26px; font-size: 18px; }
+.tour .grid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 26px; align-items: start; }
+.tour video { width: 100%; border-radius: 12px; background: #000; display: block; box-shadow: 0 30px 60px -30px rgba(60, 0, 10, .6); }
+.chapters { list-style: none; margin: 0; padding: 0; background: rgba(255, 255, 255, .22); border-radius: 12px; }
+.chapters li { border-bottom: 1px solid rgba(27, 15, 18, .12); }
+.chapters li:last-child { border: 0; }
+.chapters button { all: unset; cursor: pointer; display: flex; width: 100%; box-sizing: border-box; gap: 14px; padding: 9px 16px; font-size: 15.5px; font-weight: 500; }
+.chapters button:hover, .chapters button.on { background: rgba(255, 255, 255, .35); }
+.chapters time { font-variant-numeric: tabular-nums; opacity: .7; min-width: 3.2em; }
+
+/* Features: one row each, the clip beside what it does. */
+.features { padding: 80px 0 30px; }
+.features > .wrap > h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 8px; }
+.features > .wrap > p { color: var(--muted); margin: 0 0 40px; max-width: 60ch; }
+.row { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 44px; align-items: center; padding: 38px 0; border-top: 1px solid var(--line); }
+.row:nth-child(even) .media { order: 2; }
+.row h3 { font-size: 30px; font-weight: 800; margin-bottom: 12px; }
+.row p { margin: 0 0 10px; }
+.row ul { margin: 6px 0 0; padding-left: 20px; }
+.row li { margin: 4px 0; }
+.media { position: relative; border-radius: 12px; overflow: hidden; background: #111; box-shadow: 0 24px 50px -28px rgba(30, 20, 40, .55); }
+.media video { display: block; width: 100%; height: auto; }
+.media .sound { position: absolute; right: 12px; bottom: 12px; background: rgba(0, 0, 0, .68); color: #fff; border: 0; border-radius: 999px;
+  padding: 7px 14px; font: 500 14px Inter, sans-serif; cursor: pointer; }
+kbd { font: 600 .82em Inter, sans-serif; background: #fff; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
+
+/* More it does, in a plain list. */
+.more { background: var(--ink-2); color: var(--on-ink); padding: 70px 0; }
+.more h2 { font-size: clamp(30px, 4vw, 46px); font-weight: 800; margin-bottom: 26px; }
+.more dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 40px; margin: 0; }
+.more dt { font-weight: 600; margin-top: 14px; color: #fff; }
+.more dd { margin: 2px 0 0; color: var(--on-ink-muted); }
+
+/* Install. */
+.install { padding: 76px 0; }
+.install h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 10px; }
+.install > .wrap > p { max-width: 70ch; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+th { font-family: "Bricolage Grotesque", sans-serif; font-size: 19px; width: 16%; }
+code { font: 14.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: #efe7dc; border-radius: 5px; padding: 1px 6px; }
+footer { background: var(--ink); color: var(--on-ink-muted); padding: 34px 0; font-size: 15px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
+footer a { color: var(--on-ink); }
+
+@media (max-width: 860px) {
+  nav .links { display: none; }
+  .tour .grid, .row { grid-template-columns: 1fr; gap: 22px; }
+  .row:nth-child(even) .media { order: 0; }
+  th { width: auto; display: block; border: 0; padding-bottom: 0; }
+  td { display: block; }
+}
+@media (max-width: 480px) { .wrap { padding: 0 16px; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a>
+      <div class="links"><a href="#tour">Tour</a><a href="#features">Features</a><a href="#install">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></div>
+    </nav>
+    <h1>Tap PrtScn to grab. Hold it to <em>record</em>.</h1>
+    <p class="lead">Grabbit is a free screenshot and screen-recording app for Windows, macOS and Linux. Point at what's wrong, say it out loud, and one paste gives ChatGPT, Claude or Gemini the picture, your words and every bit of text on the screen.</p>
+    <div class="dl">
+      <a class="btn" id="download" href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest">⬇ Download Grabbit</a>
+      <small id="dl-note">Free and open source (MIT). No account, no watermark. <a href="#install">Other systems</a></small>
+    </div>
+    <div class="screen"><video src="media/clip-talk-to-ai.mp4" autoplay muted loop playsinline preload="auto" aria-label="Pressing V on a bug, pointing at it while talking, then pasting the lot into an AI chat"></video></div>
+  </div>
+</header>
+
+<section class="tour" id="tour">
+  <div class="wrap">
+    <h2>The whole thing in six minutes</h2>
+    <p>A narrated walk through every feature, with sound. Pick a chapter to jump to it.</p>
+    <div class="grid">
+      <video id="reel" src="media/reel.mp4" controls preload="metadata" poster="media/hero.webp"></video>
+      <ol class="chapters" id="chapters"></ol>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p>Each clip below is a short narrated walkthrough. They play silently; press Sound to hear it.</p>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-capture.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>A wheel of actions, right under your pointer</h3>
+        <p>Drag over an area and a wheel opens where you let go, so the next click is a flick away. <kbd>Enter</kbd> copies. Every slice has a number key and most have a letter: <kbd>E</kbd> marks up, <kbd>R</kbd> records, <kbd>V</kbd> talks to AI, <kbd>N</kbd> keeps the area and lets you add another.</p>
+        <p>Press PrtScn again while the wheel is up and a second capture opens on top of the first, which is handy for how-to guides.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-talk-to-ai.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Talk to AI</h3>
+        <p>Press <kbd>V</kbd>, click to point at things, drag to box them, and say what you mean. Your words appear in a box you can fix. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> copies the picture with your words printed under it, the numbered marks, and the text on screen, so the AI can quote exact labels and numbers.</p>
+        <p>It works on recordings too: key frames from the moments you spoke, with a timestamped transcript.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-more-menu.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Everything else is under More</h3>
+        <ul>
+          <li>Scrolling capture of long pages, stitched into one picture</li>
+          <li>Copy the text in an area (as plain text, Markdown, CSV or a table)</li>
+          <li>Read a QR code, pin a picture on top of every window</li>
+          <li>Describe and tag it with AI, start a batch of screenshots with notes</li>
+          <li>Capture again in 3 or 10 seconds</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-mark-up.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Mark it up</h3>
+        <p>Arrows, boxes, text, numbered steps that count themselves, spotlight, blur, crop, emoji. Every tool has a one-letter key. Beautify adds padding, a background and a shadow for sharing.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-hide-private-details.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Hide private details in one click</h3>
+        <p>Grabbit finds emails, IP addresses, phone and card numbers, API keys and tokens, and pixelates all of them before you share.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-record.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Record your screen</h3>
+        <p>Hold PrtScn for two seconds and pick an area or a window. A countdown, then it records. The red frame and the Stop bar never show up in the video. Pause, move the frame, or start over.</p>
+        <p>System sound and microphone are kept on separate tracks, and every recording gets a notes folder with a transcript, for you or a coding agent that can't watch video.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-video-editor.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Edit the video</h3>
+        <p>An editor laid out like the ones you know: a monitor with timecode, video and sound tracks with a waveform, and an icon for every tool that names itself when you point at it.</p>
+        <ul>
+          <li>Cut silences in one click, add captions made on your computer</li>
+          <li>Split, trim, speed a part up</li>
+          <li>Zoom in on your clicks, show click rings and the keys you pressed</li>
+          <li>Copy small enough for chat, or as a GIF</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-history.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Find any capture again</h3>
+        <p>History searches the words in every picture, what was said in every recording, the apps that were on screen, and where you pasted it. <code>pasted:slack</code> finds everything you sent to Slack.</p>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="media"><video data-clip src="media/clip-automations.mp4" muted loop playsinline preload="none"></video></div>
+      <div>
+        <h3>Hand captures on automatically</h3>
+        <p>After every capture, run a command or post to a webhook: file it into Paperless, a synced folder, n8n, Zapier or Home Assistant.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="more">
+  <div class="wrap">
+    <h2>And the rest</h2>
+    <dl>
+      <div><dt>Ready to paste anywhere</dt><dd>Every capture is on the clipboard as a picture and a named file, and saved as lossless WebP at about 40% of PNG's size.</dd></div>
+      <div><dt>Up to 8 areas at once</dt><dd>Across all your screens, kept separate or joined side by side, stacked or in a grid.</dd></div>
+      <div><dt>Replay buffer</dt><dd>Always keeps the last 10 seconds to 10 minutes; one key saves it.</dd></div>
+      <div><dt>Step recorder</dt><dd>Click through a task and get a how-to as Markdown and a Word document.</dd></div>
+      <div><dt>Share</dt><dd>Upload to OneDrive, Immich, MEGA or any S3 storage and copy the link, or send to Obsidian.</dd></div>
+      <div><dt>Invisible watermark</dt><dd>Your name and the capture's id hidden in the pixels, surviving JPEG and cropping.</dd></div>
+      <div><dt>Private by default</dt><dd>Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a free local model.</dd></div>
+      <div><dt>Updates itself</dt><dd>New versions download quietly and install when you say so.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="install" id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p>Grabbit isn't signed with a paid certificate yet, so Windows and macOS ask once before the first run. The source and the builds are public on GitHub.</p>
+    <table>
+      <tr><th>Windows 10 and 11</th><td><a href="#" data-asset="x64-setup.exe">Installer (.exe)</a> · <a href="#" data-asset="x64_en-US.msi">.msi</a><br>SmartScreen: <b>More info</b>, then <b>Run anyway</b>.</td></tr>
+      <tr><th>macOS 13 and later</th><td><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> · <a href="#" data-asset="x64.dmg">Intel (.dmg)</a><br>Drag it to Applications, then right-click it and choose <b>Open</b>. Allow Screen Recording and Microphone in System Settings → Privacy &amp; Security.</td></tr>
+      <tr><th>Linux</th><td><a href="#" data-asset="amd64.AppImage">AppImage</a> · <a href="#" data-asset="amd64.deb">.deb</a> · <a href="#" data-asset=".rpm">.rpm</a><br>Needs a 2024 or newer distro (Ubuntu 24.04, Debian 13, Fedora 40). For the AppImage: <code>chmod +x Grabbit*.AppImage</code>, then run it.</td></tr>
+    </table>
+    <p>Recording needs ffmpeg: <code>winget install Gyan.FFmpeg</code> on Windows, <code>brew install ffmpeg</code> on macOS, <code>sudo apt install ffmpeg tesseract-ocr</code> on Debian and Ubuntu (the .deb installs both for you).</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>Grabbit <span id="ver"></span>, MIT licence</span>
+    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">Source on GitHub</a>
+    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/blob/main/CHANGELOG.md">Changelog</a>
+    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">Report a problem</a>
+    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders#privacy">Privacy</a>
+  </div>
+</footer>
+
+<script>
+// Chapters of the tour (seconds).
+const CH = [[0, "Grabbit"], [6, "Capture and the wheel"], [52, "Talk to AI"], [74, "Paste into AI"], [90, "The More wheel"], [131, "Scrolling capture"],
+  [148, "Copy the text"], [159, "Pin on top"], [171, "Capture over a capture"], [193, "Hide private details"], [210, "Mark up"], [236, "Record"],
+  [268, "The video editor"], [340, "History"], [358, "Automations"]];
+const reel = document.getElementById("reel"), list = document.getElementById("chapters");
+const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+CH.forEach(([t, name]) => {
+  const b = document.createElement("button");
+  b.innerHTML = `<time>${mmss(t)}</time><span>${name}</span>`;
+  b.onclick = () => { reel.currentTime = t; reel.play(); };
+  const li = document.createElement("li"); li.append(b); list.append(li);
+});
+reel.addEventListener("timeupdate", () => {
+  const i = CH.findLastIndex(([t]) => reel.currentTime >= t);
+  list.querySelectorAll("button").forEach((b, j) => b.classList.toggle("on", j === i));
+});
+
+// Feature clips play when on screen, silently; Sound restarts one with its narration.
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause(); }), { threshold: .35 });
+document.querySelectorAll("video[data-clip]").forEach((v) => {
+  io.observe(v);
+  const b = document.createElement("button");
+  b.className = "sound"; b.textContent = "🔊 Sound";
+  b.onclick = () => {
+    const on = v.muted;
+    document.querySelectorAll("video[data-clip]").forEach((o) => { o.muted = true; o.loop = true; });
+    document.querySelectorAll(".media .sound").forEach((o) => { o.textContent = "🔊 Sound"; });
+    if (on) { v.muted = false; v.loop = false; v.currentTime = 0; v.play(); b.textContent = "🔇 Mute"; }
+  };
+  v.addEventListener("ended", () => { v.muted = true; v.loop = true; b.textContent = "🔊 Sound"; v.play(); });
+  v.parentElement.append(b);
+});
+
+// The download button picks the installer for this computer from the latest release.
+(async () => {
+  const ua = navigator.userAgent, plat = (navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
+  const os = /win/.test(plat) || /Windows/.test(ua) ? "win" : /mac/.test(plat) || /Mac OS/.test(ua) ? "mac" : /linux/.test(plat) ? "linux" : "";
+  let assets = [];
+  try {
+    const r = await fetch("https://api.github.com/repos/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest");
+    const rel = await r.json();
+    assets = rel.assets || [];
+    if (rel.tag_name) document.getElementById("ver").textContent = rel.tag_name;
+  } catch { return; }
+  const find = (end) => assets.find((a) => a.name.endsWith(end))?.browser_download_url;
+  document.querySelectorAll("[data-asset]").forEach((a) => { const u = find(a.dataset.asset); if (u) a.href = u; else a.href = "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest"; });
+  // Browsers on a Mac don't say which chip it has; Apple silicon is the default, with a link for Intel.
+  const pick = { win: ["x64-setup.exe", "for Windows"], mac: ["aarch64.dmg", "for Mac (Apple silicon)"], linux: ["amd64.AppImage", "for Linux (AppImage)"] }[os];
+  const url = pick && find(pick[0]);
+  if (url) {
+    const btn = document.getElementById("download");
+    btn.href = url; btn.textContent = `⬇ Download Grabbit ${pick[1]}`;
+    if (os === "mac") document.getElementById("dl-note").innerHTML = `Older Intel Mac? <a href="${find("x64.dmg")}">Get the Intel version</a>. Free and open source, no account.`;
+  }
+})();
+</script>
+</body>
+</html>

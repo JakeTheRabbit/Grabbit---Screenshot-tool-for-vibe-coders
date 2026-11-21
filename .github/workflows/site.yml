@@ -1,0 +1,38 @@
+name: Website
+
+# Publishes site/ to GitHub Pages, with the walkthrough clips and the tour copied in from docs/screenshots.
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "docs/screenshots/**", ".github/workflows/site.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assemble the site
+        run: |
+          mkdir -p out/media
+          cp -r site/. out/
+          cp docs/screenshots/clip-*.mp4 docs/screenshots/reel.mp4 docs/screenshots/hero.webp docs/screenshots/social-preview.png out/media/
+          cp app/src-tauri/icons/128x128.png out/media/icon.png
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: out
+      - id: deploy
+        uses: actions/deploy-pages@v5
