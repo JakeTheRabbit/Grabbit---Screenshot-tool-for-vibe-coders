@@ -48,8 +48,10 @@ jobs:
       TAG: ${{ inputs.tag || github.event.release.tag_name }}
       WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     steps:
+      # Fails until the first listing is approved in winget-pkgs; that's not a broken release.
       - name: Update the winget package
         if: env.WINGET_TOKEN != ''
+        continue-on-error: true
         shell: pwsh
         run: |
           $v = $env:TAG.TrimStart("v")

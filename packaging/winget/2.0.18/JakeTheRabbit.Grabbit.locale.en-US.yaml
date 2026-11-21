@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
 PackageIdentifier: JakeTheRabbit.Grabbit
-PackageVersion: 2.0.17
+PackageVersion: 2.0.18
 PackageLocale: en-US
 Publisher: JakeTheRabbit
 PublisherUrl: https://github.com/JakeTheRabbit
