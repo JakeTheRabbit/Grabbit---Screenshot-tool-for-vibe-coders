@@ -33,7 +33,7 @@ nav .links a:hover { opacity: 1; }
 
 /* Top band: the app, working, first. */
 .top { background: var(--ink); color: var(--on-ink); padding-bottom: 72px; }
-.top h1 { font-size: clamp(44px, 7.4vw, 96px); font-weight: 800; letter-spacing: -.02em; margin: 40px 0 18px; max-width: 13ch; }
+.top h1 { font-size: clamp(56px, 9vw, 120px); font-weight: 800; letter-spacing: -.02em; margin: 40px 0 18px; max-width: 13ch; }
 .top h1 em { font-style: normal; background: linear-gradient(90deg, var(--coral), var(--coral-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .top p.lead { font-size: 20px; color: var(--on-ink-muted); max-width: 60ch; margin: 0 0 30px; }
 .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-bottom: 44px; }
@@ -81,6 +81,21 @@ kbd { font: 600 .82em Inter, sans-serif; background: #fff; border: 1px solid var
 .more dt { font-weight: 600; margin-top: 14px; color: #fff; }
 .more dd { margin: 2px 0 0; color: var(--on-ink-muted); }
 
+/* For developers, and the comparison. */
+.devs { padding: 76px 0 30px; }
+.devs h2, .compare h2 { font-size: clamp(30px, 4vw, 46px); font-weight: 800; margin-bottom: 18px; }
+.devs dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 40px; margin: 0; }
+.devs dt { font-weight: 600; margin-top: 14px; }
+.devs dd { margin: 2px 0 0; color: var(--muted); }
+.compare { padding: 50px 0 20px; }
+.compare > .wrap > p { color: var(--muted); max-width: 72ch; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.cmp { min-width: 860px; font-size: 15px; }
+table.cmp th, table.cmp td { padding: 10px 12px; }
+table.cmp thead th { font-size: 16px; width: auto; border-bottom: 2px solid var(--text); }
+table.cmp tbody th { font: 600 15px Inter, sans-serif; width: 24%; }
+table.cmp td:nth-child(2), table.cmp thead th:nth-child(2) { background: #ffe6e3; font-weight: 600; }
+
 /* Install. */
 .install { padding: 76px 0; }
 .install h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 10px; }
@@ -109,10 +124,10 @@ footer a { color: var(--on-ink); }
   <div class="wrap">
     <nav>
       <a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a>
-      <div class="links"><a href="#tour">Tour</a><a href="#features">Features</a><a href="#install">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></div>
+      <div class="links"><a href="#tour">Tour</a><a href="#features">Features</a><a href="#compare">Compare</a><a href="#install">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></div>
     </nav>
-    <h1>Tap PrtScn to grab. Hold it to <em>record</em>.</h1>
-    <p class="lead">Grabbit is a free screenshot and screen-recording app for Windows, macOS and Linux. Point at what's wrong, say it out loud, and one paste gives ChatGPT, Claude or Gemini the picture, your words and every bit of text on the screen.</p>
+    <h1>Grabbit</h1>
+    <p class="lead">A free, open-source screenshot and screen-recording app for Windows, macOS and Linux. Press PrtScn for a screenshot, hold it for a recording. Screenshots can carry your spoken notes and the text on screen, ready to paste into ChatGPT, Claude, Gemini or a coding agent.</p>
     <div class="dl">
       <a class="btn" id="download" href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest">⬇ Download Grabbit</a>
       <small id="dl-note">Free and open source (MIT). No account, no watermark. <a href="#install">Other systems</a></small>
@@ -123,8 +138,8 @@ footer a { color: var(--on-ink); }
 
 <section class="tour" id="tour">
   <div class="wrap">
-    <h2>The whole thing in six minutes</h2>
-    <p>A narrated walk through every feature, with sound. Pick a chapter to jump to it.</p>
+    <h2>Full tour</h2>
+    <p>6 minutes 21 seconds, narrated, with a chapter for each feature.</p>
     <div class="grid">
       <video id="reel" src="media/reel.mp4" controls preload="metadata" poster="media/hero.webp"></video>
       <ol class="chapters" id="chapters"></ol>
@@ -134,14 +149,14 @@ footer a { color: var(--on-ink); }
 
 <section class="features" id="features">
   <div class="wrap">
-    <h2>What it does</h2>
-    <p>Each clip below is a short narrated walkthrough. They play silently; press Sound to hear it.</p>
+    <h2>Features</h2>
+    <p>Each clip is a short narrated walkthrough. Clips play without sound; press Sound to hear the narration.</p>
 
     <div class="row">
       <div class="media"><video data-clip src="media/clip-capture.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>A wheel of actions, right under your pointer</h3>
-        <p>Drag over an area and a wheel opens where you let go, so the next click is a flick away. <kbd>Enter</kbd> copies. Every slice has a number key and most have a letter: <kbd>E</kbd> marks up, <kbd>R</kbd> records, <kbd>V</kbd> talks to AI, <kbd>N</kbd> keeps the area and lets you add another.</p>
+        <h3>Action wheel</h3>
+        <p>After you drag over an area, a wheel of actions opens centred on the pointer. <kbd>Enter</kbd> copies. Every slice has a number key and most have a letter: <kbd>E</kbd> marks up, <kbd>R</kbd> records, <kbd>V</kbd> talks to AI, <kbd>N</kbd> keeps the area and lets you add another.</p>
         <p>Press PrtScn again while the wheel is up and a second capture opens on top of the first, which is handy for how-to guides.</p>
       </div>
     </div>
@@ -158,7 +173,7 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-more-menu.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Everything else is under More</h3>
+        <h3>More menu</h3>
         <ul>
           <li>Scrolling capture of long pages, stitched into one picture</li>
           <li>Copy the text in an area (as plain text, Markdown, CSV or a table)</li>
@@ -172,7 +187,7 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-mark-up.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Mark it up</h3>
+        <h3>Markup editor</h3>
         <p>Arrows, boxes, text, numbered steps that count themselves, spotlight, blur, crop, emoji. Every tool has a one-letter key. Beautify adds padding, a background and a shadow for sharing.</p>
       </div>
     </div>
@@ -180,15 +195,15 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-hide-private-details.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Hide private details in one click</h3>
-        <p>Grabbit finds emails, IP addresses, phone and card numbers, API keys and tokens, and pixelates all of them before you share.</p>
+        <h3>Hide private details</h3>
+        <p>One click finds and pixelates emails, IP addresses, phone and card numbers, API keys and tokens.</p>
       </div>
     </div>
 
     <div class="row">
       <div class="media"><video data-clip src="media/clip-record.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Record your screen</h3>
+        <h3>Screen recording</h3>
         <p>Hold PrtScn for two seconds and pick an area or a window. A countdown, then it records. The red frame and the Stop bar never show up in the video. Pause, move the frame, or start over.</p>
         <p>System sound and microphone are kept on separate tracks, and every recording gets a notes folder with a transcript, for you or a coding agent that can't watch video.</p>
       </div>
@@ -197,8 +212,8 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-video-editor.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Edit the video</h3>
-        <p>An editor laid out like the ones you know: a monitor with timecode, video and sound tracks with a waveform, and an icon for every tool that names itself when you point at it.</p>
+        <h3>Video editor</h3>
+        <p>A monitor with timecode, video and sound tracks with a waveform, and an icon for each tool that shows its name and key on hover.</p>
         <ul>
           <li>Cut silences in one click, add captions made on your computer</li>
           <li>Split, trim, speed a part up</li>
@@ -211,7 +226,7 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-history.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Find any capture again</h3>
+        <h3>History</h3>
         <p>History searches the words in every picture, what was said in every recording, the apps that were on screen, and where you pasted it. <code>pasted:slack</code> finds everything you sent to Slack.</p>
       </div>
     </div>
@@ -219,7 +234,7 @@ footer a { color: var(--on-ink); }
     <div class="row">
       <div class="media"><video data-clip src="media/clip-automations.mp4" muted loop playsinline preload="none"></video></div>
       <div>
-        <h3>Hand captures on automatically</h3>
+        <h3>Automations</h3>
         <p>After every capture, run a command or post to a webhook: file it into Paperless, a synced folder, n8n, Zapier or Home Assistant.</p>
       </div>
     </div>
@@ -228,7 +243,7 @@ footer a { color: var(--on-ink); }
 
 <section class="more">
   <div class="wrap">
-    <h2>And the rest</h2>
+    <h2>Other features</h2>
     <dl>
       <div><dt>Ready to paste anywhere</dt><dd>Every capture is on the clipboard as a picture and a named file, and saved as lossless WebP at about 40% of PNG's size.</dd></div>
       <div><dt>Up to 8 areas at once</dt><dd>Across all your screens, kept separate or joined side by side, stacked or in a grid.</dd></div>
@@ -239,6 +254,56 @@ footer a { color: var(--on-ink); }
       <div><dt>Private by default</dt><dd>Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a free local model.</dd></div>
       <div><dt>Updates itself</dt><dd>New versions download quietly and install when you say so.</dd></div>
     </dl>
+  </div>
+</section>
+
+<section class="devs" id="developers">
+  <div class="wrap">
+    <h2>For developers</h2>
+    <dl>
+      <div><dt>Fast</dt><dd>The screens freeze about a tenth of a second after the key press on Windows, even with four screens. Frames come straight from the graphics card through shared memory.</dd></div>
+      <div><dt>Small</dt><dd>A 20 MB installer. Rust core, no Electron, no bundled browser. No account, no sign-in, no ads, no upsell screens.</dd></div>
+      <div><dt>Keyboard first</dt><dd>Every action has a key, and every key can be changed. <code>grabbit://capture</code>, <code>grabbit://record</code> and the same words on the command line for launchers and scripts.</dd></div>
+      <div><dt>Made for coding agents</dt><dd>Talk to AI copies the picture, your words, numbered marks and the screen's text in one paste. Each recording gets a notes folder with <code>transcript.md</code>, captions, stills and <code>recording.json</code>, so an agent that can't watch video can still read it.</dd></div>
+      <div><dt>Text out of pictures</dt><dd>Copy the text in any area as plain text, Markdown, CSV, HTML or a table. Read QR codes. Search every capture by its text.</dd></div>
+      <div><dt>Scriptable</dt><dd>Run a command or post a webhook after every capture, with the file path, the apps on screen and the text in it.</dd></div>
+      <div><dt>Private</dt><dd>Everything stays on your computer until you press Share or an AI button. AI uses your own key or a local model. Metadata is stripped by default.</dd></div>
+      <div><dt>Open source</dt><dd>MIT licence, built and tested in public on GitHub Actions for Windows, macOS and Linux. Updates are signed.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="compare" id="compare">
+  <div class="wrap">
+    <h2>Compared with other screenshot and recording apps</h2>
+    <p>From each app's own website and changelog, checked in November 2026. Prices are in US dollars. If something here is wrong, <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">open an issue</a> and it will be fixed.</p>
+    <div class="scroll">
+    <table class="cmp">
+      <thead><tr><th></th><th>Grabbit</th><th>CleanShot X</th><th>Snagit</th><th>ShareX</th><th>Screen Studio</th><th>Loom</th><th>Cap</th></tr></thead>
+      <tbody>
+        <tr><th>Price</th><td>Free</td><td>$35 once, $19/yr for updates</td><td>About $39/yr</td><td>Free</td><td>$9/mo yearly</td><td>Free tier, then $18/mo</td><td>Free, or $58 once</td></tr>
+        <tr><th>Windows</th><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+        <tr><th>macOS</th><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+        <tr><th>Linux</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
+        <tr><th>Open source</th><td>Yes, MIT</td><td>No</td><td>No</td><td>Yes, GPL</td><td>No</td><td>No</td><td>Yes, AGPL</td></tr>
+        <tr><th>No account needed</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>For local use</td></tr>
+        <tr><th>Screenshots with markup</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Scrolling capture</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Copy text (OCR)</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Auto-hide emails, keys, card numbers</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Screen recording</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+        <tr><th>Video editor</th><td>Timeline, cuts, speed</td><td>Trim, zooms</td><td>Trim</td><td>No</td><td>Full</td><td>Trim, transcript</td><td>Full</td></tr>
+        <tr><th>Zoom on clicks</th><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td><td>No</td><td>Yes</td></tr>
+        <tr><th>Captions made on your computer</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>In the cloud</td><td>Yes</td></tr>
+        <tr><th>Cut silences in one click</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>Paid plan</td><td>No</td></tr>
+        <tr><th>Talk over a capture, paste into AI</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Search captures by their text</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td><td>No</td></tr>
+        <tr><th>Command or webhook after capture</th><td>Yes</td><td>URL scheme</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Replay buffer</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+        <tr><th>Step recorder (how-to docs)</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
+      </tbody>
+    </table>
+    </div>
   </div>
 </section>
 
@@ -283,8 +348,8 @@ reel.addEventListener("timeupdate", () => {
   list.querySelectorAll("button").forEach((b, j) => b.classList.toggle("on", j === i));
 });
 
-// Feature clips play when on screen, silently; Sound restarts one with its narration.
-const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause(); }), { threshold: .35 });
+// Feature clips play from the start, without sound, each time they come on screen; Sound restarts one with its narration.
+const io = new IntersectionObserver((es) => es.forEach((e) => { const v = e.target; if (e.isIntersecting) { if (v.muted) v.currentTime = 0; v.play().catch(() => {}); } else v.pause(); }), { threshold: .35 });
 document.querySelectorAll("video[data-clip]").forEach((v) => {
   io.observe(v);
   const b = document.createElement("button");

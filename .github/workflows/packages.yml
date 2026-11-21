@@ -1,0 +1,56 @@
+name: Package managers
+
+# When a release is published, point the Scoop bucket (bucket/grabbit.json) and the Homebrew tap (Casks/grabbit.rb),
+# both kept in this repository, at its installers, then submit it to winget if a token is set.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v2.0.17)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  manifests:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - name: Write the Scoop and Homebrew manifests
+        run: |
+          V="${TAG#v}"
+          mkdir -p dl bucket Casks
+          gh release download "$TAG" -R "$REPO" -D dl -p "*_x64_en-US.msi" -p "*_aarch64.dmg" -p "*_x64.dmg"
+          MSI=$(ls dl/*_x64_en-US.msi); ARM=$(ls dl/*_aarch64.dmg); X64=$(ls dl/*_x64.dmg)
+          sha() { sha256sum "$1" | cut -d' ' -f1; }
+          URL="https://github.com/$REPO/releases/download/$TAG"
+          sed -e "s|@V@|$V|g" -e "s|@URL@|$URL/$(basename "$MSI")|g" -e "s|@SHA@|$(sha "$MSI")|g" packaging/scoop.json > bucket/grabbit.json
+          sed -e "s|@V@|$V|g" -e "s|@REPO@|$REPO|g" -e "s|@SHA_ARM@|$(sha "$ARM")|g" -e "s|@SHA_X64@|$(sha "$X64")|g" packaging/cask.rb > Casks/grabbit.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket Casks
+          git diff --cached --quiet || { git commit -m "Scoop and Homebrew: Grabbit $V"; git push; }
+
+  winget:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Update the winget package
+        if: env.WINGET_TOKEN != ''
+        shell: pwsh
+        run: |
+          $v = $env:TAG.TrimStart("v")
+          $url = "https://github.com/${{ github.repository }}/releases/download/$env:TAG/Grabbit_${v}_x64-setup.exe"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe update JakeTheRabbit.Grabbit --version $v --urls $url --submit --token $env:WINGET_TOKEN
