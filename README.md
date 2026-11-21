@@ -192,10 +192,29 @@ Built for screenshots and fully offline: the capture is the canvas. Arrows, line
 
   <a href="docs/screenshots/clip-automations.mp4"><img src="docs/screenshots/clip-automations.webp" width="560" alt="Settings, Automations: a command that files every capture into Paperless, and a webhook for n8n."></a>
 - **Instant:** the screens freeze the moment you press the key (about a tenth of a second on Windows, even with four screens). Grabbit grabs the screens straight from the graphics card and hands them to the capture screen through shared memory.
-- **Light on your computer:** between captures the capture screens sleep and hand their memory back. Turn off **Instant capture** in Settings → General and Grabbit uses under 10 MB while idle, at the cost of about 2 seconds on the first capture after a minute.
+- **Light on your computer:** idle, Grabbit is one process using about 15 MB, with no browser windows loaded. The capture screens open in under a second when you press the key and close a minute after the last capture. Turn on **Instant capture** in Settings → General to keep them loaded so the wheel opens in about 0.1 s; that holds roughly 200–1000 MB of RAM, depending on how many screens you have.
 - **Updates itself:** new versions download quietly in the background and install when you pick **Restart to update** in the tray menu (Settings → General turns it off). Updates are signed, so only real releases install.
 - **Looks after itself:** Windows restarts Grabbit after a crash or hang, recording helpers close with it, a damaged settings file is replaced with the last good copy, and old temporary files are cleared.
 - `grabbit://capture`, `grabbit://record`, `grabbit://replay`, `grabbit://open/<file>` and the same words on the command line, for launchers and scripts.
+
+### Coding agents (MCP)
+
+`grabbit --mcp` is an MCP server, so Claude Code, Codex, Cursor and T3 Code can use your captures. **Settings → Coding agents** adds it to Claude Code or Codex in one click, or copies the setup for anything else. The agent gets four tools:
+
+| Tool | What it does |
+|---|---|
+| `search_captures` | Finds screenshots and recordings by the text in them, what was said, the apps and windows they showed, tags and notes; filters by kind, date and starred. |
+| `get_capture` | Returns the picture (scaled to fit), all its text and details; for a recording, the transcript with times and a few stills. Only files in History can be read. |
+| `take_screenshot` | Takes a screenshot now of every screen, one screen, or one window (even if it's covered), saves it to History and returns it with its text. |
+| `list_windows` | The open windows, for `take_screenshot`. |
+
+Ask things like *"find my screenshot of the checkout error and fix it"* or *"take a screenshot of localhost:5173 and check the layout"*. By hand:
+
+```bash
+claude mcp add --scope user grabbit -- "C:\Users\you\AppData\Local\Grabbit\grabbit.exe" --mcp
+```
+
+In the video editor, **Copy → Copy for a coding agent** copies a recording under 48 MB together with its transcript file, which fits T3 Code's 50 MB attachment limit.
 
 ## Install
 
