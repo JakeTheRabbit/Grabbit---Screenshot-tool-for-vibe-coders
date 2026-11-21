@@ -12,6 +12,7 @@ mod history;
 mod hooks;
 mod hotkey;
 mod mark;
+mod mcp;
 mod notes;
 mod ocr;
 mod textfmt;
@@ -173,6 +174,7 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--mcp") { std::process::exit(mcp::run()); }
     if let Some(i) = args.iter().position(|a| a == "--self-test") {
         let dir = args.get(i + 1).cloned().unwrap_or_else(|| std::env::temp_dir().join("grabbit-selftest").to_string_lossy().into());
         std::process::exit(selftest::run(std::path::Path::new(&dir)));
@@ -255,6 +257,7 @@ pub fn run() {
             history::open_history,
             history::open_captures_folder,
             history::open_recording_notes,
+            mcp::connect_agent,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

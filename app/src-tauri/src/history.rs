@@ -60,6 +60,9 @@ fn append(e: &Entry) {
 }
 
 /// Rewrites the file with `f` applied to every entry for `path` (written to a temp file, then swapped in).
+/// A capture made outside the app (the MCP server's take_screenshot).
+pub fn add_entry(e: Entry) { append(&e) }
+
 fn change(path: &str, f: impl Fn(&mut Entry)) -> Option<Entry> {
     let _g = FILE.lock().unwrap();
     let mut list: Vec<Entry> = std::fs::read_to_string(file()).unwrap_or_default().lines().filter_map(|l| serde_json::from_str(l).ok()).collect();

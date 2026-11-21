@@ -87,14 +87,32 @@ kbd { font: 600 .82em Inter, sans-serif; background: #fff; border: 1px solid var
 .devs dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 40px; margin: 0; }
 .devs dt { font-weight: 600; margin-top: 14px; }
 .devs dd { margin: 2px 0 0; color: var(--muted); }
-.compare { padding: 50px 0 20px; }
+.compare { padding: 50px 0 30px; }
 .compare > .wrap > p { color: var(--muted); max-width: 72ch; }
-.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-table.cmp { min-width: 860px; font-size: 15px; }
-table.cmp th, table.cmp td { padding: 10px 12px; }
-table.cmp thead th { font-size: 16px; width: auto; border-bottom: 2px solid var(--text); }
-table.cmp tbody th { font: 600 15px Inter, sans-serif; width: 24%; }
-table.cmp td:nth-child(2), table.cmp thead th:nth-child(2) { background: #ffe6e3; font-weight: 600; }
+.diff-only { display: inline-flex; gap: 8px; align-items: center; font-weight: 500; margin: 6px 0 14px; cursor: pointer; }
+.diff-only input { width: 18px; height: 18px; accent-color: var(--coral); }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; box-shadow: 0 20px 50px -30px rgba(30, 20, 40, .45); background: #fff; }
+table.cmp { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; margin: 0; font-size: 15px; }
+table.cmp th, table.cmp td { padding: 11px 10px; border-bottom: 1px solid #f0e9df; text-align: center; vertical-align: middle; width: auto; display: table-cell; }
+table.cmp thead th { position: sticky; top: 0; background: #fff; z-index: 2; border-bottom: 2px solid var(--line); padding: 16px 8px 12px; }
+table.cmp thead img { width: 40px; height: 40px; border-radius: 10px; display: block; margin: 0 auto 6px; object-fit: contain; }
+table.cmp thead .name { font: 800 15px "Bricolage Grotesque", sans-serif; display: block; }
+table.cmp thead .price { font: 500 12.5px Inter, sans-serif; color: var(--muted); display: block; margin-top: 2px; }
+table.cmp thead .score { display: inline-block; margin-top: 8px; font: 600 12px Inter, sans-serif; padding: 2px 8px; border-radius: 999px; background: #f3ede5; color: var(--text); }
+table.cmp .feat { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; font: 500 15px Inter, sans-serif; min-width: 230px; }
+table.cmp .feat .only { display: inline-block; margin-left: 6px; font: 700 10.5px Inter, sans-serif; letter-spacing: .02em; color: #fff; background: var(--coral); border-radius: 999px; padding: 2px 7px; vertical-align: 2px; }
+table.cmp .group td { text-align: left; background: var(--ink-2); color: #fff; font: 700 13px Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; position: sticky; left: 0; }
+table.cmp .me { background: #fff1ef; }
+table.cmp thead th.me { background: #ffe6e2; box-shadow: inset 0 3px 0 var(--coral); }
+table.cmp thead th.me .score { background: var(--coral); color: #1b0f12; }
+.c { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 800 14px Inter, sans-serif; }
+.c.yes { background: #def7e6; color: #11843c; }
+.c.no { background: #f1eeea; color: #b1a9a0; }
+.c.part { background: #fff1d6; color: #b5730a; }
+table.cmp .note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.25; }
+table.cmp tr.same { display: none; }
+.legend { font-size: 14px; color: var(--muted); display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.legend .c { width: 22px; height: 22px; font-size: 12px; margin-right: -8px; }
 
 /* Install. */
 .install { padding: 76px 0; }
@@ -112,8 +130,8 @@ footer a { color: var(--on-ink); }
   nav .links { display: none; }
   .tour .grid, .row { grid-template-columns: 1fr; gap: 22px; }
   .row:nth-child(even) .media { order: 0; }
-  th { width: auto; display: block; border: 0; padding-bottom: 0; }
-  td { display: block; }
+  .install th { width: auto; display: block; border: 0; padding-bottom: 0; }
+  .install td { display: block; }
 }
 @media (max-width: 480px) { .wrap { padding: 0 16px; } }
 </style>
@@ -261,10 +279,10 @@ footer a { color: var(--on-ink); }
   <div class="wrap">
     <h2>For developers</h2>
     <dl>
-      <div><dt>Fast</dt><dd>The screens freeze about a tenth of a second after the key press on Windows, even with four screens. Frames come straight from the graphics card through shared memory.</dd></div>
-      <div><dt>Small</dt><dd>A 20 MB installer. Rust core, no Electron, no bundled browser. No account, no sign-in, no ads, no upsell screens.</dd></div>
+      <div><dt>Fast</dt><dd>The screens freeze the moment you press the key, straight from the graphics card. The wheel opens in under a second, or in about 0.1 s with Instant capture on (which keeps a few hundred MB loaded).</dd></div>
+      <div><dt>Small</dt><dd>A 20 MB installer. Idle, it's one process using about 15 MB of memory. Rust core, no Electron, no bundled browser. No account, no sign-in, no ads, no upsell screens.</dd></div>
       <div><dt>Keyboard first</dt><dd>Every action has a key, and every key can be changed. <code>grabbit://capture</code>, <code>grabbit://record</code> and the same words on the command line for launchers and scripts.</dd></div>
-      <div><dt>Made for coding agents</dt><dd>Talk to AI copies the picture, your words, numbered marks and the screen's text in one paste. Each recording gets a notes folder with <code>transcript.md</code>, captions, stills and <code>recording.json</code>, so an agent that can't watch video can still read it.</dd></div>
+      <div><dt>Coding agents can use your captures</dt><dd>Run <code>grabbit --mcp</code> or add it from Settings, and Claude Code, Codex, Cursor or T3 Code can search every screenshot and recording by its text, open one, read a recording's transcript, or take a screenshot themselves. Talk to AI copies the picture, your words, numbered marks and the screen's text in one paste. Each recording gets a notes folder with <code>transcript.md</code>, captions, stills and <code>recording.json</code>, so an agent that can't watch video can still read it.</dd></div>
       <div><dt>Text out of pictures</dt><dd>Copy the text in any area as plain text, Markdown, CSV, HTML or a table. Read QR codes. Search every capture by its text.</dd></div>
       <div><dt>Scriptable</dt><dd>Run a command or post a webhook after every capture, with the file path, the apps on screen and the text in it.</dd></div>
       <div><dt>Private</dt><dd>Everything stays on your computer until you press Share or an AI button. AI uses your own key or a local model. Metadata is stripped by default.</dd></div>
@@ -277,33 +295,9 @@ footer a { color: var(--on-ink); }
   <div class="wrap">
     <h2>Compared with other screenshot and recording apps</h2>
     <p>From each app's own website and changelog, checked in November 2026. Prices are in US dollars. If something here is wrong, <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">open an issue</a> and it will be fixed.</p>
-    <div class="scroll">
-    <table class="cmp">
-      <thead><tr><th></th><th>Grabbit</th><th>CleanShot X</th><th>Snagit</th><th>ShareX</th><th>Screen Studio</th><th>Loom</th><th>Cap</th></tr></thead>
-      <tbody>
-        <tr><th>Price</th><td>Free</td><td>$35 once, $19/yr for updates</td><td>About $39/yr</td><td>Free</td><td>$9/mo yearly</td><td>Free tier, then $18/mo</td><td>Free, or $58 once</td></tr>
-        <tr><th>Windows</th><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td></tr>
-        <tr><th>macOS</th><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-        <tr><th>Linux</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
-        <tr><th>Open source</th><td>Yes, MIT</td><td>No</td><td>No</td><td>Yes, GPL</td><td>No</td><td>No</td><td>Yes, AGPL</td></tr>
-        <tr><th>No account needed</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>For local use</td></tr>
-        <tr><th>Screenshots with markup</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Scrolling capture</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Copy text (OCR)</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Auto-hide emails, keys, card numbers</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Screen recording</th><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
-        <tr><th>Video editor</th><td>Timeline, cuts, speed</td><td>Trim, zooms</td><td>Trim</td><td>No</td><td>Full</td><td>Trim, transcript</td><td>Full</td></tr>
-        <tr><th>Zoom on clicks</th><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td><td>No</td><td>Yes</td></tr>
-        <tr><th>Captions made on your computer</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>In the cloud</td><td>Yes</td></tr>
-        <tr><th>Cut silences in one click</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>Yes</td><td>Paid plan</td><td>No</td></tr>
-        <tr><th>Talk over a capture, paste into AI</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Search captures by their text</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td><td>No</td></tr>
-        <tr><th>Command or webhook after capture</th><td>Yes</td><td>URL scheme</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Replay buffer</th><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
-        <tr><th>Step recorder (how-to docs)</th><td>Yes</td><td>No</td><td>Yes</td><td>No</td><td>No</td><td>No</td><td>No</td></tr>
-      </tbody>
-    </table>
-    </div>
+    <label class="diff-only"><input type="checkbox" id="diffOnly"> Only show rows where the apps differ</label>
+    <div class="scroll"><table class="cmp" id="cmp"></table></div>
+    <p class="legend"><span class="c yes">✓</span> Yes <span class="c part">~</span> Partly, see the note <span class="c no">✕</span> No</p>
   </div>
 </section>
 
@@ -363,6 +357,53 @@ document.querySelectorAll("video[data-clip]").forEach((v) => {
   v.addEventListener("ended", () => { v.muted = true; v.loop = true; b.textContent = "🔊 Sound"; v.play(); });
   v.parentElement.append(b);
 });
+
+// The comparison: true = yes, false = no, "+note" = yes with a note, any other string = partly (shown as the note).
+const APPS = [
+  ["Grabbit", "grabbit", "Free"], ["CleanShot X", "cleanshot", "$35 once"], ["Snagit", "snagit", "~$39/yr"],
+  ["ShareX", "sharex", "Free"], ["Screen Studio", "screenstudio", "$9/mo"], ["Loom", "loom", "$18/mo"], ["Cap", "cap", "Free or $58"],
+];
+const Y = true, N = false;
+const ROWS = [
+  ["Cost and platforms"],
+  ["Free to use", Y, N, N, Y, N, "Limited free plan", "Free for personal use"],
+  ["Windows", Y, N, Y, Y, N, Y, Y],
+  ["macOS", Y, Y, Y, N, Y, Y, Y],
+  ["Linux", Y, N, N, N, N, N, Y],
+  ["Open source", "+MIT", N, N, "+GPL", N, N, "+AGPL"],
+  ["No account needed", Y, Y, Y, Y, Y, N, "For local use"],
+  ["Screenshots"],
+  ["Markup editor", Y, Y, Y, Y, N, N, N],
+  ["Scrolling capture", Y, Y, Y, Y, N, N, N],
+  ["Copy text (OCR)", Y, Y, Y, Y, N, N, N],
+  ["Auto-hide emails, keys, card numbers", Y, N, Y, N, N, N, N],
+  ["Search captures by their text", Y, N, Y, N, N, "Videos, by transcript", N],
+  ["Recording and video"],
+  ["Screen recording", Y, Y, Y, Y, Y, Y, Y],
+  ["Video editor", "+Timeline, cuts, speed", "Trim and zooms", "Trim only", N, Y, "Trim, transcript", Y],
+  ["Zoom on clicks", Y, Y, N, N, Y, N, Y],
+  ["Captions made on your computer", Y, N, N, N, Y, "In the cloud", Y],
+  ["Cut silences in one click", Y, N, N, N, Y, "Paid plan", N],
+  ["Replay buffer (save the last minutes)", Y, N, N, N, N, N, N],
+  ["Step recorder (how-to documents)", Y, N, Y, N, N, N, N],
+  ["AI and automation"],
+  ["Talk over a capture, paste into AI", Y, N, N, N, N, N, N],
+  ["Coding agents can search your captures (MCP)", Y, N, N, N, N, N, "Recording only"],
+  ["Command or webhook after each capture", Y, "URL scheme", N, Y, N, N, N],
+];
+(() => {
+  const t = document.getElementById("cmp"), cell = (v) => v === true ? '<span class="c yes">✓</span>' : v === false ? '<span class="c no">✕</span>' : v[0] === "+" ? `<span class="c yes">✓</span><span class="note">${v.slice(1)}</span>` : `<span class="c part">~</span><span class="note">${v}</span>`;
+  const feats = ROWS.filter((r) => r.length > 1);
+  const score = APPS.map((_, i) => feats.filter((r) => r[i + 1] !== false).length);
+  let html = `<thead><tr><th class="feat"></th>${APPS.map(([n, logo, price], i) => `<th class="${i ? "" : "me"}"><img src="logos/${logo}.png" alt=""><span class="name">${n}</span><span class="price">${price}</span><span class="score">${score[i]} of ${feats.length}</span></th>`).join("")}</tr></thead><tbody>`;
+  for (const r of ROWS) {
+    if (r.length === 1) { html += `<tr class="group"><td colspan="${APPS.length + 1}">${r[0]}</td></tr>`; continue; }
+    const v = r.slice(1), same = v.every((x) => x === v[0]), only = v[0] !== false && v.slice(1).every((x) => x === false);
+    html += `<tr class="${same ? "is-same" : ""}"><td class="feat">${r[0]}${only ? '<span class="only">Only Grabbit</span>' : ""}</td>${v.map((x, i) => `<td class="${i ? "" : "me"}">${cell(x)}</td>`).join("")}</tr>`;
+  }
+  t.innerHTML = html + "</tbody>";
+  document.getElementById("diffOnly").onchange = (e) => t.querySelectorAll("tr.is-same").forEach((r) => r.classList.toggle("same", e.target.checked));
+})();
 
 // The download button picks the installer for this computer from the latest release.
 (async () => {
