@@ -25,6 +25,16 @@ const ctrlDrag = async (x0, y0, x1, y1) => {
 
 await p.drag(120, 120, 520, 400);
 await p.waitFor(`!document.getElementById("bar").hidden`);
+const centre = `(() => { const r = document.getElementById("bar").getBoundingClientRect(); return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)]; })()`;
+const c0 = await J(centre);
+ok("wheel opens centred on the pointer where the drag ended", Math.abs(c0[0] - 520) <= 1 && Math.abs(c0[1] - 400) <= 1, JSON.stringify(c0));
+await p.mouse("mouseMoved", c0[0] + 60, c0[1] - 60);
+await p.ev(`[...document.querySelectorAll("#bar .btn")].find((b) => b.textContent.trim() === "More").click()`);
+await sleep(100);
+const c1 = await J(centre);
+ok("wheel stays put when More opens and the pointer has moved", Math.abs(c1[0] - c0[0]) <= 1 && Math.abs(c1[1] - c0[1]) <= 1, JSON.stringify(c1));
+await p.key("Escape", "Escape", 27);
+await sleep(100);
 const labels = await J(`[...document.querySelectorAll("#bar > .btn")].map((b) => b.textContent.trim()).filter(Boolean)`);
 ok("bar says what each button does", ["Copy", "Copy smaller", "Copy for chat", "Mark up", "Save as…", "Record video", "Add another area", "Talk to AI"].every((l) => labels.includes(l)), labels.join(" | "));
 ok("every bar button has a tooltip", await p.ev(`[...document.querySelectorAll("#bar button, #bar select, #bar .menu button")].every((b) => (b.title || b.dataset.tip || "").length > 10)`));
