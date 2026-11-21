@@ -218,14 +218,14 @@ await run("video", async () => {
     cursor: { moves: [[1, 600, 300, 0], [1.4, 600, 300, 1], [1.5, 600, 300, 0], [6.5, 1200, 500, 1], [6.6, 1200, 500, 0]], keys: [[3, "LControl"], [3.1, "S"]] } })`);
   await p.waitFor(`!!document.querySelector(".fx")`, 20000);
   await p.ev("window.confirm = () => true");
-  const btn = (t) => p.ev(`[...document.querySelectorAll("button")].find((b) => b.textContent.trim() === ${JSON.stringify(t)})?.click()`);
+  const btn = (t) => p.ev(`[...document.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") || b.textContent.trim()) === ${JSON.stringify(t)})?.click()`);
   await btn("Cut silences");
   await p.waitFor(`document.querySelectorAll(".strip .seg").length >= 2`);
-  await p.ev(`[...document.querySelectorAll(".fx input")].forEach((i) => { if (!i.checked) i.click(); })`);
+  await p.ev(`[...document.querySelectorAll(".fx button.tool:not(.on)")].forEach((b) => b.click())`);
   await p.ev(`(() => { const s = [...document.querySelectorAll(".strip .seg")].at(-1); const r = s.getBoundingClientRect(); const t = document.querySelector(".track");
     for (const type of ["pointerdown", "pointerup"]) t.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + 10, button: 0, pointerId: 1 })); })()`);
   await sleep(200);
-  await p.ev(`(() => { const s = document.querySelector("select.speed"); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "2"); s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
+  await p.ev(`(() => { const s = document.querySelector(".speed select"); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(s, "2"); s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
   await btn("Captions");
   await p.waitFor(`document.querySelectorAll(".cue").length > 0`);
   await p.ev(`(() => { const c = document.querySelector(".captions header input"); if (c && !c.checked) c.click(); document.querySelector("video").currentTime = 6.7; })()`);

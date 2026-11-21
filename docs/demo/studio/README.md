@@ -13,7 +13,7 @@ Both scripts take names to redo just some, e.g. `node shoot.mjs picker voice` or
 
 ## The workflow reel
 
-`node ../reel/reel.mjs` (after steps 1 and 2, with ffmpeg and uv installed) makes the narrated tour: `docs/screenshots/reel.mp4` (about 5 minutes, with sound), a narrated `clip-<feature>.mp4` per feature, and a silent `clip-<feature>.webp` loop of each for the README (GitHub plays WebP inline, not a repo's MP4). It follows one made-up bug from "something's off" to fixed, then walks through the bar's keys, the More menu, scrolling capture, copy text, pin, hiding private details, recording and the video editor (scrubbing, split, trim, cut silences, captions). The whole screen stays in view: nothing zooms or pans.
+`node ../reel/reel.mjs` (after steps 1 and 2, with ffmpeg and uv installed) makes the narrated tour: `docs/screenshots/reel.mp4` (about 6 minutes, with sound and a chapter per feature), a narrated `clip-<feature>.mp4` per feature, and a silent `clip-<feature>.webp` loop of each for the README (GitHub plays WebP inline, not a repo's MP4). It follows one made-up bug from "something's off" to fixed, then walks through the wheel's keys, the More wheel, scrolling capture, copy text, pin, a capture over a capture, hiding private details, the markup tools, recording (countdown, Start over) and the video editor (scrubbing, split, trim, cut silences, captions, every tool's tooltip, speed, click effects, copy), then History and Automations. The whole screen stays in view: nothing zooms or pans.
 
 - [../reel/desk.html](../reel/desk.html) is the made-up desktop: a half-built app with two bugs, a long Orders page for the scrolling capture, and an AI chat. [../reel/secrets.html](../reel/secrets.html) is the screenshot with private details in it.
 - `shoot` drives the real picker, Talk to AI window, picture editor and video editor with mouse and keys, and writes a timeline of beats: what's on screen, where the pointer is, the caption, the keys and the spoken lines. What the chat receives is what Talk to AI really put on the clipboard. The voices come from `edge-tts` (run through `uvx`) and are cached in `out/reel/vo`, so a second shoot doesn't fetch them again.
@@ -29,5 +29,7 @@ To change the story, edit the beats in `shoot()`: `cap(html, line)` sets the cap
 `node editor-sweep.mjs` (after steps 1, 2 and 4) clicks through the picture editor's buttons, menus and panels with a faked core and prints PASS/FAIL per check: steps, Hide modes and undo, Spotlight, Copy/Save, stickers, Beautify, AI edits, tabs and the sidebar.
 
 `node loupe-check.mjs` hands the picker its frame the way WebView2 does on Windows (shared memory, with the picker details) and checks the loupe, the colour read and that the frame is released when the picker closes.
+
+`node video-check.mjs` checks the video editor's icon tools (each has a name and a tooltip), the A1 waveform and the timecode.
 
 `node hold-check.mjs` checks holding the capture key: the "Keep holding to record" pill, letting go in time, and the picker turning into the recording picker.
