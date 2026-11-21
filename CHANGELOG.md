@@ -6,6 +6,22 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+### Added
+
+- **Action wheel** after a capture, in place of the long bar: it opens centred right under the pointer where the drag ended, every slice has a number key (1–9, 0) and most a letter, and **More** swaps in a second wheel without moving.
+- **Capture over a capture:** press PrtScn again while the wheel is up and a second capture opens on top of the first, wheel and all. Hold the key instead to record yourself using the first one.
+- **History** finds any capture or recording again by the words in it, what was said, the programs it showed, where you pasted it (`pasted:slack`), dates, tags and notes. Stars, save for later and reminders.
+- **Smart file names** from what was on screen, and an option to keep the whole screen alongside each capture.
+- **Notes folder for every recording:** transcript with times and stills, captions, and a JSON summary, for you or a coding agent.
+- **Recording:** a 3-second countdown before it starts, and **Start over** to throw a take away and record the same area again.
+- **Automations:** run a command or post a webhook after every capture or recording.
+- **Copy text** as Markdown, CSV, HTML or a real table.
+- A narrated **6-minute tour** with a chapter per feature, and a short walkthrough clip for each feature in the README.
+
+### Changed
+
+- **The video editor looks like an editing suite:** a Program monitor with timecode and transport, V1/A1/T1 tracks with the sound's waveform, and every tool an icon that shows its name and key when you point at it.
+
 ## [2.0.16] - 2026-11-05
 
 2.0.15 was tagged but never released (its build failed a type check); its changes are in this release.

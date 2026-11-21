@@ -18,6 +18,7 @@
 <p align="center">
   <a href="https://github.com/JakeTheRabbit/grabbit/releases/latest"><b>⬇ Download Grabbit</b></a> &nbsp;·&nbsp;
   <a href="#install">Install</a> &nbsp;·&nbsp;
+  <a href="#video-walkthroughs">Walkthroughs</a> &nbsp;·&nbsp;
   <a href="#features">Features</a> &nbsp;·&nbsp;
   <a href="#keys">Keys</a> &nbsp;·&nbsp;
   <a href="#privacy">Privacy</a> &nbsp;·&nbsp;
@@ -42,6 +43,25 @@
 - **Private by default.** Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a local model.
 - **Everywhere you work.** Windows, macOS and Linux, from one codebase, all free.
 
+## Video walkthroughs
+
+**[The full tour](docs/screenshots/reel.mp4)** runs 6:21 with sound, and has a chapter per feature, so most players let you jump straight to one. Or watch a single feature (each one is narrated, 15 s to just over a minute):
+
+| Feature | In the tour | Walkthrough |
+|---|---|---|
+| Capture and the action wheel | 0:06 | [Wheel and its keys](docs/screenshots/clip-capture.mp4) |
+| Talk to AI, then paste into AI | 0:52 | [Talk to AI](docs/screenshots/clip-talk-to-ai.mp4) |
+| The More wheel | 1:30 | [Everything under More](docs/screenshots/clip-more-menu.mp4) |
+| Scrolling capture | 2:11 | [Scrolling capture](docs/screenshots/clip-scrolling-capture.mp4) |
+| Copy the text, pin on top | 2:28 | [Copy text and pin](docs/screenshots/clip-copy-text-and-pin.mp4) |
+| Capture over a capture | 2:51 | [A capture of a capture](docs/screenshots/clip-capture-over-capture.mp4) |
+| Hide private details | 3:13 | [Hide private details](docs/screenshots/clip-hide-private-details.mp4) |
+| Mark up | 3:30 | [Mark-up tools](docs/screenshots/clip-mark-up.mp4) |
+| Record your screen | 3:56 | [Record](docs/screenshots/clip-record.mp4) |
+| The video editor | 4:28 | [Video editor](docs/screenshots/clip-video-editor.mp4) |
+| History | 5:40 | [Find it again](docs/screenshots/clip-history.mp4) |
+| Automations | 5:58 | [Automations](docs/screenshots/clip-automations.mp4) |
+
 ## Features
 
 ### Talk to AI
@@ -60,6 +80,8 @@ Start a batch (<kbd>B</kbd>) and keep talking while you take screenshot after sc
 
 <img src="docs/screenshots/tools.webp" alt="The picker's More menu, the pixel loupe, and a whole window highlighted">
 
+- **The action wheel** opens right under your pointer where the drag ended, so the next click is a flick away. Every slice has a number key (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>) and most a letter; <kbd>Enter</kbd> copies. **More** swaps in a second wheel without moving.
+- **PrtScn again** while the wheel is up opens a second capture over the first, wheel and all: handy for how-tos about Grabbit itself, or hold the key to record yourself using it.
 - Region, window (captured whole even when covered), whole screen, or **up to 8 areas** across all your screens (<kbd>Ctrl</kbd>+drag adds one), kept as separate pictures or joined side by side, stacked, as a grid, or as they sit on screen.
 - **Scrolling capture** of long pages: Grabbit scrolls and stitches, and sticky headers appear once.
 - **Copy text** (OCR), **read QR codes**, **pin** a capture on top of everything, capture again **in 3 or 10 s**, timed captures that end as a timelapse.
