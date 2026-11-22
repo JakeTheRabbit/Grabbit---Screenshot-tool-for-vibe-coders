@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-24.04]
+        os: [windows-latest, macos-latest, ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -102,6 +102,8 @@ jobs:
           - { name: macOS Apple silicon, os: macos-latest, args: "--target aarch64-apple-darwin" }
           - { name: macOS Intel, os: macos-latest, args: "--target x86_64-apple-darwin" }
           - { name: Linux, os: ubuntu-24.04, args: "" }
+          # ARM Linux: Apple silicon Macs on Asahi/Omarchy, Snapdragon laptops, Raspberry Pi 5.
+          - { name: Linux ARM, os: ubuntu-24.04-arm, args: "" }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7

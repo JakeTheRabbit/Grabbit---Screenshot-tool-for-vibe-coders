@@ -1,0 +1,26 @@
+# Maintainer: JakeTheRabbit <123831499+JakeTheRabbit@users.noreply.github.com>
+# Written by .github/workflows/packages.yml from packaging/aur/PKGBUILD.in on every release.
+pkgname=grabbit-bin
+pkgver=@V@
+pkgrel=1
+pkgdesc="Screenshots and screen recordings, straight to the clipboard: talk over a capture and paste it into an AI"
+arch=('x86_64' 'aarch64')
+url="https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/"
+license=('MIT')
+depends=(@DEPENDS@)
+optdepends=('tesseract: read the text in captures (Copy text, search, hiding private details)'
+            'tesseract-data-eng: English for tesseract')
+provides=('grabbit')
+conflicts=('grabbit')
+_rel="https://github.com/@REPO@/releases/download/v${pkgver}"
+source=("LICENSE-${pkgver}::https://raw.githubusercontent.com/@REPO@/v${pkgver}/LICENSE")
+source_x86_64=("grabbit-${pkgver}-x86_64.deb::${_rel}/Grabbit_${pkgver}_amd64.deb")
+source_aarch64=("grabbit-${pkgver}-aarch64.deb::${_rel}/Grabbit_${pkgver}_arm64.deb")
+sha256sums=('@SHA_LICENSE@')
+sha256sums_x86_64=('@SHA_X64@')
+sha256sums_aarch64=('@SHA_ARM@')
+
+package() {
+  bsdtar -xf data.tar.* -C "${pkgdir}"
+  install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

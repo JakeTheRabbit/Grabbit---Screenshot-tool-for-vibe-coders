@@ -206,7 +206,8 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
     <p>A free, open-source screenshot and screen recorder for Windows, macOS and Linux. Tap PrtScn for a screenshot, hold it to record. Talk over a capture and paste the picture, your words and the text on screen into ChatGPT, Claude, Gemini or a coding agent.</p>
     <div class="pills" id="pills">
       <a class="pill" data-os="win" data-asset="x64-setup.exe" href="#faq">Download for Windows</a>
-      <a class="pill ghost" data-os="mac" data-asset="aarch64.dmg" href="#faq">Download for macOS</a>
+      <a class="pill ghost" data-os="mac" data-asset="aarch64.dmg" href="#faq">Mac with Apple silicon</a>
+      <a class="pill ghost" data-os="mac" data-asset="x64.dmg" href="#faq">Mac with Intel</a>
       <a class="pill ghost" data-os="linux" data-asset="amd64.AppImage" href="#faq">Download for Linux</a>
     </div>
     <small>MIT licence. No account, no watermark. <span id="ver"></span></small>
@@ -403,7 +404,7 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
       <details>
         <summary>How do I install it on a Mac?</summary>
         <div class="a">
-          <p><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> or <a href="#" data-asset="x64.dmg">Intel (.dmg)</a>, for macOS 13 and later. Drag it to Applications and open it. Grabbit isn't notarised by Apple yet, so macOS blocks the first launch: click <b>Done</b>, open System Settings, Privacy &amp; Security, scroll down and click <b>Open Anyway</b>. Then allow Screen Recording and Microphone on the same page.</p>
+          <p><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> or <a href="#" data-asset="x64.dmg">Intel (.dmg)</a>, for macOS 13 and later. Not sure which? Apple menu, About This Mac: a line saying <b>Chip</b> means Apple silicon, <b>Processor</b> means Intel. Drag it to Applications and open it. Grabbit isn't notarised by Apple yet, so macOS blocks the first launch: click <b>Done</b>, open System Settings, Privacy &amp; Security, scroll down and click <b>Open Anyway</b>. Then allow Screen Recording and Microphone on the same page.</p>
           <p>If macOS says Grabbit "is damaged and can't be opened", run this in Terminal and open it again: <code>xattr -dr com.apple.quarantine /Applications/Grabbit.app</code>. Installing with Homebrew skips all of this.</p>
           <p>With Homebrew: <code>brew tap jaketherabbit/grabbit https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders</code>, then <code>brew install --cask jaketherabbit/grabbit/grabbit</code>.</p>
           <p>Recording needs ffmpeg: <code>brew install ffmpeg</code>.</p>
@@ -412,7 +413,7 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
       <details>
         <summary>How do I install it on Linux?</summary>
         <div class="a">
-          <p><a href="#" data-asset="amd64.AppImage">AppImage</a>, <a href="#" data-asset="amd64.deb">.deb</a> or <a href="#" data-asset=".rpm">.rpm</a>. Needs a 2024 or newer distro (Ubuntu 24.04, Debian 13, Fedora 40). For the AppImage: <code>chmod +x Grabbit*.AppImage</code>, then run it.</p>
+          <p>Intel and AMD: <a href="#" data-asset="amd64.AppImage">AppImage</a>, <a href="#" data-asset="amd64.deb">.deb</a> or <a href="#" data-asset="x86_64.rpm">.rpm</a>. ARM (Apple silicon on Asahi or Omarchy, Snapdragon, Raspberry Pi 5): <a href="#" data-asset="aarch64.AppImage">AppImage</a>, <a href="#" data-asset="arm64.deb">.deb</a> or <a href="#" data-asset="aarch64.rpm">.rpm</a>. Needs a 2024 or newer distro (Ubuntu 24.04, Debian 13, Fedora 40). For the AppImage: <code>chmod +x Grabbit*.AppImage</code>, then run it.</p>
           <p>Recording needs ffmpeg: <code>sudo apt install ffmpeg tesseract-ocr</code> on Debian and Ubuntu. The .deb installs both for you.</p>
         </div>
       </details>
@@ -565,9 +566,10 @@ const ROWS = [
 (async () => {
   const ua = navigator.userAgent, plat = (navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
   const os = /win/.test(plat) || /Windows/.test(ua) ? "win" : /mac/.test(plat) || /Mac OS/.test(ua) ? "mac" : /linux/.test(plat) ? "linux" : "win";
-  const pills = document.getElementById("pills"), mine = pills.querySelector(`[data-os="${os}"]`);
+  // A Mac gets both: browsers can't tell Apple silicon from Intel (Safari says Intel on both).
+  const pills = document.getElementById("pills"), ours = [...pills.querySelectorAll(`[data-os="${os}"]`)], mine = ours[0];
   pills.querySelectorAll(".pill").forEach((p) => p.classList.toggle("ghost", p !== mine));
-  pills.prepend(mine);
+  pills.prepend(...ours);
   const fm = document.getElementById("floatMain");
   fm.textContent = mine.textContent; fm.dataset.asset = mine.dataset.asset;
   let assets = [];

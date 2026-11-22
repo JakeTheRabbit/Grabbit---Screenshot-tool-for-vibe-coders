@@ -26,3 +26,20 @@ select.btn { min-width: 200px; }
 .hotkey { min-width: 200px; justify-content: center; font-variant-numeric: tabular-nums; }
 #toast { position: fixed; right: 20px; bottom: 20px; padding: 8px 14px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); opacity: 0; transition: opacity 150ms; pointer-events: none; }
 #toast.on { opacity: 1; }
+
+/* Branding preview: a made-up screenshot with the logo on it. */
+.bp { margin: 0 0 18px; }
+.bp-shot { position: relative; aspect-ratio: 16 / 9; max-width: 440px; border-radius: 10px; overflow: hidden; background: #f4f5f8; border: 1px solid var(--line, rgb(128 128 128 / .25)); }
+.bp-bar { height: 9%; background: #e3e6ec; display: flex; align-items: center; gap: 1.2%; padding-left: 2%; }
+.bp-bar i { width: 1.6%; aspect-ratio: 1; border-radius: 50%; background: #c3c8d1; }
+.bp-body { padding: 5% 6%; display: flex; flex-direction: column; gap: 4%; height: 91%; box-sizing: border-box; }
+.bp-body b { height: 10%; width: 45%; border-radius: 4px; background: #c9ced8; }
+.bp-body span { height: 6%; width: 85%; border-radius: 4px; background: #dde1e8; }
+.bp-body span.short { width: 60%; }
+.bp-shot img { position: absolute; height: auto; pointer-events: none; }
+.bp-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #7a808c; font-size: 13px; }
+
+/* Sharing: a tickbox per place, its options indented under it while ticked. */
+.place { margin-bottom: 8px; }
+.place-head { cursor: pointer; }
+.place-body { margin: 4px 0 14px 18px; padding-left: 12px; border-left: 2px solid var(--line, rgb(128 128 128 / .25)); }

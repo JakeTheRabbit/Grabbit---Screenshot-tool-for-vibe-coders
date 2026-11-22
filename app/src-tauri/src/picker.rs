@@ -227,6 +227,19 @@ fn start_now(app: &AppHandle, mode: Mode) {
             else { r.1.retain(|(l, _)| l != w.label()); r.1.push((w.label().to_string(), frame)); }
         }
     }
+    // macOS suspends pages in hidden windows, so the page may never get to say it's drawn: show the windows anyway.
+    #[cfg(target_os = "macos")]
+    {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            if OPEN.load(SeqCst) && !SHOWN.load(SeqCst) {
+                log::info!("picker page hasn't drawn yet; showing its windows");
+                activate(&app);
+                for w in pickers(&app) { let _ = w.show(); }
+            }
+        });
+    }
     // Self-repair: a picker page that crashed or hung never shows. Throw the windows away and start once more.
     let (app, mode) = (app.clone(), mode);
     std::thread::spawn(move || {
@@ -389,16 +402,33 @@ pub fn repeat_last(app: &AppHandle) {
     tauri::async_runtime::spawn(async move { actions::run(&app, Picked { action: "default".into(), x, y, width, height, windows: vec![], size: None, extra: vec![], layout: None }).await });
 }
 
+/// Grabbit lives in the menu bar, so on macOS it's never the active app: until it is, its picker gets neither the
+/// mouse drag nor the keys. Elsewhere this does nothing.
+fn activate(app: &AppHandle) {
+    #[cfg(target_os = "macos")]
+    let _ = app.run_on_main_thread(|| unsafe {
+        use objc2::{class, msg_send, runtime::AnyObject};
+        let ns: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let _: () = msg_send![ns, activateIgnoringOtherApps: true];
+    });
+    #[cfg(not(target_os = "macos"))]
+    let _ = app;
+}
+
 /// The page has drawn its new frame: show it, and give the window under the mouse the keyboard.
 #[tauri::command]
 pub fn picker_shown(app: AppHandle, window: tauri::WebviewWindow) {
     if !OPEN.load(SeqCst) { return; }
     if !SHOWN.swap(true, SeqCst) { if let Some(t) = STARTED.lock().unwrap().take() { log::info!("picker shown after {:?}", t.elapsed()); } }
     REPAIRS.store(0, SeqCst);
+    activate(&app);
     let _ = window.show();
     let cur = app.cursor_position().unwrap_or_default();
+    // With one screen there's no choice to make. (On macOS the cursor and window positions don't always line up, and
+    // a picker without the keyboard ignores every key.)
+    let one_screen = app.available_monitors().map(|m| m.len() <= 1).unwrap_or(true);
     if let (Ok(p), Ok(s)) = (window.outer_position(), window.outer_size()) {
-        if cur.x as i32 >= p.x && (cur.x as i32) < p.x + s.width as i32 && cur.y as i32 >= p.y && (cur.y as i32) < p.y + s.height as i32 { let _ = window.set_focus(); }
+        if one_screen || (cur.x as i32 >= p.x && (cur.x as i32) < p.x + s.width as i32 && cur.y as i32 >= p.y && (cur.y as i32) < p.y + s.height as i32) { let _ = window.set_focus(); }
     }
 }
 

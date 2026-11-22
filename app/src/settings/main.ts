@@ -6,7 +6,7 @@ import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import "../ui/base";
 import { getTheme, setTheme, type Theme } from "../ui/theme";
 import "./settings.css";
-import { os } from "../bridge";
+import { fileUrl, os } from "../bridge";
 
 type S = Record<string, any>;
 let s: S = {};
@@ -33,6 +33,32 @@ function set(k: string, v: unknown) {
   for (const p of parts.slice(0, -1)) o = o[p];
   o[parts.at(-1)!] = v;
   void save();
+  refreshPreview();
+}
+/** Redraws whatever preview the open page shows (Branding has one). */
+let refreshPreview = () => {};
+
+/** A sample capture with the logo placed exactly as mark.rs stamps it: width = scale × picture width, a margin of
+ *  1/40 of the shorter side, the chosen corner and opacity. 16:9, so the margin is 2.5% of the height. */
+function brandingPreview(): HTMLElement {
+  const img = h("img", { alt: "" }) as HTMLImageElement;
+  const empty = h("span", { class: "bp-empty" }, "Choose a logo to see it here");
+  const shot = h("div", { class: "bp-shot" },
+    h("div", { class: "bp-bar" }, h("i"), h("i"), h("i")),
+    h("div", { class: "bp-body" }, h("b"), h("span"), h("span"), h("span", { class: "short" })), img, empty);
+  refreshPreview = () => {
+    const b = s.branding ?? {}, path = b.logo_path as string;
+    img.hidden = !path; empty.hidden = !!path;
+    if (path && img.dataset.path !== path) { img.dataset.path = path; img.src = fileUrl(path); }
+    img.style.width = `${Math.min(1, Math.max(0.02, Number(b.scale) || 0.15)) * 100}%`;
+    img.style.opacity = String(Math.min(1, Math.max(0, Number(b.opacity ?? 1))));
+    const m = { x: `${(9 / 16) * 2.5}%`, y: "2.5%" }, pos = String(b.position || "bottom-right");
+    Object.assign(img.style, { left: "", right: "", top: "", bottom: "", transform: "" });
+    if (pos === "center") Object.assign(img.style, { left: "50%", top: "50%", transform: "translate(-50%, -50%)" });
+    else Object.assign(img.style, pos.includes("left") ? { left: m.x } : { right: m.x }, pos.includes("top") ? { top: m.y } : { bottom: m.y });
+  };
+  refreshPreview();
+  return h("div", { class: "bp" }, shot, h("p", { class: "note" }, "Preview on a sample screenshot. Changes show here as you make them."));
 }
 let saving: number | undefined;
 async function save() {
@@ -174,6 +200,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "ffmpeg_path", label: "ffmpeg", placeholder: "Found automatically", help: "Only if ffmpeg isn't on your PATH" },
   ],
   Branding: () => [
+    { kind: "custom", render: brandingPreview },
     { kind: "file", key: "branding.logo_path", label: "Logo or overlay", ext: ["png", "webp", "svg", "jpg"] },
     { kind: "toggle", key: "branding.on_images", label: "Add to pictures" },
     { kind: "toggle", key: "branding.on_videos", label: "Add to videos" },
@@ -191,24 +218,37 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "custom", render: customMeta },
   ],
   Sharing: () => [
-    { kind: "note", html: "Share uploads the file and copies its link. Set up the places you use; the first one set up is the default." },
-    { kind: "custom", render: () => shareTarget("OneDrive", "onedrive") },
-    { kind: "text", key: "share.onedrive_folder", label: "OneDrive folder", placeholder: "Grabbit" },
-    { kind: "text", key: "share.immich_url", label: "Immich server", placeholder: "https://photos.example.com" },
-    { kind: "text", key: "share.immich_key", label: "Immich API key", secret: true, help: "Immich → Account settings → API keys" },
-    { kind: "custom", render: () => shareTarget("Immich", "immich") },
-    { kind: "text", key: "share.mega_email", label: "MEGA email" },
-    { kind: "text", key: "share.mega_password", label: "MEGA password", secret: true },
-    { kind: "text", key: "share.mega_folder", label: "MEGA folder", placeholder: "Grabbit" },
-    { kind: "custom", render: () => shareTarget("MEGA", "mega") },
-    { kind: "text", key: "share.s3_endpoint", label: "S3-compatible storage", placeholder: "https://<account>.r2.cloudflarestorage.com", help: "AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi. The link is copied before the upload finishes." },
-    { kind: "text", key: "share.s3_bucket", label: "Bucket" },
-    { kind: "text", key: "share.s3_region", label: "Region", placeholder: "auto (R2) or e.g. us-east-1" },
-    { kind: "text", key: "share.s3_access_key", label: "Access key ID" },
-    { kind: "text", key: "share.s3_secret_key", label: "Secret access key", secret: true },
-    { kind: "text", key: "share.s3_public_url", label: "Public address", placeholder: "https://cdn.example.com", help: "Where the bucket is publicly readable; links use this" },
-    { kind: "text", key: "share.s3_prefix", label: "Folder in the bucket", placeholder: "grabbit" },
-    { kind: "custom", render: () => shareTarget("S3", "s3") },
+    { kind: "note", html: "Tick the places you use to see their options. Share uploads the file and copies its link; the first one set up is the default." },
+    place("OneDrive", "onedrive", [
+      { kind: "custom", render: () => shareTarget("OneDrive", "onedrive") },
+      { kind: "text", key: "share.onedrive_folder", label: "OneDrive folder", placeholder: "Grabbit" },
+    ]),
+    place("Immich", "immich", [
+      { kind: "text", key: "share.immich_url", label: "Immich server", placeholder: "https://photos.example.com" },
+      { kind: "text", key: "share.immich_key", label: "Immich API key", secret: true, help: "Immich → Account settings → API keys" },
+      { kind: "custom", render: () => shareTarget("Immich", "immich") },
+    ]),
+    place("MEGA", "mega", [
+      { kind: "text", key: "share.mega_email", label: "MEGA email" },
+      { kind: "text", key: "share.mega_password", label: "MEGA password", secret: true },
+      { kind: "text", key: "share.mega_folder", label: "MEGA folder", placeholder: "Grabbit" },
+      { kind: "custom", render: () => shareTarget("MEGA", "mega") },
+    ]),
+    place("S3-compatible storage", "s3", [
+      { kind: "text", key: "share.s3_endpoint", label: "Endpoint", placeholder: "https://<account>.r2.cloudflarestorage.com", help: "AWS S3, Cloudflare R2, Backblaze B2, MinIO, Wasabi. The link is copied before the upload finishes." },
+      { kind: "text", key: "share.s3_bucket", label: "Bucket" },
+      { kind: "text", key: "share.s3_region", label: "Region", placeholder: "auto (R2) or e.g. us-east-1" },
+      { kind: "text", key: "share.s3_access_key", label: "Access key ID" },
+      { kind: "text", key: "share.s3_secret_key", label: "Secret access key", secret: true },
+      { kind: "text", key: "share.s3_public_url", label: "Public address", placeholder: "https://cdn.example.com", help: "Where the bucket is publicly readable; links use this" },
+      { kind: "text", key: "share.s3_prefix", label: "Folder in the bucket", placeholder: "grabbit" },
+      { kind: "custom", render: () => shareTarget("S3", "s3") },
+    ]),
+    place("Obsidian", "obsidian", [
+      { kind: "folder", key: "obsidian_vault", label: "Vault" },
+      { kind: "text", key: "obsidian_folder", label: "Folder in the vault", placeholder: "Grabbit" },
+      { kind: "note", html: "Send to Obsidian (in the editor's Share tab) saves the picture there and links it in today's daily note." },
+    ]),
   ],
   AI: () => [
     { kind: "note", html: "Optional. With a key, the editor's AI tab can remove backgrounds, remove or change objects, edit text in a picture, and answer questions about it. Pictures go to the provider you pick only when you press an AI button." },
@@ -226,11 +266,6 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "button", label: "Add to Codex", run: (b) => connectAgent(b, "codex") },
     { kind: "button", label: "Copy setup for Cursor or another agent", run: (b) => connectAgent(b, "other") },
     { kind: "note", html: "Then ask the agent things like <i>\"find my screenshot of the checkout error and fix it\"</i> or <i>\"take a screenshot of localhost:5173 and check the layout\"</i>. In the video editor, <b>Copy → Copy for a coding agent</b> copies a recording under 48 MB with its transcript, ready to paste into T3 Code." },
-  ],
-  Obsidian: () => [
-    { kind: "folder", key: "obsidian_vault", label: "Vault" },
-    { kind: "text", key: "obsidian_folder", label: "Folder in the vault", placeholder: "Grabbit" },
-    { kind: "note", html: "Send to Obsidian (in the editor's Share tab) saves the picture there and links it in today's daily note." },
   ],
   Automations: () => [
     { kind: "note", html: "After every capture or recording is saved (and its text read), Grabbit can hand it on: file it into Paperless or a synced folder, post it to n8n, Zapier or Home Assistant, or run any script. Both get the file, the programs and windows it showed, the text in it, and the notes folder for a recording." },
@@ -303,6 +338,22 @@ function customMeta() {
   return box;
 }
 
+/** One place to share to: a tickbox, and its options under it while ticked. Starts ticked when it's already set up. */
+function place(title: string, id: string, fields: Field[]): Field {
+  return { kind: "custom", render: () => {
+    const keys = fields.flatMap((f) => ("key" in f ? [f.key] : []));
+    let on = keys.some((k) => !!get(k));
+    try { const v = localStorage.getItem(`share-open-${id}`); if (v) on = v === "1"; } catch {}
+    const tick = h("input", { type: "checkbox", class: "switch" }) as HTMLInputElement;
+    tick.checked = on;
+    const body = h("div", { class: "place-body" }, ...fields.map(field));
+    body.hidden = !on;
+    tick.onchange = () => { body.hidden = !tick.checked; try { localStorage.setItem(`share-open-${id}`, tick.checked ? "1" : "0"); } catch {} };
+    const head = h("label", { class: "row place-head" }, h("span", { class: "title" }, title), tick);
+    return h("div", { class: "place" }, head, body);
+  } };
+}
+
 function shareTarget(name: string, id: string) {
   const status = h("span", { class: "help" });
   const b = h("button", { class: "btn" }, id === "onedrive" ? "Sign in…" : "Test") as HTMLButtonElement;
@@ -338,6 +389,7 @@ async function connectAgent(b: HTMLButtonElement, agent: string) {
 function show(name: string) {
   for (const b of nav.querySelectorAll("button")) b.classList.toggle("on", b.textContent === name);
   page.innerHTML = "";
+  refreshPreview = () => {};
   page.append(h("h1", {}, name), ...SECTIONS[name]().map(field));
   location.hash = name;
 }
