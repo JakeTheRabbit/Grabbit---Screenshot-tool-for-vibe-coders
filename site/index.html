@@ -12,225 +12,259 @@
 <link rel="icon" href="media/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --coral: #ff5f6d; --coral-2: #ffc371; --ink: #17151c; --ink-2: #25222c; --paper: #fbf6ef; --text: #2a2730; --muted: #6c6673;
-  --on-ink: #f4f0ea; --on-ink-muted: #b4adb9; --line: #e8dfd3;
+  --bg: #ffffff; --ink: #1d1b20; --muted: #5e5a63; --line: #ece8ee; --soft: #f7f4f5;
+  --c1: #ff8a4c; --c2: #f2456f; --c3: #c9367c;
+  --grad: linear-gradient(100deg, var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
+  --card: linear-gradient(135deg, #ffd9c4 0%, #ff9a7a 45%, #f2456f 100%);
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--paper); color: var(--text); font: 17px/1.6 Inter, system-ui, sans-serif; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 Figtree, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 a { color: inherit; }
-h1, h2, h3 { font-family: "Bricolage Grotesque", Inter, sans-serif; line-height: 1.05; margin: 0; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
-nav { display: flex; align-items: center; gap: 22px; padding: 18px 0; }
-nav .logo { display: flex; align-items: center; gap: 10px; font: 800 22px "Bricolage Grotesque", sans-serif; text-decoration: none; }
-nav .logo img { width: 34px; height: 34px; }
-nav .links { margin-left: auto; display: flex; gap: 22px; font-weight: 500; }
-nav .links a { text-decoration: none; opacity: .8; }
-nav .links a:hover { opacity: 1; }
+h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -.025em; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+:focus-visible { outline: 3px solid var(--c2); outline-offset: 3px; border-radius: 6px; }
+kbd { font: 600 .82em Figtree, sans-serif; background: #fff; border: 1px solid #ddd6dc; border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; }
+code { font: 14.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft); border-radius: 6px; padding: 2px 6px; }
 
-/* Top band: the app, working, first. */
-.top { background: var(--ink); color: var(--on-ink); padding-bottom: 72px; }
-.top h1 { font-size: clamp(56px, 9vw, 120px); font-weight: 800; letter-spacing: -.02em; margin: 40px 0 18px; max-width: 13ch; }
-.top h1 em { font-style: normal; background: linear-gradient(90deg, var(--coral), var(--coral-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.top p.lead { font-size: 20px; color: var(--on-ink-muted); max-width: 60ch; margin: 0 0 30px; }
-.dl { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-bottom: 44px; }
-.btn { display: inline-flex; align-items: center; gap: 10px; background: var(--coral); color: #1b0f12; font-weight: 600; font-size: 18px;
-  padding: 15px 26px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 30px -10px rgba(255, 95, 109, .7); }
-.btn:hover { filter: brightness(1.06); }
-.dl small { color: var(--on-ink-muted); font-size: 15px; }
-.dl small a { color: var(--on-ink); }
-.screen { border-radius: 14px; overflow: hidden; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .8); background: #000; }
-.screen video { display: block; width: 100%; height: auto; }
+/* Header */
+header.bar { position: sticky; top: 0; z-index: 20; background: rgba(255, 255, 255, .92); backdrop-filter: blur(12px); }
+header.bar .wrap { display: flex; align-items: center; height: 64px; border-bottom: 1px solid var(--line); }
+.logo { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 500; text-decoration: none; letter-spacing: -.02em; }
+.logo img { width: 30px; height: 30px; }
+.links { margin-left: auto; display: flex; gap: 6px; }
+.links a { text-decoration: none; font-size: 15.5px; padding: 8px 14px; border-radius: 999px; color: var(--muted); }
+.links a:hover { background: var(--soft); color: var(--ink); }
+.menu { display: none; margin-left: auto; background: none; border: 0; padding: 8px; cursor: pointer; }
 
-/* The full tour. */
-.tour { background: var(--coral); color: #1b0f12; padding: 64px 0; }
-.tour h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 10px; }
-.tour p { max-width: 62ch; margin: 0 0 26px; font-size: 18px; }
-.tour .grid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 26px; align-items: start; }
-.tour video { width: 100%; border-radius: 12px; background: #000; display: block; box-shadow: 0 30px 60px -30px rgba(60, 0, 10, .6); }
-.chapters { list-style: none; margin: 0; padding: 0; background: rgba(255, 255, 255, .22); border-radius: 12px; }
-.chapters li { border-bottom: 1px solid rgba(27, 15, 18, .12); }
-.chapters li:last-child { border: 0; }
-.chapters button { all: unset; cursor: pointer; display: flex; width: 100%; box-sizing: border-box; gap: 14px; padding: 9px 16px; font-size: 15.5px; font-weight: 500; }
-.chapters button:hover, .chapters button.on { background: rgba(255, 255, 255, .35); }
-.chapters time { font-variant-numeric: tabular-nums; opacity: .7; min-width: 3.2em; }
+/* Hero */
+.hero { text-align: center; padding: 88px 0 64px; }
+.hero h1 { font-size: clamp(52px, 8.4vw, 112px); line-height: 1.02; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; max-width: 11ch; margin: 0 auto 28px; padding-bottom: .06em; }
+.hero p { font-size: 19px; max-width: 62ch; margin: 0 auto 36px; }
+.pills { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.pill { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 26px; border-radius: 999px; background: var(--c2); color: #fff; font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; transition: background .15s; }
+.pill:hover { background: #d93460; }
+.pill.ghost { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px #d9d2d8; }
+.pill.ghost:hover { background: var(--soft); }
+.hero small { display: block; margin-top: 18px; color: var(--muted); font-size: 14.5px; }
 
-/* Features: one row each, the clip beside what it does. */
-.features { padding: 80px 0 30px; }
-.features > .wrap > h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 8px; }
-.features > .wrap > p { color: var(--muted); margin: 0 0 40px; max-width: 60ch; }
-.row { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 44px; align-items: center; padding: 38px 0; border-top: 1px solid var(--line); }
-.row:nth-child(even) .media { order: 2; }
-.row h3 { font-size: 30px; font-weight: 800; margin-bottom: 12px; }
-.row p { margin: 0 0 10px; }
-.row ul { margin: 6px 0 0; padding-left: 20px; }
-.row li { margin: 4px 0; }
-.media { position: relative; border-radius: 12px; overflow: hidden; background: #111; box-shadow: 0 24px 50px -28px rgba(30, 20, 40, .55); }
-.media video { display: block; width: 100%; height: auto; }
-.media .sound { position: absolute; right: 12px; bottom: 12px; background: rgba(0, 0, 0, .68); color: #fff; border: 0; border-radius: 999px;
-  padding: 7px 14px; font: 500 14px Inter, sans-serif; cursor: pointer; }
-kbd { font: 600 .82em Inter, sans-serif; background: #fff; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
+.stage { border-radius: 36px; background: var(--card); padding: clamp(18px, 5vw, 72px); }
+.stage .win { border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 30px 80px -30px rgba(120, 20, 50, .6), 0 0 0 1px rgba(255, 255, 255, .5); }
+.stage video { display: block; width: 100%; height: auto; }
 
-/* More it does, in a plain list. */
-.more { background: var(--ink-2); color: var(--on-ink); padding: 70px 0; }
-.more h2 { font-size: clamp(30px, 4vw, 46px); font-weight: 800; margin-bottom: 26px; }
-.more dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 40px; margin: 0; }
-.more dt { font-weight: 600; margin-top: 14px; color: #fff; }
-.more dd { margin: 2px 0 0; color: var(--on-ink-muted); }
+/* Section intro */
+.intro { text-align: center; padding: 120px 0 40px; }
+.intro h2 { font-size: clamp(40px, 5.6vw, 72px); line-height: 1.06; max-width: 16ch; margin: 0 auto 20px; }
+.intro p { max-width: 58ch; margin: 0 auto; color: var(--muted); font-size: 18px; }
 
-/* For developers, and the comparison. */
-.devs { padding: 76px 0 30px; }
-.devs h2, .compare h2 { font-size: clamp(30px, 4vw, 46px); font-weight: 800; margin-bottom: 18px; }
-.devs dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px 40px; margin: 0; }
-.devs dt { font-weight: 600; margin-top: 14px; }
-.devs dd { margin: 2px 0 0; color: var(--muted); }
-.compare { padding: 50px 0 30px; }
-.compare > .wrap > p { color: var(--muted); max-width: 72ch; }
-.diff-only { display: inline-flex; gap: 8px; align-items: center; font-weight: 500; margin: 6px 0 14px; cursor: pointer; }
-.diff-only input { width: 18px; height: 18px; accent-color: var(--coral); }
-.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 14px; box-shadow: 0 20px 50px -30px rgba(30, 20, 40, .45); background: #fff; }
-table.cmp { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; margin: 0; font-size: 15px; }
-table.cmp th, table.cmp td { padding: 11px 10px; border-bottom: 1px solid #f0e9df; text-align: center; vertical-align: middle; width: auto; display: table-cell; }
-table.cmp thead th { position: sticky; top: 0; background: #fff; z-index: 2; border-bottom: 2px solid var(--line); padding: 16px 8px 12px; }
-table.cmp thead img { width: 40px; height: 40px; border-radius: 10px; display: block; margin: 0 auto 6px; object-fit: contain; }
-table.cmp thead .name { font: 800 15px "Bricolage Grotesque", sans-serif; display: block; }
-table.cmp thead .price { font: 500 12.5px Inter, sans-serif; color: var(--muted); display: block; margin-top: 2px; }
-table.cmp thead .score { display: inline-block; margin-top: 8px; font: 600 12px Inter, sans-serif; padding: 2px 8px; border-radius: 999px; background: #f3ede5; color: var(--text); }
-table.cmp .feat { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; font: 500 15px Inter, sans-serif; min-width: 230px; }
-table.cmp .feat .only { display: inline-block; margin-left: 6px; font: 700 10.5px Inter, sans-serif; letter-spacing: .02em; color: #fff; background: var(--coral); border-radius: 999px; padding: 2px 7px; vertical-align: 2px; }
-table.cmp .group td { text-align: left; background: var(--ink-2); color: #fff; font: 700 13px Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; padding: 9px 14px; position: sticky; left: 0; }
-table.cmp .me { background: #fff1ef; }
-table.cmp thead th.me { background: #ffe6e2; box-shadow: inset 0 3px 0 var(--coral); }
-table.cmp thead th.me .score { background: var(--coral); color: #1b0f12; }
-.c { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 800 14px Inter, sans-serif; }
+/* Feature rows: text left, clip right */
+.feat { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: center; padding: 64px 0; }
+.feat .ico { width: 28px; height: 28px; color: var(--c2); }
+.feat .tag { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.chip { display: inline-block; font-size: 13px; font-weight: 600; color: #fff; background: var(--c2); border-radius: 8px; padding: 3px 10px; }
+.feat h3 { font-size: clamp(34px, 3.8vw, 50px); line-height: 1.08; margin-bottom: 20px; }
+.feat p { margin: 0 0 12px; }
+.feat ul { margin: 8px 0 0; padding-left: 20px; }
+.feat li { margin: 5px 0; }
+.clip { position: relative; border-radius: 32px; background: var(--card); padding: clamp(14px, 3vw, 36px); }
+.feat:nth-of-type(odd) .clip { background: linear-gradient(135deg, #ffe7d6 0%, #ffb08a 50%, #ff7a5c 100%); }
+.clip .win { border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 24px 60px -28px rgba(120, 20, 50, .65); }
+.clip video { display: block; width: 100%; height: auto; }
+.sound { position: absolute; right: clamp(24px, 4vw, 50px); bottom: clamp(24px, 4vw, 50px); background: rgba(255, 255, 255, .94); color: var(--ink); border: 0; border-radius: 999px; padding: 8px 16px; font: 500 14px Figtree, sans-serif; cursor: pointer; }
+.sound:hover { background: #fff; }
+
+/* Tour */
+.tour { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.tour video { width: 100%; display: block; border-radius: 14px; background: #000; box-shadow: 0 24px 60px -28px rgba(120, 20, 50, .65); }
+.chapters { list-style: none; margin: 0; padding: 6px; background: rgba(255, 255, 255, .9); border-radius: 14px; }
+.chapters button { all: unset; cursor: pointer; display: flex; width: 100%; box-sizing: border-box; gap: 14px; padding: 7px 12px; border-radius: 9px; font-size: 15px; }
+.chapters button:hover { background: var(--soft); }
+.chapters button.on { background: #ffe4e9; color: #a8213f; font-weight: 600; }
+.chapters time { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 3.2em; }
+.chapters button.on time { color: inherit; }
+
+/* Tips grid */
+.tips { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 44px 56px; padding: 30px 0 20px; }
+.tips h3 { font-size: 24px; margin-bottom: 10px; }
+.tips p { margin: 0; color: var(--muted); }
+
+/* Comparison */
+.cmpbox { margin-top: 10px; }
+.diff-only { display: inline-flex; gap: 10px; align-items: center; margin: 0 0 18px; cursor: pointer; font-weight: 500; }
+.diff-only input { width: 18px; height: 18px; accent-color: var(--c2); }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 24px; border: 1px solid var(--line); background: #fff; }
+table.cmp { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 15px; }
+table.cmp th, table.cmp td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
+table.cmp thead th { position: sticky; top: 0; background: #fff; z-index: 2; padding: 20px 8px 14px; font-weight: 500; }
+table.cmp thead img { width: 40px; height: 40px; border-radius: 10px; display: block; margin: 0 auto 8px; object-fit: contain; }
+table.cmp thead .name { font-size: 15.5px; font-weight: 600; display: block; }
+table.cmp thead .price { font-size: 13px; color: var(--muted); display: block; }
+table.cmp thead .score { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--soft); }
+table.cmp .f { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; min-width: 240px; padding-left: 20px; }
+table.cmp .f .only { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: #fff; background: var(--c2); border-radius: 999px; padding: 2px 8px; vertical-align: 2px; }
+table.cmp .group td { text-align: left; background: var(--soft); font-weight: 600; font-size: 14.5px; padding: 10px 20px; position: sticky; left: 0; }
+table.cmp .me { background: #fff3f5; }
+table.cmp thead th.me { background: #ffe4e9; }
+table.cmp thead th.me .score { background: var(--c2); color: #fff; }
+.c { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 700; font-size: 14px; }
 .c.yes { background: #def7e6; color: #11843c; }
-.c.no { background: #f1eeea; color: #b1a9a0; }
-.c.part { background: #fff1d6; color: #b5730a; }
+.c.no { background: #f2eff1; color: #aaa2a8; }
+.c.part { background: #fff1d6; color: #a8650a; }
 table.cmp .note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.25; }
 table.cmp tr.same { display: none; }
-.legend { font-size: 14px; color: var(--muted); display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.legend { font-size: 14px; color: var(--muted); display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
 .legend .c { width: 22px; height: 22px; font-size: 12px; margin-right: -8px; }
+.small { color: var(--muted); font-size: 15px; max-width: 72ch; margin: 0 auto; text-align: center; }
 
-/* Install. */
-.install { padding: 76px 0; }
-.install h2 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 800; margin-bottom: 10px; }
-.install > .wrap > p { max-width: 70ch; color: var(--muted); }
-table { width: 100%; border-collapse: collapse; margin: 22px 0; font-size: 16px; }
-th, td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-th { font-family: "Bricolage Grotesque", sans-serif; font-size: 19px; width: 16%; }
-code { font: 14.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: #efe7dc; border-radius: 5px; padding: 1px 6px; }
-footer { background: var(--ink); color: var(--on-ink-muted); padding: 34px 0; font-size: 15px; }
-footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; }
-footer a { color: var(--on-ink); }
+/* FAQ */
+.faq { max-width: 860px; margin: 0 auto; padding-bottom: 40px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 26px 4px; font-size: 21px; font-weight: 500; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ""; flex: none; width: 12px; height: 12px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg) translate(-3px, -3px); transition: transform .2s; }
+.faq details[open] summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
+.faq .a { padding: 0 4px 26px; }
+.faq .a p { margin: 0 0 12px; }
 
-@media (max-width: 860px) {
-  nav .links { display: none; }
-  .tour .grid, .row { grid-template-columns: 1fr; gap: 22px; }
-  .row:nth-child(even) .media { order: 0; }
-  .install th { width: auto; display: block; border: 0; padding-bottom: 0; }
-  .install td { display: block; }
+/* Floating download pills */
+.float { position: fixed; left: 50%; bottom: 22px; z-index: 30; display: flex; gap: 10px; transform: translate(-50%, 140%); transition: transform .3s ease; }
+.float.show { transform: translate(-50%, 0); }
+.float .pill { box-shadow: 0 10px 30px -8px rgba(160, 30, 60, .45); }
+.float .pill.ghost { box-shadow: inset 0 0 0 1px #d9d2d8, 0 10px 30px -8px rgba(60, 20, 40, .25); }
+
+/* Footer */
+footer { border-top: 1px solid var(--line); margin-top: 80px; padding: 56px 0 48px; }
+footer .cols { display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 32px; }
+footer h4 { margin: 0 0 14px; font-size: 15px; font-weight: 500; color: var(--muted); }
+footer ul { list-style: none; margin: 0; padding: 0; }
+footer li { margin: 0 0 10px; }
+footer li a { text-decoration: none; }
+footer li a:hover { text-decoration: underline; }
+footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 900px) {
+  .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; background: #fff; padding: 10px 16px 18px; border-bottom: 1px solid var(--line); }
+  .links.open { display: flex; }
+  .menu { display: block; }
+  .feat { grid-template-columns: 1fr; gap: 28px; padding: 44px 0; }
+  .tour { grid-template-columns: 1fr; }
+  footer .cols { grid-template-columns: 1fr 1fr; }
+  .intro { padding-top: 88px; }
 }
-@media (max-width: 480px) { .wrap { padding: 0 16px; } }
+@media (max-width: 560px) {
+  .wrap { padding: 0 16px; }
+  .hero { padding-top: 56px; }
+  .stage, .clip { border-radius: 22px; }
+  .float .pill { padding: 0 18px; font-size: 15px; }
+  .float .pill.ghost { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .float { transition: none; } }
 </style>
 </head>
 <body>
 
-<header class="top">
+<header class="bar">
   <div class="wrap">
-    <nav>
-      <a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a>
-      <div class="links"><a href="#tour">Tour</a><a href="#features">Features</a><a href="#compare">Compare</a><a href="#install">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></div>
-    </nav>
-    <h1>Grabbit</h1>
-    <p class="lead">A free, open-source screenshot and screen-recording app for Windows, macOS and Linux. Press PrtScn for a screenshot, hold it for a recording. Screenshots can carry your spoken notes and the text on screen, ready to paste into ChatGPT, Claude, Gemini or a coding agent.</p>
-    <div class="dl">
-      <a class="btn" id="download" href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest">⬇ Download Grabbit</a>
-      <small id="dl-note">Free and open source (MIT). No account, no watermark. <a href="#install">Other systems</a></small>
-    </div>
-    <div class="screen"><video src="media/clip-talk-to-ai.mp4" autoplay muted loop playsinline preload="auto" aria-label="Pressing V on a bug, pointing at it while talking, then pasting the lot into an AI chat"></video></div>
+    <a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a>
+    <button class="menu" aria-label="Menu" aria-expanded="false" id="menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+    <nav class="links" id="links"><a href="#features">Features</a><a href="#tour">Tour</a><a href="#compare">Compare</a><a href="#faq">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></nav>
   </div>
 </header>
 
-<section class="tour" id="tour">
+<main>
+<section class="hero">
   <div class="wrap">
-    <h2>Full tour</h2>
-    <p>6 minutes 21 seconds, narrated, with a chapter for each feature.</p>
-    <div class="grid">
-      <video id="reel" src="media/reel.mp4" controls preload="metadata" poster="media/hero.webp"></video>
-      <ol class="chapters" id="chapters"></ol>
+    <h1>Download Grabbit for desktop.</h1>
+    <p>A free, open-source screenshot and screen recorder for Windows, macOS and Linux. Tap PrtScn for a screenshot, hold it to record. Talk over a capture and paste the picture, your words and the text on screen into ChatGPT, Claude, Gemini or a coding agent.</p>
+    <div class="pills" id="pills">
+      <a class="pill" data-os="win" data-asset="x64-setup.exe" href="#faq">Download for Windows</a>
+      <a class="pill ghost" data-os="mac" data-asset="aarch64.dmg" href="#faq">Download for macOS</a>
+      <a class="pill ghost" data-os="linux" data-asset="amd64.AppImage" href="#faq">Download for Linux</a>
     </div>
+    <small>MIT licence. No account, no watermark. <span id="ver"></span></small>
+  </div>
+  <div class="wrap" style="margin-top:56px">
+    <div class="stage"><div class="win"><video src="media/clip-talk-to-ai.mp4" autoplay muted loop playsinline preload="auto" aria-label="Pressing V on a bug, pointing at it while talking, then pasting the lot into an AI chat"></video></div></div>
   </div>
 </section>
 
-<section class="features" id="features">
+<section id="features">
   <div class="wrap">
-    <h2>Features</h2>
-    <p>Each clip is a short narrated walkthrough. Clips play without sound; press Sound to hear the narration.</p>
+    <div class="intro">
+      <h2>What Grabbit does.</h2>
+      <p>Each clip is a short narrated walkthrough. They play without sound; press Sound to hear the narration.</p>
+    </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-capture.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Action wheel</h3>
-        <p>After you drag over an area, a wheel of actions opens centred on the pointer. <kbd>Enter</kbd> copies. Every slice has a number key and most have a letter: <kbd>E</kbd> marks up, <kbd>R</kbd> records, <kbd>V</kbd> talks to AI, <kbd>N</kbd> keeps the area and lets you add another.</p>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/></svg><span class="chip">PrtScn</span></div>
+        <h3>An action wheel at the pointer.</h3>
+        <p>Drag over an area and a wheel of actions opens where your mouse is. <kbd>Enter</kbd> copies. Every slice has a number key and most have a letter: <kbd>E</kbd> marks up, <kbd>R</kbd> records, <kbd>V</kbd> talks to AI, <kbd>N</kbd> keeps the area and lets you add another.</p>
         <p>Press PrtScn again while the wheel is up and a second capture opens on top of the first, which is handy for how-to guides.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-capture.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-talk-to-ai.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Talk to AI</h3>
-        <p>Press <kbd>V</kbd>, click to point at things, drag to box them, and say what you mean. Your words appear in a box you can fix. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> copies the picture with your words printed under it, the numbered marks, and the text on screen, so the AI can quote exact labels and numbers.</p>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="chip">V</span></div>
+        <h3>Talk to AI about what's on screen.</h3>
+        <p>Press <kbd>V</kbd>, click to point at things, drag to box them, and say what you mean. Your words appear in a box you can fix. <kbd>Ctrl</kbd>+<kbd>Enter</kbd> copies the picture with your words under it, the numbered marks, and the text on screen, so the AI can quote exact labels and numbers.</p>
         <p>It works on recordings too: key frames from the moments you spoke, with a timestamped transcript.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-talk-to-ai.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-more-menu.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>More menu</h3>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span class="chip">M</span></div>
+        <h3>More in the More menu.</h3>
         <ul>
           <li>Scrolling capture of long pages, stitched into one picture</li>
-          <li>Copy the text in an area (as plain text, Markdown, CSV or a table)</li>
+          <li>Copy the text in an area as plain text, Markdown, CSV or a table</li>
           <li>Read a QR code, pin a picture on top of every window</li>
           <li>Describe and tag it with AI, start a batch of screenshots with notes</li>
           <li>Capture again in 3 or 10 seconds</li>
         </ul>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-more-menu.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-mark-up.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Markup editor</h3>
-        <p>Arrows, boxes, text, numbered steps that count themselves, spotlight, blur, crop, emoji. Every tool has a one-letter key. Beautify adds padding, a background and a shadow for sharing.</p>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="chip">E</span></div>
+        <h3>Mark it up.</h3>
+        <p>Arrows, boxes, text, numbered steps that count themselves, spotlight, blur, crop and emoji. Every tool has a one-letter key. Beautify adds padding, a background and a shadow for sharing.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-mark-up.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-hide-private-details.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Hide private details</h3>
-        <p>One click finds and pixelates emails, IP addresses, phone and card numbers, API keys and tokens.</p>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg><span class="chip">Editor</span></div>
+        <h3>Hide private details in one click.</h3>
+        <p>Grabbit finds and pixelates emails, IP addresses, phone and card numbers, API keys and tokens before you share.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-hide-private-details.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-record.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Screen recording</h3>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg><span class="chip">Hold PrtScn</span></div>
+        <h3>Record the screen.</h3>
         <p>Hold PrtScn for two seconds and pick an area or a window. A countdown, then it records. The red frame and the Stop bar never show up in the video. Pause, move the frame, or start over.</p>
-        <p>System sound and microphone are kept on separate tracks, and every recording gets a notes folder with a transcript, for you or a coding agent that can't watch video.</p>
+        <p>System sound and microphone go on separate tracks, and every recording gets a notes folder with a transcript, for you or a coding agent that can't watch video.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-record.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-video-editor.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Video editor</h3>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18M8 15v5M14 15v5"/></svg><span class="chip">After recording</span></div>
+        <h3>Edit the video.</h3>
         <p>A monitor with timecode, video and sound tracks with a waveform, and an icon for each tool that shows its name and key on hover.</p>
         <ul>
           <li>Cut silences in one click, add captions made on your computer</li>
@@ -239,92 +273,167 @@ footer a { color: var(--on-ink); }
           <li>Copy small enough for chat, or as a GIF</li>
         </ul>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-video-editor.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-history.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>History</h3>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><span class="chip">Tray menu</span></div>
+        <h3>Find any capture again.</h3>
         <p>History searches the words in every picture, what was said in every recording, the apps that were on screen, and where you pasted it. <code>pasted:slack</code> finds everything you sent to Slack.</p>
       </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-history.mp4" muted loop playsinline preload="none"></video></div></div>
     </div>
 
-    <div class="row">
-      <div class="media"><video data-clip src="media/clip-automations.mp4" muted loop playsinline preload="none"></video></div>
+    <div class="feat">
       <div>
-        <h3>Automations</h3>
-        <p>After every capture, run a command or post to a webhook: file it into Paperless, a synced folder, n8n, Zapier or Home Assistant.</p>
+        <div class="tag"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span class="chip">Settings</span></div>
+        <h3>Run a command after each capture.</h3>
+        <p>Run a command or post to a webhook after every capture: file it into Paperless, a synced folder, n8n, Zapier or Home Assistant.</p>
+      </div>
+      <div class="clip"><div class="win"><video data-clip src="media/clip-automations.mp4" muted loop playsinline preload="none"></video></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="tour">
+  <div class="wrap">
+    <div class="intro">
+      <h2>The full tour.</h2>
+      <p>6 minutes 21 seconds, narrated, with a chapter for each feature.</p>
+    </div>
+    <div class="stage" style="padding:clamp(14px,3vw,40px)">
+      <div class="tour">
+        <video id="reel" src="media/reel.mp4" controls preload="metadata" poster="media/hero.webp"></video>
+        <ol class="chapters" id="chapters"></ol>
       </div>
     </div>
   </div>
 </section>
 
-<section class="more">
+<section id="more">
   <div class="wrap">
-    <h2>Other features</h2>
-    <dl>
-      <div><dt>Ready to paste anywhere</dt><dd>Every capture is on the clipboard as a picture and a named file, and saved as lossless WebP at about 40% of PNG's size.</dd></div>
-      <div><dt>Up to 8 areas at once</dt><dd>Across all your screens, kept separate or joined side by side, stacked or in a grid.</dd></div>
-      <div><dt>Replay buffer</dt><dd>Always keeps the last 10 seconds to 10 minutes; one key saves it.</dd></div>
-      <div><dt>Step recorder</dt><dd>Click through a task and get a how-to as Markdown and a Word document.</dd></div>
-      <div><dt>Share</dt><dd>Upload to OneDrive, Immich, MEGA or any S3 storage and copy the link, or send to Obsidian.</dd></div>
-      <div><dt>Invisible watermark</dt><dd>Your name and the capture's id hidden in the pixels, surviving JPEG and cropping.</dd></div>
-      <div><dt>Private by default</dt><dd>Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a free local model.</dd></div>
-      <div><dt>Updates itself</dt><dd>New versions download quietly and install when you say so.</dd></div>
-    </dl>
+    <div class="intro">
+      <h2>Other features.</h2>
+    </div>
+    <div class="tips">
+      <div><h3>Ready to paste anywhere.</h3><p>Every capture is on the clipboard as a picture and a named file, and saved as lossless WebP at about 40% of PNG's size.</p></div>
+      <div><h3>Up to 8 areas at once.</h3><p>Across all your screens, kept separate or joined side by side, stacked or in a grid.</p></div>
+      <div><h3>Replay buffer.</h3><p>Keeps the last 10 seconds to 10 minutes of your screen; one key saves it.</p></div>
+      <div><h3>Step recorder.</h3><p>Click through a task and get a how-to as Markdown and a Word document.</p></div>
+      <div><h3>Share.</h3><p>Upload to OneDrive, Immich, MEGA or any S3 storage and copy the link, or send to Obsidian.</p></div>
+      <div><h3>Invisible watermark.</h3><p>Your name and the capture's id hidden in the pixels, surviving JPEG and cropping.</p></div>
+      <div><h3>Private by default.</h3><p>Nothing leaves your computer until you press Share or an AI button. AI uses your own key or a free local model.</p></div>
+      <div><h3>Updates itself.</h3><p>New versions download quietly and install when you say so. Updates are signed.</p></div>
+    </div>
   </div>
 </section>
 
-<section class="devs" id="developers">
+<section id="developers">
   <div class="wrap">
-    <h2>For developers</h2>
-    <dl>
-      <div><dt>Fast</dt><dd>The screens freeze the moment you press the key, straight from the graphics card. The wheel opens in under a second, or in about 0.1 s with Instant capture on (which keeps a few hundred MB loaded).</dd></div>
-      <div><dt>Small</dt><dd>A 20 MB installer. Idle, it's one process using about 15 MB of memory. Rust core, no Electron, no bundled browser. No account, no sign-in, no ads, no upsell screens.</dd></div>
-      <div><dt>Keyboard first</dt><dd>Every action has a key, and every key can be changed. <code>grabbit://capture</code>, <code>grabbit://record</code> and the same words on the command line for launchers and scripts.</dd></div>
-      <div><dt>Coding agents can use your captures</dt><dd>Run <code>grabbit --mcp</code> or add it from Settings, and Claude Code, Codex, Cursor or T3 Code can search every screenshot and recording by its text, open one, read a recording's transcript, or take a screenshot themselves. Talk to AI copies the picture, your words, numbered marks and the screen's text in one paste. Each recording gets a notes folder with <code>transcript.md</code>, captions, stills and <code>recording.json</code>, so an agent that can't watch video can still read it.</dd></div>
-      <div><dt>Text out of pictures</dt><dd>Copy the text in any area as plain text, Markdown, CSV, HTML or a table. Read QR codes. Search every capture by its text.</dd></div>
-      <div><dt>Scriptable</dt><dd>Run a command or post a webhook after every capture, with the file path, the apps on screen and the text in it.</dd></div>
-      <div><dt>Private</dt><dd>Everything stays on your computer until you press Share or an AI button. AI uses your own key or a local model. Metadata is stripped by default.</dd></div>
-      <div><dt>Open source</dt><dd>MIT licence, built and tested in public on GitHub Actions for Windows, macOS and Linux. Updates are signed.</dd></div>
-    </dl>
+    <div class="intro">
+      <h2>For developers.</h2>
+    </div>
+    <div class="tips">
+      <div><h3>Coding agents can use your captures.</h3><p>Run <code>grabbit --mcp</code> or add it from Settings, and Claude Code, Codex, Cursor or T3 Code can search every screenshot and recording by its text, open one, read a recording's transcript, or take a screenshot themselves.</p></div>
+      <div><h3>Small.</h3><p>A 20 MB installer. Idle, it's one process using about 15 MB of memory. Rust core with the system webview, no Electron. No account, no ads.</p></div>
+      <div><h3>Fast.</h3><p>The screens freeze the moment you press the key, straight from the graphics card. The wheel opens in under a second, or in about 0.1 s with Instant capture on, which keeps a few hundred MB loaded.</p></div>
+      <div><h3>Keyboard first.</h3><p>Every action has a key, and every key can be changed. <code>grabbit://capture</code>, <code>grabbit://record</code> and the same words on the command line for launchers and scripts.</p></div>
+      <div><h3>Recordings an agent can read.</h3><p>Each recording gets a notes folder with <code>transcript.md</code>, captions, stills and <code>recording.json</code>.</p></div>
+      <div><h3>Text out of pictures.</h3><p>Copy the text in any area as plain text, Markdown, CSV, HTML or a table. Read QR codes.</p></div>
+      <div><h3>Scriptable.</h3><p>Run a command or post a webhook after every capture, with the file path, the apps on screen and the text in it.</p></div>
+      <div><h3>Open source.</h3><p>MIT licence, built and tested in public on GitHub Actions for Windows, macOS and Linux.</p></div>
+    </div>
   </div>
 </section>
 
-<section class="compare" id="compare">
+<section id="compare">
   <div class="wrap">
-    <h2>Compared with other screenshot and recording apps</h2>
-    <p>From each app's own website and changelog, checked in November 2026. Prices are in US dollars. If something here is wrong, <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">open an issue</a> and it will be fixed.</p>
-    <label class="diff-only"><input type="checkbox" id="diffOnly"> Only show rows where the apps differ</label>
-    <div class="scroll"><table class="cmp" id="cmp"></table></div>
-    <p class="legend"><span class="c yes">✓</span> Yes <span class="c part">~</span> Partly, see the note <span class="c no">✕</span> No</p>
+    <div class="intro">
+      <h2>Compared with other apps.</h2>
+      <p>From each app's own website and changelog, checked in November 2026. Prices in US dollars. If something here is wrong, <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">open an issue</a> and it will be fixed.</p>
+    </div>
+    <div class="cmpbox">
+      <label class="diff-only"><input type="checkbox" id="diffOnly"> Only show rows where the apps differ</label>
+      <div class="scroll"><table class="cmp" id="cmp"></table></div>
+      <p class="legend"><span class="c yes">✓</span> Yes <span class="c part">~</span> Partly, see the note <span class="c no">✕</span> No</p>
+    </div>
   </div>
 </section>
 
-<section class="install" id="install">
+<section id="faq">
   <div class="wrap">
-    <h2>Install</h2>
-    <p>Grabbit isn't signed with a paid certificate yet, so Windows and macOS ask once before the first run. The source and the builds are public on GitHub.</p>
-    <table>
-      <tr><th>Windows 10 and 11</th><td><a href="#" data-asset="x64-setup.exe">Installer (.exe)</a> · <a href="#" data-asset="x64_en-US.msi">.msi</a><br>SmartScreen: <b>More info</b>, then <b>Run anyway</b>.</td></tr>
-      <tr><th>macOS 13 and later</th><td><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> · <a href="#" data-asset="x64.dmg">Intel (.dmg)</a><br>Drag it to Applications, then right-click it and choose <b>Open</b>. Allow Screen Recording and Microphone in System Settings → Privacy &amp; Security.</td></tr>
-      <tr><th>Linux</th><td><a href="#" data-asset="amd64.AppImage">AppImage</a> · <a href="#" data-asset="amd64.deb">.deb</a> · <a href="#" data-asset=".rpm">.rpm</a><br>Needs a 2024 or newer distro (Ubuntu 24.04, Debian 13, Fedora 40). For the AppImage: <code>chmod +x Grabbit*.AppImage</code>, then run it.</td></tr>
-    </table>
-    <p>Recording needs ffmpeg: <code>winget install Gyan.FFmpeg</code> on Windows, <code>brew install ffmpeg</code> on macOS, <code>sudo apt install ffmpeg tesseract-ocr</code> on Debian and Ubuntu (the .deb installs both for you).</p>
+    <div class="intro">
+      <h2>Install and questions.</h2>
+    </div>
+    <div class="faq">
+      <details open>
+        <summary>How do I install it on Windows?</summary>
+        <div class="a">
+          <p><a href="#" data-asset="x64-setup.exe">Installer (.exe)</a> or <a href="#" data-asset="x64_en-US.msi">.msi</a>, for Windows 10 and 11. Grabbit isn't signed with a paid certificate yet, so SmartScreen asks once: choose <b>More info</b>, then <b>Run anyway</b>.</p>
+          <p>With Scoop: <code>scoop bucket add grabbit https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders</code>, then <code>scoop install grabbit/grabbit</code>.</p>
+          <p>Recording needs ffmpeg: <code>winget install Gyan.FFmpeg</code>.</p>
+        </div>
+      </details>
+      <details>
+        <summary>How do I install it on a Mac?</summary>
+        <div class="a">
+          <p><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> or <a href="#" data-asset="x64.dmg">Intel (.dmg)</a>, for macOS 13 and later. Drag it to Applications, then right-click it and choose <b>Open</b> the first time. Allow Screen Recording and Microphone in System Settings, Privacy &amp; Security.</p>
+          <p>With Homebrew: <code>brew tap jaketherabbit/grabbit https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders</code>, then <code>brew install --cask jaketherabbit/grabbit/grabbit</code>.</p>
+          <p>Recording needs ffmpeg: <code>brew install ffmpeg</code>.</p>
+        </div>
+      </details>
+      <details>
+        <summary>How do I install it on Linux?</summary>
+        <div class="a">
+          <p><a href="#" data-asset="amd64.AppImage">AppImage</a>, <a href="#" data-asset="amd64.deb">.deb</a> or <a href="#" data-asset=".rpm">.rpm</a>. Needs a 2024 or newer distro (Ubuntu 24.04, Debian 13, Fedora 40). For the AppImage: <code>chmod +x Grabbit*.AppImage</code>, then run it.</p>
+          <p>Recording needs ffmpeg: <code>sudo apt install ffmpeg tesseract-ocr</code> on Debian and Ubuntu. The .deb installs both for you.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does it cost anything?</summary>
+        <div class="a"><p>No. Grabbit is free and open source under the MIT licence. There's no account, no paid plan and no watermark.</p></div>
+      </details>
+      <details>
+        <summary>Does anything get sent online?</summary>
+        <div class="a"><p>Nothing leaves your computer until you press Share or an AI button. AI features use your own key or a local model. Metadata is stripped from captures by default.</p></div>
+      </details>
+      <details>
+        <summary>How do I connect it to Claude Code, Codex or Cursor?</summary>
+        <div class="a"><p>Open Settings, Coding agents, and press <b>Add to Claude Code</b> or <b>Add to Codex</b>. For other tools, press <b>Copy setup</b> and paste it into the tool's MCP settings. The server is <code>grabbit --mcp</code>.</p></div>
+      </details>
+      <details>
+        <summary>Why does it use so little memory?</summary>
+        <div class="a"><p>When idle Grabbit is a single small process. The capture windows load when you press the key. Turn on Instant capture in Settings if you'd rather trade a few hundred MB of memory for a wheel that opens in about 0.1 s.</p></div>
+      </details>
+    </div>
   </div>
 </section>
+</main>
+
+<div class="float" id="float" aria-hidden="true">
+  <a class="pill" id="floatMain" data-asset="x64-setup.exe" href="#faq" tabindex="-1">Download for Windows</a>
+  <a class="pill ghost" href="#faq" tabindex="-1">Other systems</a>
+</div>
 
 <footer>
   <div class="wrap">
-    <span>Grabbit <span id="ver"></span>, MIT licence</span>
-    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">Source on GitHub</a>
-    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/blob/main/CHANGELOG.md">Changelog</a>
-    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">Report a problem</a>
-    <a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders#privacy">Privacy</a>
+    <div class="cols">
+      <div><a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a></div>
+      <div><h4>Grabbit</h4><ul><li><a href="#features">Features</a></li><li><a href="#tour">Tour</a></li><li><a href="#developers">For developers</a></li><li><a href="#compare">Compare</a></li></ul></div>
+      <div><h4>Install</h4><ul><li><a href="#faq">Windows</a></li><li><a href="#faq">macOS</a></li><li><a href="#faq">Linux</a></li><li><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases">All releases</a></li></ul></div>
+      <div><h4>Project</h4><ul><li><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">Source on GitHub</a></li><li><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/blob/main/CHANGELOG.md">Changelog</a></li><li><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/issues">Report a problem</a></li><li><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders#privacy">Privacy</a></li></ul></div>
+    </div>
+    <p class="fine">Grabbit <span id="ver2"></span>. MIT licence.</p>
   </div>
 </footer>
 
 <script>
+// Mobile menu.
+const menu = document.getElementById("menu"), links = document.getElementById("links");
+menu.onclick = () => { const o = links.classList.toggle("open"); menu.setAttribute("aria-expanded", o); };
+links.onclick = (e) => { if (e.target.tagName === "A") links.classList.remove("open"); };
+
 // Chapters of the tour (seconds).
 const CH = [[0, "Grabbit"], [6, "Capture and the wheel"], [52, "Talk to AI"], [74, "Paste into AI"], [90, "The More wheel"], [131, "Scrolling capture"],
   [148, "Copy the text"], [159, "Pin on top"], [171, "Capture over a capture"], [193, "Hide private details"], [210, "Mark up"], [236, "Record"],
@@ -351,12 +460,22 @@ document.querySelectorAll("video[data-clip]").forEach((v) => {
   b.onclick = () => {
     const on = v.muted;
     document.querySelectorAll("video[data-clip]").forEach((o) => { o.muted = true; o.loop = true; });
-    document.querySelectorAll(".media .sound").forEach((o) => { o.textContent = "🔊 Sound"; });
+    document.querySelectorAll(".clip .sound").forEach((o) => { o.textContent = "🔊 Sound"; });
     if (on) { v.muted = false; v.loop = false; v.currentTime = 0; v.play(); b.textContent = "🔇 Mute"; }
   };
   v.addEventListener("ended", () => { v.muted = true; v.loop = true; b.textContent = "🔊 Sound"; v.play(); });
-  v.parentElement.append(b);
+  v.closest(".clip").append(b);
 });
+
+// Floating download pills: shown once the hero buttons scroll away, hidden over the install answers.
+const float = document.getElementById("float");
+const heroPills = document.getElementById("pills"), faq = document.getElementById("faq");
+const sync = () => {
+  const s = heroPills.getBoundingClientRect().bottom < 0 && faq.getBoundingClientRect().top > innerHeight * .7;
+  if (s === float.classList.contains("show")) return;
+  float.classList.toggle("show", s); float.setAttribute("aria-hidden", !s); float.querySelectorAll("a").forEach((a) => a.tabIndex = s ? 0 : -1);
+};
+addEventListener("scroll", sync, { passive: true }); addEventListener("resize", sync); sync();
 
 // The comparison: true = yes, false = no, "+note" = yes with a note, any other string = partly (shown as the note).
 const APPS = [
@@ -395,37 +514,33 @@ const ROWS = [
   const t = document.getElementById("cmp"), cell = (v) => v === true ? '<span class="c yes">✓</span>' : v === false ? '<span class="c no">✕</span>' : v[0] === "+" ? `<span class="c yes">✓</span><span class="note">${v.slice(1)}</span>` : `<span class="c part">~</span><span class="note">${v}</span>`;
   const feats = ROWS.filter((r) => r.length > 1);
   const score = APPS.map((_, i) => feats.filter((r) => r[i + 1] !== false).length);
-  let html = `<thead><tr><th class="feat"></th>${APPS.map(([n, logo, price], i) => `<th class="${i ? "" : "me"}"><img src="logos/${logo}.png" alt=""><span class="name">${n}</span><span class="price">${price}</span><span class="score">${score[i]} of ${feats.length}</span></th>`).join("")}</tr></thead><tbody>`;
+  let html = `<thead><tr><th class="f"></th>${APPS.map(([n, logo, price], i) => `<th class="${i ? "" : "me"}"><img src="logos/${logo}.png" alt=""><span class="name">${n}</span><span class="price">${price}</span><span class="score">${score[i]} of ${feats.length}</span></th>`).join("")}</tr></thead><tbody>`;
   for (const r of ROWS) {
     if (r.length === 1) { html += `<tr class="group"><td colspan="${APPS.length + 1}">${r[0]}</td></tr>`; continue; }
     const v = r.slice(1), same = v.every((x) => x === v[0]), only = v[0] !== false && v.slice(1).every((x) => x === false);
-    html += `<tr class="${same ? "is-same" : ""}"><td class="feat">${r[0]}${only ? '<span class="only">Only Grabbit</span>' : ""}</td>${v.map((x, i) => `<td class="${i ? "" : "me"}">${cell(x)}</td>`).join("")}</tr>`;
+    html += `<tr class="${same ? "is-same" : ""}"><td class="f">${r[0]}${only ? '<span class="only">Only Grabbit</span>' : ""}</td>${v.map((x, i) => `<td class="${i ? "" : "me"}">${cell(x)}</td>`).join("")}</tr>`;
   }
   t.innerHTML = html + "</tbody>";
   document.getElementById("diffOnly").onchange = (e) => t.querySelectorAll("tr.is-same").forEach((r) => r.classList.toggle("same", e.target.checked));
 })();
 
-// The download button picks the installer for this computer from the latest release.
+// Download links point at the latest release's files; this computer's system goes first and fills the floating button.
 (async () => {
   const ua = navigator.userAgent, plat = (navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
-  const os = /win/.test(plat) || /Windows/.test(ua) ? "win" : /mac/.test(plat) || /Mac OS/.test(ua) ? "mac" : /linux/.test(plat) ? "linux" : "";
+  const os = /win/.test(plat) || /Windows/.test(ua) ? "win" : /mac/.test(plat) || /Mac OS/.test(ua) ? "mac" : /linux/.test(plat) ? "linux" : "win";
+  const pills = document.getElementById("pills"), mine = pills.querySelector(`[data-os="${os}"]`);
+  pills.querySelectorAll(".pill").forEach((p) => p.classList.toggle("ghost", p !== mine));
+  pills.prepend(mine);
+  const fm = document.getElementById("floatMain");
+  fm.textContent = mine.textContent; fm.dataset.asset = mine.dataset.asset;
   let assets = [];
   try {
-    const r = await fetch("https://api.github.com/repos/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest");
-    const rel = await r.json();
+    const rel = await (await fetch("https://api.github.com/repos/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest")).json();
     assets = rel.assets || [];
-    if (rel.tag_name) document.getElementById("ver").textContent = rel.tag_name;
+    if (rel.tag_name) document.getElementById("ver").textContent = document.getElementById("ver2").textContent = rel.tag_name;
   } catch { return; }
-  const find = (end) => assets.find((a) => a.name.endsWith(end))?.browser_download_url;
-  document.querySelectorAll("[data-asset]").forEach((a) => { const u = find(a.dataset.asset); if (u) a.href = u; else a.href = "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest"; });
-  // Browsers on a Mac don't say which chip it has; Apple silicon is the default, with a link for Intel.
-  const pick = { win: ["x64-setup.exe", "for Windows"], mac: ["aarch64.dmg", "for Mac (Apple silicon)"], linux: ["amd64.AppImage", "for Linux (AppImage)"] }[os];
-  const url = pick && find(pick[0]);
-  if (url) {
-    const btn = document.getElementById("download");
-    btn.href = url; btn.textContent = `⬇ Download Grabbit ${pick[1]}`;
-    if (os === "mac") document.getElementById("dl-note").innerHTML = `Older Intel Mac? <a href="${find("x64.dmg")}">Get the Intel version</a>. Free and open source, no account.`;
-  }
+  const latest = "https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/releases/latest";
+  document.querySelectorAll("[data-asset]").forEach((a) => { a.href = assets.find((x) => x.name.endsWith(a.dataset.asset))?.browser_download_url || latest; });
 })();
 </script>
 </body>
