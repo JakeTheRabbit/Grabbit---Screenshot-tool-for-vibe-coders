@@ -89,7 +89,11 @@ async function start(given?: { info: Info; buf: ArrayBuffer }) {
   resize();
   if (info.mode === "Record") hint.innerHTML = REC_HINT;
   document.body.classList.add("ready");
-  requestAnimationFrame(() => void invoke("picker_shown"));
+  // After the next paint. macOS doesn't paint a hidden window, so a timer stands in (picker_shown ignores repeats).
+  let told = false;
+  const tell = () => { if (!told) { told = true; void invoke("picker_shown"); } };
+  requestAnimationFrame(tell);
+  setTimeout(tell, 80);
 }
 
 function resize() {

@@ -38,3 +38,8 @@ select.btn { min-width: 200px; }
 .bp-body span.short { width: 60%; }
 .bp-shot img { position: absolute; height: auto; pointer-events: none; }
 .bp-empty { position: absolute; inset: 0; display: grid; place-items: center; color: #7a808c; font-size: 13px; }
+
+/* Sharing: a tickbox per place, its options indented under it while ticked. */
+.place { margin-bottom: 8px; }
+.place-head { cursor: pointer; }
+.place-body { margin: 4px 0 14px 18px; padding-left: 12px; border-left: 2px solid var(--line, rgb(128 128 128 / .25)); }
