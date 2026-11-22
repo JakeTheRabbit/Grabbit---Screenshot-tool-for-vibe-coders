@@ -223,7 +223,7 @@ Download from **[Releases](https://github.com/JakeTheRabbit/Grabbit---Screenshot
 | | Download | First launch |
 |---|---|---|
 | **Windows 10/11** | `Grabbit_x64-setup.exe` (or `.msi`) | SmartScreen: **More info → Run anyway** |
-| **macOS 13+** | `Grabbit_aarch64.dmg` (Apple silicon) or `Grabbit_x64.dmg` (Intel) | Drag to Applications, then **right-click → Open → Open**. Allow **Screen Recording** (and **Microphone**; **Accessibility** for scrolling capture and key captions) in System Settings → Privacy & Security. |
+| **macOS 13+** | `Grabbit_aarch64.dmg` (Apple silicon) or `Grabbit_x64.dmg` (Intel) | Drag to Applications and open it. First launch is blocked (not notarised yet): System Settings → Privacy & Security → **Open Anyway**. If it says *"damaged"*, run `xattr -dr com.apple.quarantine /Applications/Grabbit.app`. Homebrew skips this. Allow **Screen Recording** (and **Microphone**; **Accessibility** for scrolling capture and key captions) in System Settings → Privacy & Security. |
 | **Linux** | `.AppImage`, `.deb` (Debian/Ubuntu), `.rpm` (Fedora/openSUSE). Needs a 2024-or-newer distro (glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40) | AppImage: `chmod +x Grabbit*.AppImage` then run it. |
 
 **Recording needs ffmpeg** (8.0 or newer for on-computer captions):

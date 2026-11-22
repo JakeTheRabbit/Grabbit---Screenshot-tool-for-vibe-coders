@@ -6,6 +6,16 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.19] - 2026-11-23
+
+### Fixed
+
+- **macOS no longer says Grabbit "is damaged and can't be opened".** The app is now signed (ad hoc), so macOS asks once and you allow it under System Settings → Privacy & Security → **Open Anyway**. The build fails if the Mac app isn't signed. Installing with Homebrew skips the prompt.
+
+### Changed
+
+- The website is dark by default, with a light mode button.
+
 ## [2.0.18] - 2026-11-22
 
 ### Added
