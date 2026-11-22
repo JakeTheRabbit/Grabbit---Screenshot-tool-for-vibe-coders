@@ -17,6 +17,11 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 - **Sharing settings:** tick a place (OneDrive, Immich, MEGA, S3, Obsidian) to see its options. Obsidian moved here from its own page.
 - The website has separate downloads for Macs with Apple silicon and with Intel.
 
+### Added
+
+- **Linux on ARM:** AppImage, .deb and .rpm for 64-bit ARM (Apple silicon Macs on Asahi or Omarchy, Snapdragon laptops, Raspberry Pi 5), built and self-tested on an ARM runner.
+- **AUR package** `grabbit-bin` for Arch, Omarchy, Manjaro and EndeavourOS, x86_64 and aarch64, updated on every release.
+
 ### Fixed
 
 - **macOS menu bar icon.** It showed as a blank square; it's now the Grabbit frame and rabbit, drawn in the menu bar's own colour.
