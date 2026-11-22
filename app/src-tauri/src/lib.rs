@@ -140,9 +140,14 @@ fn tray(app: &AppHandle) -> tauri::Result<()> {
         &PredefinedMenuItem::separator(app)?,
         &item("quit", "Quit Grabbit")?,
     ])?;
+    // macOS menu bar icons are templates: only the shape counts, so the full-colour app icon shows as a blank square.
+    #[cfg(target_os = "macos")]
+    let (tray_icon, template) = (tauri::image::Image::from_bytes(include_bytes!("../icons/tray-template.png"))?, true);
+    #[cfg(not(target_os = "macos"))]
+    let (tray_icon, template) = (app.default_window_icon().cloned().unwrap(), false);
     TrayIconBuilder::with_id("main")
-        .icon(app.default_window_icon().cloned().unwrap())
-        .icon_as_template(true)
+        .icon(tray_icon)
+        .icon_as_template(template)
         .tooltip("Grabbit: tap the capture key for a screenshot, hold it to record")
         .menu(&menu)
         .show_menu_on_left_click(false)

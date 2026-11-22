@@ -6,7 +6,7 @@ import { open, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import "../ui/base";
 import { getTheme, setTheme, type Theme } from "../ui/theme";
 import "./settings.css";
-import { os } from "../bridge";
+import { fileUrl, os } from "../bridge";
 
 type S = Record<string, any>;
 let s: S = {};
@@ -33,6 +33,32 @@ function set(k: string, v: unknown) {
   for (const p of parts.slice(0, -1)) o = o[p];
   o[parts.at(-1)!] = v;
   void save();
+  refreshPreview();
+}
+/** Redraws whatever preview the open page shows (Branding has one). */
+let refreshPreview = () => {};
+
+/** A sample capture with the logo placed exactly as mark.rs stamps it: width = scale × picture width, a margin of
+ *  1/40 of the shorter side, the chosen corner and opacity. 16:9, so the margin is 2.5% of the height. */
+function brandingPreview(): HTMLElement {
+  const img = h("img", { alt: "" }) as HTMLImageElement;
+  const empty = h("span", { class: "bp-empty" }, "Choose a logo to see it here");
+  const shot = h("div", { class: "bp-shot" },
+    h("div", { class: "bp-bar" }, h("i"), h("i"), h("i")),
+    h("div", { class: "bp-body" }, h("b"), h("span"), h("span"), h("span", { class: "short" })), img, empty);
+  refreshPreview = () => {
+    const b = s.branding ?? {}, path = b.logo_path as string;
+    img.hidden = !path; empty.hidden = !!path;
+    if (path && img.dataset.path !== path) { img.dataset.path = path; img.src = fileUrl(path); }
+    img.style.width = `${Math.min(1, Math.max(0.02, Number(b.scale) || 0.15)) * 100}%`;
+    img.style.opacity = String(Math.min(1, Math.max(0, Number(b.opacity ?? 1))));
+    const m = { x: `${(9 / 16) * 2.5}%`, y: "2.5%" }, pos = String(b.position || "bottom-right");
+    Object.assign(img.style, { left: "", right: "", top: "", bottom: "", transform: "" });
+    if (pos === "center") Object.assign(img.style, { left: "50%", top: "50%", transform: "translate(-50%, -50%)" });
+    else Object.assign(img.style, pos.includes("left") ? { left: m.x } : { right: m.x }, pos.includes("top") ? { top: m.y } : { bottom: m.y });
+  };
+  refreshPreview();
+  return h("div", { class: "bp" }, shot, h("p", { class: "note" }, "Preview on a sample screenshot. Changes show here as you make them."));
 }
 let saving: number | undefined;
 async function save() {
@@ -174,6 +200,7 @@ const SECTIONS: Record<string, () => Field[]> = {
     { kind: "text", key: "ffmpeg_path", label: "ffmpeg", placeholder: "Found automatically", help: "Only if ffmpeg isn't on your PATH" },
   ],
   Branding: () => [
+    { kind: "custom", render: brandingPreview },
     { kind: "file", key: "branding.logo_path", label: "Logo or overlay", ext: ["png", "webp", "svg", "jpg"] },
     { kind: "toggle", key: "branding.on_images", label: "Add to pictures" },
     { kind: "toggle", key: "branding.on_videos", label: "Add to videos" },
@@ -338,6 +365,7 @@ async function connectAgent(b: HTMLButtonElement, agent: string) {
 function show(name: string) {
   for (const b of nav.querySelectorAll("button")) b.classList.toggle("on", b.textContent === name);
   page.innerHTML = "";
+  refreshPreview = () => {};
   page.append(h("h1", {}, name), ...SECTIONS[name]().map(field));
   location.hash = name;
 }

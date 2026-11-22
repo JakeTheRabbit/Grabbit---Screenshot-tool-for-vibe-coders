@@ -6,6 +6,17 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.20] - 2026-11-23
+
+### Added
+
+- **Branding preview.** Settings → Branding shows your logo on a sample screenshot, and it moves, resizes and fades as you change the settings.
+
+### Fixed
+
+- **macOS menu bar icon.** It showed as a blank square; it's now the Grabbit frame and rabbit, drawn in the menu bar's own colour.
+- **Keys in the picker on macOS.** On a single screen the picker now always takes the keyboard, so Enter, the number keys, V and the rest work straight after the capture key.
+
 ## [2.0.19] - 2026-11-23
 
 ### Fixed

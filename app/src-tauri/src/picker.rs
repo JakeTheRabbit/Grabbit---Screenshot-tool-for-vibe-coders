@@ -397,8 +397,11 @@ pub fn picker_shown(app: AppHandle, window: tauri::WebviewWindow) {
     REPAIRS.store(0, SeqCst);
     let _ = window.show();
     let cur = app.cursor_position().unwrap_or_default();
+    // With one screen there's no choice to make. (On macOS the cursor and window positions don't always line up, and
+    // a picker without the keyboard ignores every key.)
+    let one_screen = app.available_monitors().map(|m| m.len() <= 1).unwrap_or(true);
     if let (Ok(p), Ok(s)) = (window.outer_position(), window.outer_size()) {
-        if cur.x as i32 >= p.x && (cur.x as i32) < p.x + s.width as i32 && cur.y as i32 >= p.y && (cur.y as i32) < p.y + s.height as i32 { let _ = window.set_focus(); }
+        if one_screen || (cur.x as i32 >= p.x && (cur.x as i32) < p.x + s.width as i32 && cur.y as i32 >= p.y && (cur.y as i32) < p.y + s.height as i32) { let _ = window.set_focus(); }
     }
 }
 
