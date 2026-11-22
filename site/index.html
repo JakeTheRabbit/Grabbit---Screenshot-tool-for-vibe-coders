@@ -10,15 +10,34 @@
 <meta property="og:image" content="media/social-preview.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="media/icon.png">
+<meta name="theme-color" content="#16141a">
+<script>try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+/* Dark is the default. Light applies when the visitor picks it (data-theme="light"). */
 :root {
-  --bg: #ffffff; --ink: #1d1b20; --muted: #5e5a63; --line: #ece8ee; --soft: #f7f4f5;
-  --c1: #ff8a4c; --c2: #f2456f; --c3: #c9367c;
+  color-scheme: dark;
+  --bg: #16141a; --ink: #f2edf1; --muted: #a9a1aa; --line: #2c2830; --soft: #221f26; --surface: #1c1a20;
+  --bar: rgba(22, 20, 26, .88); --keyline: #3a353e; --glass: rgba(28, 26, 32, .92);
+  --tint: #2a1a22; --tint2: #3d1f2c; --tint-ink: #ff9fb6;
+  --yes-bg: #173826; --yes-ink: #5fdc8c; --no-bg: #26232a; --no-ink: #6f6873; --part-bg: #3a2c12; --part-ink: #f0b552;
+  --c1: #ff8a4c; --c2: #f2456f; --c3: #c9367c; --c2-hover: #ff5a82;
+  --grad: linear-gradient(100deg, var(--c1) 0%, var(--c2) 55%, #e05aa0 100%);
+  --card: linear-gradient(135deg, #ff9a6e 0%, #f2456f 50%, #8f2a66 100%);
+  --card2: linear-gradient(135deg, #ffb27e 0%, #ff6a5a 50%, #b8325e 100%);
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff; --ink: #1d1b20; --muted: #5e5a63; --line: #ece8ee; --soft: #f7f4f5; --surface: #ffffff;
+  --bar: rgba(255, 255, 255, .92); --keyline: #d9d2d8; --glass: rgba(255, 255, 255, .92);
+  --tint: #fff3f5; --tint2: #ffe4e9; --tint-ink: #a8213f;
+  --yes-bg: #def7e6; --yes-ink: #11843c; --no-bg: #f2eff1; --no-ink: #aaa2a8; --part-bg: #fff1d6; --part-ink: #a8650a;
+  --c2-hover: #d93460;
   --grad: linear-gradient(100deg, var(--c1) 0%, var(--c2) 55%, var(--c3) 100%);
   --card: linear-gradient(135deg, #ffd9c4 0%, #ff9a7a 45%, #f2456f 100%);
+  --card2: linear-gradient(135deg, #ffe7d6 0%, #ffb08a 50%, #ff7a5c 100%);
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 72px; }
@@ -27,18 +46,23 @@ a { color: inherit; }
 h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -.025em; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
 :focus-visible { outline: 3px solid var(--c2); outline-offset: 3px; border-radius: 6px; }
-kbd { font: 600 .82em Figtree, sans-serif; background: #fff; border: 1px solid #ddd6dc; border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; }
+kbd { font: 600 .82em Figtree, sans-serif; background: var(--surface); border: 1px solid var(--keyline); border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; }
 code { font: 14.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--soft); border-radius: 6px; padding: 2px 6px; }
 
 /* Header */
-header.bar { position: sticky; top: 0; z-index: 20; background: rgba(255, 255, 255, .92); backdrop-filter: blur(12px); }
+header.bar { position: sticky; top: 0; z-index: 20; background: var(--bar); backdrop-filter: blur(12px); }
 header.bar .wrap { display: flex; align-items: center; height: 64px; border-bottom: 1px solid var(--line); }
 .logo { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 500; text-decoration: none; letter-spacing: -.02em; }
 .logo img { width: 30px; height: 30px; }
 .links { margin-left: auto; display: flex; gap: 6px; }
 .links a { text-decoration: none; font-size: 15.5px; padding: 8px 14px; border-radius: 999px; color: var(--muted); }
 .links a:hover { background: var(--soft); color: var(--ink); }
-.menu { display: none; margin-left: auto; background: none; border: 0; padding: 8px; cursor: pointer; }
+.menu { display: none; margin-left: auto; background: none; border: 0; padding: 8px; cursor: pointer; color: var(--ink); }
+.theme { margin-left: 6px; background: none; border: 0; padding: 8px; border-radius: 999px; cursor: pointer; color: var(--muted); display: grid; place-items: center; }
+.theme:hover { background: var(--soft); color: var(--ink); }
+.theme .sun { display: none; }
+:root[data-theme="light"] .theme .sun { display: block; }
+:root[data-theme="light"] .theme .moon { display: none; }
 
 /* Hero */
 .hero { text-align: center; padding: 88px 0 64px; }
@@ -46,8 +70,8 @@ header.bar .wrap { display: flex; align-items: center; height: 64px; border-bott
 .hero p { font-size: 19px; max-width: 62ch; margin: 0 auto 36px; }
 .pills { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
 .pill { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 26px; border-radius: 999px; background: var(--c2); color: #fff; font-size: 16px; font-weight: 500; text-decoration: none; white-space: nowrap; transition: background .15s; }
-.pill:hover { background: #d93460; }
-.pill.ghost { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px #d9d2d8; }
+.pill:hover { background: var(--c2-hover); }
+.pill.ghost { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--keyline); }
 .pill.ghost:hover { background: var(--soft); }
 .hero small { display: block; margin-top: 18px; color: var(--muted); font-size: 14.5px; }
 
@@ -70,19 +94,19 @@ header.bar .wrap { display: flex; align-items: center; height: 64px; border-bott
 .feat ul { margin: 8px 0 0; padding-left: 20px; }
 .feat li { margin: 5px 0; }
 .clip { position: relative; border-radius: 32px; background: var(--card); padding: clamp(14px, 3vw, 36px); }
-.feat:nth-of-type(odd) .clip { background: linear-gradient(135deg, #ffe7d6 0%, #ffb08a 50%, #ff7a5c 100%); }
+.feat:nth-of-type(odd) .clip { background: var(--card2); }
 .clip .win { border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 24px 60px -28px rgba(120, 20, 50, .65); }
 .clip video { display: block; width: 100%; height: auto; }
-.sound { position: absolute; right: clamp(24px, 4vw, 50px); bottom: clamp(24px, 4vw, 50px); background: rgba(255, 255, 255, .94); color: var(--ink); border: 0; border-radius: 999px; padding: 8px 16px; font: 500 14px Figtree, sans-serif; cursor: pointer; }
-.sound:hover { background: #fff; }
+.sound { position: absolute; right: clamp(24px, 4vw, 50px); bottom: clamp(24px, 4vw, 50px); background: var(--glass); color: var(--ink); border: 0; border-radius: 999px; padding: 8px 16px; font: 500 14px Figtree, sans-serif; cursor: pointer; }
+.sound:hover { background: var(--surface); }
 
 /* Tour */
 .tour { display: grid; grid-template-columns: minmax(0, 2.3fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .tour video { width: 100%; display: block; border-radius: 14px; background: #000; box-shadow: 0 24px 60px -28px rgba(120, 20, 50, .65); }
-.chapters { list-style: none; margin: 0; padding: 6px; background: rgba(255, 255, 255, .9); border-radius: 14px; }
+.chapters { list-style: none; margin: 0; padding: 6px; background: var(--glass); border-radius: 14px; }
 .chapters button { all: unset; cursor: pointer; display: flex; width: 100%; box-sizing: border-box; gap: 14px; padding: 7px 12px; border-radius: 9px; font-size: 15px; }
 .chapters button:hover { background: var(--soft); }
-.chapters button.on { background: #ffe4e9; color: #a8213f; font-weight: 600; }
+.chapters button.on { background: var(--tint2); color: var(--tint-ink); font-weight: 600; }
 .chapters time { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 3.2em; }
 .chapters button.on time { color: inherit; }
 
@@ -95,24 +119,24 @@ header.bar .wrap { display: flex; align-items: center; height: 64px; border-bott
 .cmpbox { margin-top: 10px; }
 .diff-only { display: inline-flex; gap: 10px; align-items: center; margin: 0 0 18px; cursor: pointer; font-weight: 500; }
 .diff-only input { width: 18px; height: 18px; accent-color: var(--c2); }
-.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 24px; border: 1px solid var(--line); background: #fff; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 24px; border: 1px solid var(--line); background: var(--surface); }
 table.cmp { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; font-size: 15px; }
 table.cmp th, table.cmp td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: center; vertical-align: middle; }
-table.cmp thead th { position: sticky; top: 0; background: #fff; z-index: 2; padding: 20px 8px 14px; font-weight: 500; }
+table.cmp thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; padding: 20px 8px 14px; font-weight: 500; }
 table.cmp thead img { width: 40px; height: 40px; border-radius: 10px; display: block; margin: 0 auto 8px; object-fit: contain; }
 table.cmp thead .name { font-size: 15.5px; font-weight: 600; display: block; }
 table.cmp thead .price { font-size: 13px; color: var(--muted); display: block; }
 table.cmp thead .score { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--soft); }
-table.cmp .f { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; min-width: 240px; padding-left: 20px; }
+table.cmp .f { text-align: left; position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 240px; padding-left: 20px; }
 table.cmp .f .only { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: #fff; background: var(--c2); border-radius: 999px; padding: 2px 8px; vertical-align: 2px; }
 table.cmp .group td { text-align: left; background: var(--soft); font-weight: 600; font-size: 14.5px; padding: 10px 20px; position: sticky; left: 0; }
-table.cmp .me { background: #fff3f5; }
-table.cmp thead th.me { background: #ffe4e9; }
+table.cmp .me { background: var(--tint); }
+table.cmp thead th.me { background: var(--tint2); }
 table.cmp thead th.me .score { background: var(--c2); color: #fff; }
 .c { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 700; font-size: 14px; }
-.c.yes { background: #def7e6; color: #11843c; }
-.c.no { background: #f2eff1; color: #aaa2a8; }
-.c.part { background: #fff1d6; color: #a8650a; }
+.c.yes { background: var(--yes-bg); color: var(--yes-ink); }
+.c.no { background: var(--no-bg); color: var(--no-ink); }
+.c.part { background: var(--part-bg); color: var(--part-ink); }
 table.cmp .note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; line-height: 1.25; }
 table.cmp tr.same { display: none; }
 .legend { font-size: 14px; color: var(--muted); display: flex; gap: 8px 14px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
@@ -133,7 +157,7 @@ table.cmp tr.same { display: none; }
 .float { position: fixed; left: 50%; bottom: 22px; z-index: 30; display: flex; gap: 10px; transform: translate(-50%, 140%); transition: transform .3s ease; }
 .float.show { transform: translate(-50%, 0); }
 .float .pill { box-shadow: 0 10px 30px -8px rgba(160, 30, 60, .45); }
-.float .pill.ghost { box-shadow: inset 0 0 0 1px #d9d2d8, 0 10px 30px -8px rgba(60, 20, 40, .25); }
+.float .pill.ghost { box-shadow: inset 0 0 0 1px var(--keyline), 0 10px 30px -8px rgba(60, 20, 40, .25); }
 
 /* Footer */
 footer { border-top: 1px solid var(--line); margin-top: 80px; padding: 56px 0 48px; }
@@ -146,7 +170,7 @@ footer li a:hover { text-decoration: underline; }
 footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
 
 @media (max-width: 900px) {
-  .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; background: #fff; padding: 10px 16px 18px; border-bottom: 1px solid var(--line); }
+  .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; background: var(--bg); padding: 10px 16px 18px; border-bottom: 1px solid var(--line); }
   .links.open { display: flex; }
   .menu { display: block; }
   .feat { grid-template-columns: 1fr; gap: 28px; padding: 44px 0; }
@@ -171,6 +195,7 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
     <a class="logo" href="#"><img src="media/icon.png" alt="">Grabbit</a>
     <button class="menu" aria-label="Menu" aria-expanded="false" id="menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <nav class="links" id="links"><a href="#features">Features</a><a href="#tour">Tour</a><a href="#compare">Compare</a><a href="#faq">Install</a><a href="https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders">GitHub</a></nav>
+    <button class="theme" id="theme" aria-label="Switch to light mode"><svg class="moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
   </div>
 </header>
 
@@ -378,7 +403,8 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
       <details>
         <summary>How do I install it on a Mac?</summary>
         <div class="a">
-          <p><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> or <a href="#" data-asset="x64.dmg">Intel (.dmg)</a>, for macOS 13 and later. Drag it to Applications, then right-click it and choose <b>Open</b> the first time. Allow Screen Recording and Microphone in System Settings, Privacy &amp; Security.</p>
+          <p><a href="#" data-asset="aarch64.dmg">Apple silicon (.dmg)</a> or <a href="#" data-asset="x64.dmg">Intel (.dmg)</a>, for macOS 13 and later. Drag it to Applications and open it. Grabbit isn't notarised by Apple yet, so macOS blocks the first launch: click <b>Done</b>, open System Settings, Privacy &amp; Security, scroll down and click <b>Open Anyway</b>. Then allow Screen Recording and Microphone on the same page.</p>
+          <p>If macOS says Grabbit "is damaged and can't be opened", run this in Terminal and open it again: <code>xattr -dr com.apple.quarantine /Applications/Grabbit.app</code>. Installing with Homebrew skips all of this.</p>
           <p>With Homebrew: <code>brew tap jaketherabbit/grabbit https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders</code>, then <code>brew install --cask jaketherabbit/grabbit/grabbit</code>.</p>
           <p>Recording needs ffmpeg: <code>brew install ffmpeg</code>.</p>
         </div>
@@ -433,6 +459,17 @@ footer .fine { margin-top: 40px; color: var(--muted); font-size: 14px; }
 const menu = document.getElementById("menu"), links = document.getElementById("links");
 menu.onclick = () => { const o = links.classList.toggle("open"); menu.setAttribute("aria-expanded", o); };
 links.onclick = (e) => { if (e.target.tagName === "A") links.classList.remove("open"); };
+
+// Dark by default; the button switches to light and remembers it.
+const themeBtn = document.getElementById("theme"), themeMeta = document.querySelector('meta[name="theme-color"]');
+const setTheme = (light) => {
+  if (light) document.documentElement.dataset.theme = "light"; else delete document.documentElement.dataset.theme;
+  themeBtn.setAttribute("aria-label", light ? "Switch to dark mode" : "Switch to light mode");
+  themeMeta.content = light ? "#ffffff" : "#16141a";
+  try { localStorage.setItem("theme", light ? "light" : "dark"); } catch (e) {}
+};
+setTheme(document.documentElement.dataset.theme === "light");
+themeBtn.onclick = () => setTheme(document.documentElement.dataset.theme !== "light");
 
 // Chapters of the tour (seconds).
 const CH = [[0, "Grabbit"], [6, "Capture and the wheel"], [52, "Talk to AI"], [74, "Paste into AI"], [90, "The More wheel"], [131, "Scrolling capture"],

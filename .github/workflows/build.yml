@@ -132,3 +132,7 @@ jobs:
           releaseBody: "What changed: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/blob/main/CHANGELOG.md · Install steps for each OS: https://jaketherabbit.github.io/Grabbit---Screenshot-tool-for-vibe-coders/#install"
           releaseDraft: true
           prerelease: false
+      # An unsigned bundle shows as "damaged" on Macs. Fail the build if the app isn't sealed.
+      - name: Check the Mac app is signed
+        if: runner.os == 'macOS'
+        run: codesign --verify --deep --strict --verbose=2 app/src-tauri/target/*/release/bundle/macos/Grabbit.app

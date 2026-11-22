@@ -14,6 +14,11 @@ cask "grabbit" do
 
   app "Grabbit.app"
 
+  # Not notarised by Apple yet, so clear the download flag that makes macOS block it.
+  postflight do
+    system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{appdir}/Grabbit.app"]
+  end
+
   zap trash: [
     "~/Library/Application Support/app.grabbit",
     "~/Library/Caches/app.grabbit",
@@ -21,9 +26,8 @@ cask "grabbit" do
   ]
 
   caveats <<~EOS
-    Grabbit isn't signed with an Apple certificate yet. The first time, right-click
-    Grabbit in Applications and choose Open. Then allow Screen Recording (and
-    Microphone) in System Settings → Privacy & Security.
+    Allow Screen Recording (and Microphone) for Grabbit in
+    System Settings → Privacy & Security.
     Recording needs ffmpeg: brew install ffmpeg
   EOS
 end
