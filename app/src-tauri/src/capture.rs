@@ -27,9 +27,14 @@ pub struct WinInfo {
     pub height: u32,
 }
 
+/// What the capture is doing right now, so a capture that never comes back can say where it got stuck.
+pub static STAGE: std::sync::Mutex<&str> = std::sync::Mutex::new("");
+pub fn stage(s: &'static str) { *STAGE.lock().unwrap() = s; }
+
 /// All monitors, grabbed in parallel so they're frozen at the same moment.
 /// GRABBIT_DEMO_FRAME=<picture>: every monitor shows that picture instead (README screenshots of a made-up page).
 pub fn freeze_all() -> Result<Vec<Frame>> {
+    stage("listing screens");
     if let Ok(demo) = std::env::var("GRABBIT_DEMO_FRAME") {
         let pic = image::open(&demo).context("GRABBIT_DEMO_FRAME")?;
         return Monitor::all()?.iter().map(|m| {
@@ -41,10 +46,14 @@ pub fn freeze_all() -> Result<Vec<Frame>> {
     }
     let n = Monitor::all().context("listing monitors")?.len();
     #[cfg(windows)]
-    match dxgi::freeze(n) {
-        Ok(f) => return Ok(f),
-        Err(e) => log::warn!("fast capture unavailable ({e:#}); using GDI"),
+    {
+        stage("capturing with the graphics card");
+        match dxgi::freeze(n) {
+            Ok(f) => return Ok(f),
+            Err(e) => log::warn!("fast capture unavailable ({e:#}); using GDI"),
+        }
     }
+    stage("capturing with GDI");
     // xcap's Monitor can't cross threads, so each thread looks its monitor up again.
     std::thread::scope(|sc| {
         let jobs: Vec<_> = (0..n).map(|i| sc.spawn(move || -> Result<Frame> {
