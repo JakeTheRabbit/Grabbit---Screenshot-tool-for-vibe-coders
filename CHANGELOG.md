@@ -6,6 +6,10 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+### Fixed
+
+- Print Screen on Windows 11 opened the Snipping Tool instead of Grabbit. Grabbit now turns off Windows' "Use the Print screen key to open screen capture" setting whenever one of its keys uses Print Screen. Windows reported the key as free, so nothing was logged before.
+
 ## [2.0.20] - 2026-11-23
 
 ### Added
