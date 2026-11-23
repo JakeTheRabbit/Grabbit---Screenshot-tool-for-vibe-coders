@@ -6,6 +6,8 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+## [2.0.21] - 2026-11-23
+
 ### Fixed
 
 - Print Screen on Windows 11 opened the Snipping Tool instead of Grabbit. Grabbit now turns off Windows' "Use the Print screen key to open screen capture" setting whenever one of its keys uses Print Screen. Windows reported the key as free, so nothing was logged before.
@@ -272,7 +274,10 @@ Grabbit 2 is a full rewrite on Tauri: one app for Windows, macOS and Linux. Tap 
 - Step recorder that writes a how-to (Markdown and `.docx`); settings backup and restore.
 - `--self-test` and CI on Windows, macOS and Linux.
 
-[Unreleased]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.18...HEAD
+[Unreleased]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.21...HEAD
+[2.0.21]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.20...v2.0.21
+[2.0.20]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.19...v2.0.20
+[2.0.19]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.18...v2.0.19
 [2.0.18]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.17...v2.0.18
 [2.0.17]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.16...v2.0.17
 [2.0.16]: https://github.com/JakeTheRabbit/Grabbit---Screenshot-tool-for-vibe-coders/compare/v2.0.14...v2.0.16
