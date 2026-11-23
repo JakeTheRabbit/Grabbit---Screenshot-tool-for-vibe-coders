@@ -45,12 +45,20 @@ pub fn freeze_all() -> Result<Vec<Frame>> {
         }).collect();
     }
     let n = Monitor::all().context("listing monitors")?.len();
+    // Some graphics drivers (seen with a Parsec virtual display installed) never return from the GPU capture calls.
+    // Give it 2 s on its own thread; a capture that hangs is abandoned and GDI is used from then on.
     #[cfg(windows)]
-    {
+    if !dxgi::HUNG.load(std::sync::atomic::Ordering::SeqCst) {
         stage("capturing with the graphics card");
-        match dxgi::freeze(n) {
-            Ok(f) => return Ok(f),
-            Err(e) => log::warn!("fast capture unavailable ({e:#}); using GDI"),
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || { let _ = tx.send(dxgi::freeze(n)); });
+        match rx.recv_timeout(std::time::Duration::from_secs(2)) {
+            Ok(Ok(f)) => return Ok(f),
+            Ok(Err(e)) => log::warn!("fast capture unavailable ({e:#}); using GDI"),
+            Err(_) => {
+                dxgi::HUNG.store(true, std::sync::atomic::Ordering::SeqCst);
+                log::warn!("fast capture hung in the graphics driver; using GDI until Grabbit restarts");
+            }
         }
     }
     stage("capturing with GDI");
@@ -94,6 +102,8 @@ mod dxgi {
     unsafe impl Send for Gpu {}
     unsafe impl Sync for Gpu {}
     static GPUS: Mutex<Vec<Gpu>> = Mutex::new(Vec::new());
+    /// Set when a GPU capture never came back: its thread may still hold GPUS, so it's never touched again.
+    pub static HUNG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
     fn gpus() -> Result<Vec<Gpu>> {
         let factory: IDXGIFactory1 = unsafe { CreateDXGIFactory1()? };
@@ -111,10 +121,10 @@ mod dxgi {
     }
 
     /// Lets go of the GPU devices (the graphics driver holds ~130 MB for them); the next capture makes them again.
-    pub fn release() { GPUS.lock().unwrap().clear(); }
+    pub fn release() { if let Ok(mut c) = GPUS.try_lock() { c.clear(); } }
 
     pub fn prepare() {
-        let mut cache = GPUS.lock().unwrap();
+        let Ok(mut cache) = GPUS.try_lock() else { return };
         if cache.is_empty() { *cache = gpus().unwrap_or_default(); }
     }
 
