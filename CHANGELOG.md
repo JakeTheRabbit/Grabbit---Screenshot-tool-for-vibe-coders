@@ -6,6 +6,12 @@ Installers for every version are on the [Releases](https://github.com/JakeTheRab
 
 ## [Unreleased]
 
+### Fixed
+
+- Print Screen on Windows 11 opened the Snipping Tool instead of Grabbit. Grabbit now turns off Windows' "Use the Print screen key to open screen capture" setting whenever one of its keys uses Print Screen. Windows reported the key as free, so nothing was logged before.
+- A capture that got stuck (for example in a graphics driver) left the capture key and the Capture button doing nothing, with nothing in the log. After 8 seconds Grabbit now logs and shows which step it got stuck on, and the next press tries again.
+- Capture did nothing on some PCs with a virtual display adapter installed (such as Parsec's), where the graphics driver never returned from fast capture. Fast capture now gets 2 seconds; if it hangs, Grabbit uses the slower GDI capture until it restarts.
+
 ## [2.0.20] - 2026-11-23
 
 ### Added

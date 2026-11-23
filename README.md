@@ -244,7 +244,7 @@ sudo apt install ffmpeg tesseract-ocr
 
 **If Grabbit vanishes on Windows**, Microsoft Defender has probably quarantined it. Defender's machine-learning guesses (`Behavior:Win32/Persistence.A!ml`, `Trojan:Win32/Bearfoos.A!ml`) flag unsigned apps that watch a key, capture the screen and start with Windows, which describes any screenshot tool. Grabbit is open source and built in public on GitHub Actions; signed builds are on the way ([docs/signing.md](docs/signing.md)). To get it back: **Windows Security → Virus & threat protection → Protection history**, open the Grabbit entry, then **Actions → Restore**, and reinstall if the shortcut is gone.
 
-PrtScn only works when no other screenshot tool has claimed it (Windows: turn off *Settings → Accessibility → Keyboard → Use the Print screen key to open screen capture*). Grabbit's log says which keys were taken, and every key can be changed in **Settings → Keys**. Turn on **Start with your computer** in Settings → General.
+PrtScn only works when no other screenshot tool has claimed it. On Windows, Grabbit turns off *Settings → Accessibility → Keyboard → Use the Print screen key to open screen capture* for you; other tools such as Greenshot or ShareX have to let go of it themselves. Grabbit's log says which keys were taken, and every key can be changed in **Settings → Keys**. Turn on **Start with your computer** in Settings → General.
 
 ## Keys
 

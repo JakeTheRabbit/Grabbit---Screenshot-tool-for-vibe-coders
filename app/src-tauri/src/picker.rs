@@ -167,12 +167,26 @@ static STARTING: AtomicBool = AtomicBool::new(false);
 /// (tray, shortcut and single-instance callbacks) deadlocks on Windows.
 pub fn start(app: &AppHandle, mode: Mode) {
     if STARTING.swap(true, SeqCst) { return; }
-    let app = app.clone();
+    let run = RUN.fetch_add(1, SeqCst) + 1;
+    let a = app.clone();
     std::thread::spawn(move || {
-        start_now(&app, mode);
+        start_now(&a, mode);
         STARTING.store(false, SeqCst);
     });
+    // A capture that never comes back used to leave every later press doing nothing, with nothing in the log.
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(8));
+        if STARTING.load(SeqCst) && RUN.load(SeqCst) == run {
+            let at = *capture::STAGE.lock().unwrap();
+            log::error!("capture stuck for 8 s while {at}");
+            STARTING.store(false, SeqCst);
+            actions::notify(&app, &format!("Couldn't capture the screen: stuck while {at}."));
+        }
+    });
 }
+
+static RUN: AtomicU64 = AtomicU64::new(0);
 
 fn start_now(app: &AppHandle, mode: Mode) {
     if crate::record::is_recording(app) { crate::record::stop(app, true); return; }
@@ -189,9 +203,10 @@ fn start_now(app: &AppHandle, mode: Mode) {
     let windows = (mode != Mode::Screen).then(|| std::thread::spawn(capture::windows));
     let frames = match capture::freeze_all() {
         Ok(f) => f,
-        Err(e) => return actions::notify(app, &format!("Couldn't capture the screen: {e}")),
+        Err(e) => return actions::notify(app, &format!("Couldn't capture the screen: {e:#}")),
     };
     let t1 = t0.elapsed();
+    capture::stage("listing windows");
     if let Some(w) = windows { *state(app).windows.lock().unwrap() = w.join().unwrap_or_default(); }
     log::info!("picker: frames {t1:?}, windows {:?}", t0.elapsed() - t1);
     *state(app).frames.lock().unwrap() = frames;
@@ -210,6 +225,7 @@ fn start_now(app: &AppHandle, mode: Mode) {
         return;
     }
 
+    capture::stage("making the capture windows");
     if let Some(b) = builder { let _ = b.join(); }
     let monitors = app.available_monitors().unwrap_or_default();
     if pickers(app).len() != monitors.len() { warm(app); }

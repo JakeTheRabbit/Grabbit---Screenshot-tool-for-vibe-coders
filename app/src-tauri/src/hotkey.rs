@@ -23,6 +23,29 @@ pub fn register_all(app: &AppHandle) {
         if gs.register(key.as_str()).is_err() { taken.push(key.clone()); }
     }
     if !taken.is_empty() { log::warn!("hotkeys already taken by another app: {}", taken.join(", ")); }
+    #[cfg(windows)]
+    if keys.values().any(|k| k.contains("PrintScreen")) { take_print_screen_from_snipping_tool(); }
+}
+
+/// Windows 11 gives Print Screen to the Snipping Tool by default, through a keyboard hook: our RegisterHotKey still
+/// succeeds, but every press opens the Snipping Tool instead. Turn that setting off (Settings → Accessibility →
+/// Keyboard), and broadcast the change so it applies at once, no sign-out needed. An absent value means on.
+#[cfg(windows)]
+fn take_print_screen_from_snipping_tool() {
+    use windows::{core::w, Win32::{Foundation::{LPARAM, WPARAM}, System::Registry::*, UI::WindowsAndMessaging::*}};
+    let (key, name) = (w!("Control Panel\\Keyboard"), w!("PrintScreenKeyForSnippingEnabled"));
+    unsafe {
+        let (mut on, mut size) = (1u32, 4u32);
+        let _ = RegGetValueW(HKEY_CURRENT_USER, key, name, RRF_RT_REG_DWORD, None, Some(&mut on as *mut u32 as *mut _), Some(&mut size));
+        if on == 0 { return; }
+        let off = 0u32;
+        if RegSetKeyValueW(HKEY_CURRENT_USER, key, name, REG_DWORD.0, Some(&off as *const u32 as *const _), 4).is_err() {
+            log::warn!("couldn't take Print Screen back from the Snipping Tool");
+            return;
+        }
+        let _ = SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, WPARAM(0), LPARAM(w!("Policy").as_ptr() as isize), SMTO_ABORTIFHUNG, 2000, None);
+        log::info!("turned off the Snipping Tool's Print Screen key so Grabbit gets it");
+    }
 }
 
 fn action_for(app: &AppHandle, sc: &Shortcut) -> Option<HotkeyAction> {
